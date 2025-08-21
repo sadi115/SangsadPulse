@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -303,7 +304,7 @@ export function MonitoringDashboard() {
                          <CardHeader>
                             <CardTitle>Generate Report</CardTitle>
                              <CardDescription>Download a monitoring report for your services.</CardDescription>
-                        </Header>
+                        </CardHeader>
                         <CardContent>
                             <ReportGenerator websites={websites} />
                         </CardContent>
