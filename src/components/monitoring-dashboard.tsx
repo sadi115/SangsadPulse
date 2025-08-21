@@ -9,8 +9,23 @@ import { useToast } from '@/hooks/use-toast';
 
 const POLLING_INTERVAL = 30000; // 30 seconds
 
+const initialWebsites: Website[] = [
+  { id: '1', url: 'https://www.parliament.gov.bd', status: 'Idle' },
+  { id: '2', url: 'https://prp.parliament.gov.bd', status: 'Idle' },
+  { id: '3', url: 'https://qams.parliament.gov.bd', status: 'Idle' },
+  { id: '4', url: 'https://cmis.parliament.gov.bd', status: 'Idle' },
+  { id: '5', url: 'https://debate.parliament.gov.bd', status: 'Idle' },
+  { id: '6', url: 'https://drm.parliament.gov.bd', status: 'Idle' },
+  { id: '7', url: 'https://ebilling.parliament.gov.bd', status: 'Idle' },
+  { id: '8', url: 'https://sitting.parliament.gov.bd', status: 'Idle' },
+  { id: '9', url: 'https://ebook.parliament.gov.bd', status: 'Idle' },
+  { id: '10', url: 'https://broadcast.parliament.gov.bd', status: 'Idle' },
+  { id: '11', url: 'https://library.parliament.gov.bd', status: 'Idle' },
+  { id: '12', url: 'https://www.google.com', status: 'Idle' },
+];
+
 export function MonitoringDashboard() {
-  const [websites, setWebsites] = useState<Website[]>([]);
+  const [websites, setWebsites] = useState<Website[]>(initialWebsites);
   const { toast } = useToast();
 
   const updateWebsite = useCallback((id: string, updates: Partial<Website>) => {
@@ -41,7 +56,7 @@ export function MonitoringDashboard() {
     const intervalId = setInterval(poll, POLLING_INTERVAL);
 
     return () => clearInterval(intervalId);
-  }, [websites.length, updateWebsite]);
+  }, [websites, updateWebsite]);
 
 
   const handleAddWebsite = useCallback((url: string) => {
