@@ -249,9 +249,9 @@ export function MonitoringDashboard() {
       <SummaryOverview websites={websites} />
       
       <div className="space-y-4">
-         <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4">
           <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
-           <ToggleGroup
+          <ToggleGroup
             type="single"
             value={view}
             onValueChange={(value) => value && setView(value as 'card' | 'list')}
@@ -362,3 +362,5 @@ export function MonitoringDashboard() {
     </div>
   );
 }
+
+    
