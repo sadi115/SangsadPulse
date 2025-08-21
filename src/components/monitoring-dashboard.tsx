@@ -6,8 +6,11 @@ import { AddWebsiteForm } from './add-website-form';
 import { WebsiteList } from './website-list';
 import { checkStatus, getAIDiagnosis } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-
-const POLLING_INTERVAL = 30000; // 30 seconds
+import { SummaryOverview } from './summary-overview';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from './ui/button';
 
 const initialWebsites: Website[] = [
   { id: '1', url: 'https://www.parliament.gov.bd', status: 'Idle' },
@@ -26,6 +29,8 @@ const initialWebsites: Website[] = [
 
 export function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
+  const [pollingInterval, setPollingInterval] = useState(30); // in seconds
+  const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const { toast } = useToast();
   // Create a ref to hold the websites array for use in the polling interval
   const websitesRef = useRef(websites);
@@ -43,6 +48,9 @@ export function MonitoringDashboard() {
     if (sites.length === 0) return;
   
     const checks = sites.map(async website => {
+      // Don't re-check a site that's already being checked
+      if (website.status === 'Checking') return;
+      
       updateWebsite(website.id, { status: 'Checking' });
       try {
         const result = await checkStatus(website.url);
@@ -58,15 +66,12 @@ export function MonitoringDashboard() {
 
   useEffect(() => {
     // Initial check
-    pollWebsites(websitesRef.current);
+    pollWebsites(websitesRef.current.filter(w => w.status === 'Idle'));
     
-    const intervalId = setInterval(() => pollWebsites(websitesRef.current), POLLING_INTERVAL);
+    const intervalId = setInterval(() => pollWebsites(websitesRef.current), pollingInterval * 1000);
 
     return () => clearInterval(intervalId);
-  // We only want this effect to run once on mount, so we pass an empty dependency array.
-  // We use websitesRef.current to access the latest websites state inside the interval.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pollingInterval, pollWebsites]);
 
 
   const handleAddWebsite = useCallback((url: string) => {
@@ -116,14 +121,53 @@ export function MonitoringDashboard() {
     }
   }, [websites, updateWebsite, toast]);
 
+  const handleIntervalChange = () => {
+    if(tempPollingInterval > 0) {
+        setPollingInterval(tempPollingInterval);
+        toast({
+            title: 'Settings Saved',
+            description: `Monitoring interval updated to ${tempPollingInterval} seconds.`,
+        });
+    } else {
+        toast({
+            title: 'Invalid Interval',
+            description: 'Polling interval must be greater than 0.',
+            variant: 'destructive'
+        });
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
+      <SummaryOverview websites={websites} />
       <AddWebsiteForm onAddWebsite={handleAddWebsite} />
       <WebsiteList
         websites={websites}
         onDelete={handleDeleteWebsite}
         onDiagnose={handleDiagnose}
       />
+       <Card>
+        <CardHeader>
+          <CardTitle>Settings</CardTitle>
+          <CardDescription>Customize the monitoring settings.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+           <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className='w-full sm:w-auto'>
+                <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                <Input
+                id="polling-interval"
+                type="number"
+                value={tempPollingInterval}
+                onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                placeholder="e.g. 30"
+                className="w-full sm:w-48"
+                />
+            </div>
+            <Button onClick={handleIntervalChange} className="w-full sm:w-auto mt-0 sm:mt-5">Save Settings</Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
