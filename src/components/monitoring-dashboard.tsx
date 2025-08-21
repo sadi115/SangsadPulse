@@ -34,29 +34,29 @@ export function MonitoringDashboard() {
     );
   }, []);
 
+  const pollWebsites = useCallback(async (sites: Website[]) => {
+    if (sites.length === 0) return;
+  
+    const checks = sites.map(async website => {
+      updateWebsite(website.id, { status: 'Checking' });
+      try {
+        const result = await checkStatus(website.url);
+        updateWebsite(website.id, result);
+      } catch (error) {
+        console.error(`Failed to check status for ${website.url}`, error);
+        updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
+      }
+    });
+  
+    await Promise.all(checks);
+  }, [updateWebsite]);
+
   useEffect(() => {
-    const poll = async () => {
-      if (websites.length === 0) return;
-
-      const checks = websites.map(async website => {
-        updateWebsite(website.id, { status: 'Checking' });
-        try {
-          const result = await checkStatus(website.url);
-          updateWebsite(website.id, result);
-        } catch (error) {
-          console.error(`Failed to check status for ${website.url}`, error);
-          updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
-        }
-      });
-
-      await Promise.all(checks);
-    };
-
-    poll(); // Initial check
-    const intervalId = setInterval(poll, POLLING_INTERVAL);
+    pollWebsites(websites); // Initial check
+    const intervalId = setInterval(() => pollWebsites(websites), POLLING_INTERVAL);
 
     return () => clearInterval(intervalId);
-  }, [websites, updateWebsite]);
+  }, [websites, pollWebsites]);
 
 
   const handleAddWebsite = useCallback((url: string) => {
