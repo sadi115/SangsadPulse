@@ -362,5 +362,3 @@ export function MonitoringDashboard() {
     </div>
   );
 }
-
-    
