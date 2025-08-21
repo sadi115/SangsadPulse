@@ -12,8 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import type { MonitorType } from '@/lib/types';
 
 const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
-    { label: "General Monitor Type", value: "HTTP(s)", disabled: true },
-    { label: "Group", value: "Group", disabled: true },
     { label: "HTTP(s)", value: "HTTP(s)" },
     { label: "TCP Port", value: "TCP Port", disabled: true },
     { label: "Ping", value: "Ping", disabled: true },
@@ -85,7 +83,7 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
                             <SelectContent>
                                 <SelectGroup>
                                     <SelectLabel>General Monitor Type</SelectLabel>
-                                    {monitorTypes.filter(t => !t.label.includes("Passive")).map(type => (
+                                    {monitorTypes.map(type => (
                                         <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
                                             {type.label}
                                         </SelectItem>
