@@ -8,7 +8,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-between h-24">
+          <div className="relative flex items-center justify-center h-24">
             <div className="absolute top-1/2 left-0 -translate-y-1/2">
                 <LiveClock />
             </div>

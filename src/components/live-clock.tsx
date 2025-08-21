@@ -34,7 +34,7 @@ export function LiveClock() {
   return (
     <div className="flex flex-col items-start font-medium text-muted-foreground">
         <span className="text-xs">{format(currentTime, 'EEEE, MMMM do')}</span>
-        <span className="text-base font-semibold text-foreground">{format(currentTime, 'h:mm:ss a')}</span>
+        <span className="text-sm font-semibold text-foreground">{format(currentTime, 'h:mm:ss a')}</span>
     </div>
   );
 }
