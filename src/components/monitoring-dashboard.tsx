@@ -249,7 +249,7 @@ export function MonitoringDashboard() {
       <SummaryOverview websites={websites} />
       
       <div className="space-y-4">
-         <div className="flex justify-between items-center">
+         <div className="flex flex-col items-center gap-4">
           <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
            <ToggleGroup
             type="single"
@@ -343,7 +343,7 @@ export function MonitoringDashboard() {
                          <CardHeader>
                             <CardTitle>Generate Report</CardTitle>
                              <CardDescription>Download a monitoring report for your services.</CardDescription>
-                        </CardHeader>
+                        </Header>
                         <CardContent>
                             <ReportGenerator websites={websites} />
                         </CardContent>
