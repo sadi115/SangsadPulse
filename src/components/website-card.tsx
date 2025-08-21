@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
@@ -105,6 +105,12 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
                     <Clock className="h-3 w-3" />
                     <span>Last checked: {formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })}</span>
                  </div>
+            )}
+             {website.lastDownTime && (
+                <div className="flex items-center gap-2 text-red-500/90" title={format(new Date(website.lastDownTime), 'PPpp')}>
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Last down: {formatDistanceToNow(new Date(website.lastDownTime), { addSuffix: true })}</span>
+                </div>
             )}
         </div>
         

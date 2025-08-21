@@ -48,10 +48,10 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
   ].filter(d => d.value > 0);
 
   const lastDownService = useMemo(() => {
-    // Find the most recently checked "Down" service
+    // Find the service that went down most recently.
     return websites
-      .filter(site => site.status === 'Down' && site.lastChecked)
-      .sort((a, b) => new Date(b.lastChecked!).getTime() - new Date(a.lastChecked!).getTime())[0];
+      .filter(site => site.status === 'Down' && site.lastDownTime)
+      .sort((a, b) => new Date(b.lastDownTime!).getTime() - new Date(a.lastDownTime!).getTime())[0];
   }, [websites]);
 
   return (
@@ -131,7 +131,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                 <div className="p-4 bg-secondary rounded-lg border col-span-2 sm:col-span-3">
                      <p className="text-sm text-muted-foreground">Last Service Down</p>
                     <p className="text-lg font-semibold text-foreground truncate">
-                        {lastDownService ? new URL(lastDownService.url).hostname : 'N/A'}
+                        {lastDownService ? lastDownService.name : 'N/A'}
                     </p>
                 </div>
             </div>

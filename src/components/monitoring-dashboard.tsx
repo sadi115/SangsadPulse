@@ -48,8 +48,15 @@ export function MonitoringDashboard() {
             ...(site.latencyHistory || []),
             ...(updates.latency !== undefined ? [{ time: new Date().toISOString(), latency: updates.latency }] : []),
           ].slice(-MAX_LATENCY_HISTORY);
+          
+          const newSite = { ...site, ...updates, latencyHistory: newHistory };
+          
+          // If status is changing to 'Down', set the lastDownTime
+          if (updates.status === 'Down' && site.status !== 'Down') {
+            newSite.lastDownTime = new Date().toISOString();
+          }
 
-          return { ...site, ...updates, latencyHistory: newHistory };
+          return newSite;
         }
         return site;
       })

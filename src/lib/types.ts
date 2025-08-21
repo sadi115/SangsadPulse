@@ -23,4 +23,5 @@ export interface Website {
   diagnosis?: string;
   latency?: number;
   latencyHistory?: { time: string; latency: number }[];
+  lastDownTime?: string;
 }
