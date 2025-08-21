@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell } from 'recharts';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Clock } from 'lucide-react';
+import { LatencyChart } from './latency-chart';
 
 type SummaryOverviewProps = {
     websites: Website[];
@@ -65,12 +66,28 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
       .sort((a, b) => new Date(b.lastDownTime!).getTime() - new Date(a.lastDownTime!).getTime())[0];
   }, [websites]);
 
+  const aggregatedLatencyData = useMemo(() => {
+    const allLatencyPoints: { time: string; latency: number }[] = [];
+    websites.forEach(site => {
+      if (site.status === 'Up' && site.latencyHistory) {
+        allLatencyPoints.push(...site.latencyHistory);
+      }
+    });
+
+    // Simple aggregation for demonstration. For more accuracy, you'd group by time intervals.
+    // This sorts by time and takes the most recent points.
+    return allLatencyPoints
+      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
+      .slice(-50); // Limit to last 50 data points for performance
+
+  }, [websites]);
+
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="text-center">
         <CardTitle>Overall Summary</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
             <div className="h-48 md:h-56 flex items-center justify-center">
                 {websites.length > 0 ? (
@@ -169,6 +186,14 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                 </div>
             </div>
         </div>
+         {aggregatedLatencyData.length > 0 && (
+          <div className="pt-4">
+            <h3 className="text-lg font-semibold mb-2 text-center">Average Latency (ms)</h3>
+            <div className="h-48 w-full">
+              <LatencyChart data={aggregatedLatencyData} />
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
