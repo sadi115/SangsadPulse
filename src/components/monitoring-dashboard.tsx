@@ -14,8 +14,6 @@ import { WebsiteCard } from './website-card';
 import { EditWebsiteDialog } from './edit-website-dialog';
 import type { z } from 'zod';
 import Image from 'next/image';
-import { ReportGenerator } from './report-generator';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -242,9 +240,20 @@ export function MonitoringDashboard() {
 
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
-        <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
       <SummaryOverview websites={websites} />
-        <div className="space-y-4">
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Add a New Monitor</CardTitle>
+          <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+        </CardContent>
+      </Card>
+      
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
         {websites.length > 0 ? (
           sortedWebsites.map((website, index) => {
              const nonPausedCount = sortedWebsites.filter(w => !w.isPaused).length;
@@ -273,71 +282,35 @@ export function MonitoringDashboard() {
             </div>
             <h2 className="mt-6 text-xl font-medium text-foreground">No websites yet</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Add a website below to start monitoring its status.
+              Add a website above to start monitoring its status.
             </p>
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Accordion type="single" collapsible className="w-full md:col-start-1">
-            <Card>
-            <AccordionItem value="add-service" className='border-b-0'>
-                <AccordionTrigger className='p-6'>
-                <CardHeader className='p-0 text-left'>
-                    <CardTitle>Add Service</CardTitle>
-                    <CardDescription>Add a new service to the monitoring list.</CardDescription>
-                </CardHeader>
-                </AccordionTrigger>
-                <AccordionContent className='p-6 pt-0'>
-                    <AddWebsiteForm onAddWebsite={handleAddWebsite} />
-                </AccordionContent>
-            </AccordionItem>
-            </Card>
-        </Accordion>
-        <Accordion type="single" collapsible className="w-full md:col-start-2">
-            <Card>
-            <AccordionItem value="settings" className='border-b-0'>
-                <AccordionTrigger className='p-6'>
-                    <CardHeader className='p-0 text-left'>
-                    <CardTitle>Settings</CardTitle>
-                    <CardDescription>Customize the monitoring settings.</CardDescription>
-                    </CardHeader>
-                </AccordionTrigger>
-                <AccordionContent className="p-6 pt-0">
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <div className='w-full sm:w-auto'>
-                            <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
-                            <Input
-                            id="polling-interval"
-                            type="number"
-                            value={tempPollingInterval}
-                            onChange={(e) => setTempPollingInterval(Number(e.target.value))}
-                            placeholder="e.g. 30"
-                            className="w-full sm:w-48"
-                            />
-                        </div>
-                        <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
-                    </div>
-                </AccordionContent>
-            </AccordionItem>
-            </Card>
-        </Accordion>
-        <Accordion type="single" collapsible className="w-full md:col-start-3">
-            <Card>
-                <AccordionItem value="reporting" className='border-b-0'>
-                    <AccordionTrigger className='p-6'>
-                        <CardHeader className='p-0 text-left'>
-                            <CardTitle>Generate Report</CardTitle>
-                            <CardDescription>Download a performance report for your monitored services.</CardDescription>
-                        </CardHeader>
-                    </AccordionTrigger>
-                    <AccordionContent className='p-6 pt-0'>
-                        <ReportGenerator websites={websites} />
-                    </AccordionContent>
-                </AccordionItem>
-            </Card>
-        </Accordion>
-      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Settings</CardTitle>
+          <CardDescription>Customize the monitoring settings.</CardDescription>
+        </CardHeader>
+        <CardContent>
+             <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className='w-full sm:w-auto'>
+                    <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                    <Input
+                    id="polling-interval"
+                    type="number"
+                    value={tempPollingInterval}
+                    onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                    placeholder="e.g. 30"
+                    className="w-full sm:w-48"
+                    />
+                </div>
+                <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
+            </div>
+        </CardContent>
+      </Card>
+      
       <EditWebsiteDialog 
         isOpen={!!editingWebsite}
         onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}

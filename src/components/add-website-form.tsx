@@ -160,7 +160,7 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
             
             <div className="flex justify-end">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                Add Service
+                Add Monitor
                 </Button>
             </div>
           </form>

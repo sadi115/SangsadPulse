@@ -84,7 +84,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 data={chartData}
                                 dataKey="value"
                                 nameKey="name"
-                                innerRadius={50}
+                                innerRadius={60}
                                 outerRadius={80}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
@@ -107,7 +107,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                     <text
                                         x={x}
                                         y={y}
-                                        className="text-xs fill-foreground"
+                                        className="text-xs fill-muted-foreground"
                                         textAnchor={x > cx ? 'start' : 'end'}
                                         dominantBaseline="central"
                                     >
