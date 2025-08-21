@@ -1,13 +1,17 @@
 import { MonitoringDashboard } from '@/components/monitoring-dashboard';
 import { ThemeToggle } from '@/components/theme-toggle';
 import Image from 'next/image';
+import { LiveClock } from '@/components/live-clock';
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-28">
+          <div className="relative flex items-center justify-between h-28">
+            <div className="absolute top-1/2 left-0 -translate-y-1/2">
+                <LiveClock />
+            </div>
             <div className="flex flex-col items-center gap-2">
                <Image 
                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png"
@@ -21,7 +25,7 @@ export default function Home() {
                 Bangladesh Parliament Web Services Monitoring Dashboard
               </h1>
             </div>
-            <div className="absolute top-1/2 -translate-y-1/2 right-0">
+            <div className="absolute top-1/2 right-0 -translate-y-1/2">
                 <ThemeToggle />
             </div>
           </div>
