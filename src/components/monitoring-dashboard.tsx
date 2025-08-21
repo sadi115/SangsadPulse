@@ -303,7 +303,7 @@ export function MonitoringDashboard() {
                          <CardHeader>
                             <CardTitle>Generate Report</CardTitle>
                              <CardDescription>Download a monitoring report for your services.</CardDescription>
-                        </CardHeader>
+                        </Header>
                         <CardContent>
                             <ReportGenerator websites={websites} />
                         </CardContent>
