@@ -81,7 +81,7 @@ export function MonitoringDashboard() {
       
       updateWebsite(website.id, { status: 'Checking' });
       try {
-        const result = await checkStatus(website.url);
+        const result = await checkStatus(website);
         updateWebsite(website.id, result);
       } catch (error) {
         console.error(`Failed to check status for ${website.url}`, error);
