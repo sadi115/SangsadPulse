@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './uptime-bar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { WebsiteCardDetails } from './website-card-details';
+import { Card } from './ui/card';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
@@ -59,7 +60,7 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
-        <div className="group transition-all">
+        <Card className="group transition-all">
           <div className="flex items-center p-4 gap-4">
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
               <div className="flex-1 flex items-center gap-4">
@@ -121,7 +122,7 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
           <CollapsibleContent>
             <WebsiteCardDetails website={website} />
           </CollapsibleContent>
-        </div>
+        </Card>
     </Collapsible>
   );
 }
