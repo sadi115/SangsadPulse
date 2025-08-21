@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell } from 'recharts';
 import { useMemo } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { AlertCircle, Clock } from 'lucide-react';
 
 type SummaryOverviewProps = {
     websites: Website[];
@@ -28,7 +30,7 @@ const CHART_CONFIG = {
   },
    paused: {
     label: 'Paused',
-    color: 'hsl(215.4 16.3% 46.9%)', // slate-500
+    color: 'hsl(220 9% 46%)', // gray-500
   },
 };
 
@@ -139,13 +141,31 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                 </div>
                 <div className="p-4 bg-secondary rounded-lg border">
                     <p className="text-sm text-muted-foreground">Paused</p>
-                    <p className="text-3xl font-bold">{summary.Paused}</p>
+                    <p className="text-3xl font-bold text-gray-500">{summary.Paused}</p>
                 </div>
                 <div className="p-4 bg-secondary rounded-lg border col-span-2 sm:col-span-2">
                      <p className="text-sm text-muted-foreground">Last Service Down</p>
-                    <p className="text-lg font-semibold text-foreground truncate">
-                        {lastDownService ? lastDownService.name : 'N/A'}
-                    </p>
+                    {lastDownService ? (
+                         <div className="flex flex-col items-center justify-center h-full pt-2">
+                             <p className="text-lg font-semibold text-foreground truncate" title={lastDownService.name}>
+                                 {lastDownService.name}
+                             </p>
+                            <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                                <div className='flex items-center gap-1.5'>
+                                    <Clock className="h-3 w-3" />
+                                    <span>{formatDistanceToNow(new Date(lastDownService.lastDownTime!), { addSuffix: true })}</span>
+                                </div>
+                                <div className='flex items-center gap-1.5' title={lastDownService.httpResponse}>
+                                     <AlertCircle className="h-3 w-3 text-red-500" />
+                                     <span className='truncate'>{lastDownService.httpResponse}</span>
+                                </div>
+                            </div>
+                         </div>
+                    ) : (
+                        <p className="text-lg font-semibold text-foreground truncate h-full flex items-center justify-center">
+                          N/A
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
