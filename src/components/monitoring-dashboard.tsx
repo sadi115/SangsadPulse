@@ -14,6 +14,7 @@ import { Button } from './ui/button';
 import { EditWebsiteDialog } from './edit-website-dialog';
 import type { z } from 'zod';
 import { ReportGenerator } from './report-generator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -247,32 +248,60 @@ export function MonitoringDashboard() {
         onMove={moveWebsite}
         onTogglePause={handleTogglePause}
       />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <Accordion type="single" collapsible className="w-full space-y-4">
         <Card>
-            <CardHeader>
-            <CardTitle>Settings</CardTitle>
-            <CardDescription>Customize the monitoring settings.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className='w-full sm:w-auto'>
-                    <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
-                    <Input
-                    id="polling-interval"
-                    type="number"
-                    value={tempPollingInterval}
-                    onChange={(e) => setTempPollingInterval(Number(e.target.value))}
-                    placeholder="e.g. 30"
-                    className="w-full sm:w-48"
-                    />
-                </div>
-                <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
-            </div>
-            </CardContent>
+          <AccordionItem value="add-service" className='border-b-0'>
+            <AccordionTrigger className='p-6'>
+              <CardHeader className='p-0 text-left'>
+                <CardTitle>Add Service</CardTitle>
+                <CardDescription>Add a new service to the monitoring list.</CardDescription>
+              </CardHeader>
+            </AccordionTrigger>
+            <AccordionContent className='p-6 pt-0'>
+                <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+            </AccordionContent>
+          </AccordionItem>
         </Card>
-        <AddWebsiteForm onAddWebsite={handleAddWebsite} />
-      </div>
-      <ReportGenerator websites={websites} />
+        <Card>
+          <AccordionItem value="settings" className='border-b-0'>
+            <AccordionTrigger className='p-6'>
+                <CardHeader className='p-0 text-left'>
+                  <CardTitle>Settings</CardTitle>
+                  <CardDescription>Customize the monitoring settings.</CardDescription>
+                </CardHeader>
+              </AccordionTrigger>
+            <AccordionContent className="p-6 pt-0">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className='w-full sm:w-auto'>
+                        <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                        <Input
+                        id="polling-interval"
+                        type="number"
+                        value={tempPollingInterval}
+                        onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                        placeholder="e.g. 30"
+                        className="w-full sm:w-48"
+                        />
+                    </div>
+                    <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
+                </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Card>
+         <Card>
+            <AccordionItem value="reporting" className='border-b-0'>
+                <AccordionTrigger className='p-6'>
+                    <CardHeader className='p-0 text-left'>
+                        <CardTitle>Generate Report</CardTitle>
+                        <CardDescription>Download a performance report for your monitored services.</CardDescription>
+                    </CardHeader>
+                </AccordionTrigger>
+                <AccordionContent className='p-6 pt-0'>
+                    <ReportGenerator websites={websites} />
+                </AccordionContent>
+            </AccordionItem>
+         </Card>
+      </Accordion>
       <EditWebsiteDialog 
         isOpen={!!editingWebsite}
         onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}

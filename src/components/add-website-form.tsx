@@ -55,12 +55,6 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add a new monitor</CardTitle>
-        <CardDescription>Enter the details of the service you want to monitor.</CardDescription>
-      </CardHeader>
-      <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -166,12 +160,10 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
             
             <div className="flex justify-end">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                Add Monitor
+                Add Service
                 </Button>
             </div>
           </form>
         </Form>
-      </CardContent>
-    </Card>
   );
 }

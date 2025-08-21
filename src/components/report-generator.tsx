@@ -12,7 +12,6 @@ import * as XLSX from 'xlsx';
 
 import type { Website } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -169,12 +168,6 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Generate Report</CardTitle>
-        <CardDescription>Download a performance report for your monitored services.</CardDescription>
-      </CardHeader>
-      <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -288,7 +281,5 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
             </div>
           </form>
         </Form>
-      </CardContent>
-    </Card>
   );
 }
