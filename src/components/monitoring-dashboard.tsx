@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
 import { EditWebsiteDialog } from './edit-website-dialog';
 import type { z } from 'zod';
+import { ReportGenerator } from './report-generator';
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -271,6 +272,7 @@ export function MonitoringDashboard() {
         </Card>
         <AddWebsiteForm onAddWebsite={handleAddWebsite} />
       </div>
+      <ReportGenerator websites={websites} />
       <EditWebsiteDialog 
         isOpen={!!editingWebsite}
         onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
