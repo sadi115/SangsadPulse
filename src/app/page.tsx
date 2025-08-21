@@ -1,20 +1,29 @@
 import { MonitoringDashboard } from '@/components/monitoring-dashboard';
-import { ParliamentLogo } from '@/components/parliament-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
+import Image from 'next/image';
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-4">
-              <ParliamentLogo className="h-12 w-12" />
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">
+          <div className="relative flex items-center justify-center h-28">
+            <div className="flex flex-col items-center gap-2">
+               <Image 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png"
+                alt="Parliament Logo"
+                width={50}
+                height={50}
+                className="h-14 w-14"
+                data-ai-hint="emblem"
+              />
+              <h1 className="text-xl md:text-2xl font-bold text-foreground text-center">
                 Bangladesh Parliament Web Services Monitoring Dashboard
               </h1>
             </div>
-            <ThemeToggle />
+            <div className="absolute top-1/2 -translate-y-1/2 right-0">
+                <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
