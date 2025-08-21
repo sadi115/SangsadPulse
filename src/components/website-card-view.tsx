@@ -4,7 +4,7 @@ import type { Website } from '@/lib/types';
 import { WebsiteCard } from './website-card';
 import Image from 'next/image';
 
-type WebsiteListProps = {
+type WebsiteCardViewProps = {
   websites: Website[];
   onDelete: (id: string) => void;
   onDiagnose: (id: string) => void;
@@ -13,7 +13,7 @@ type WebsiteListProps = {
   onTogglePause: (id: string) => void;
 };
 
-export function WebsiteList({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause }: WebsiteListProps) {
+export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause }: WebsiteCardViewProps) {
   if (websites.length === 0) {
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">

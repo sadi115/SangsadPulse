@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Website, MonitorType } from '@/lib/types';
 import { AddWebsiteForm } from './add-website-form';
-import { WebsiteList } from './website-list';
 import { checkStatus, getAIDiagnosis } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { SummaryOverview } from './summary-overview';
@@ -15,6 +14,10 @@ import { EditWebsiteDialog } from './edit-website-dialog';
 import type { z } from 'zod';
 import { ReportGenerator } from './report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { WebsiteCardView } from './website-card-view';
+import { WebsiteListView } from './website-list-view';
+import { List, LayoutGrid } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -48,6 +51,7 @@ export function MonitoringDashboard() {
   const [pollingInterval, setPollingInterval] = useState(30); // in seconds
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
+  const [view, setView] = useState<'card' | 'list'>('card');
 
   const { toast } = useToast();
   const websitesRef = useRef(websites);
@@ -241,15 +245,44 @@ export function MonitoringDashboard() {
 
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
+        <div className="flex justify-between items-center">
+             <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
+            <ToggleGroup 
+                type="single" 
+                value={view}
+                onValueChange={(newView) => {
+                    if (newView) setView(newView as 'card' | 'list');
+                }}
+                aria-label="Dashboard View"
+            >
+                <ToggleGroupItem value="card" aria-label="Card view">
+                    <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="List view">
+                    <List className="h-4 w-4" />
+                </ToggleGroupItem>
+            </ToggleGroup>
+        </div>
       <SummaryOverview websites={websites} />
-      <WebsiteList
-        websites={sortedWebsites}
-        onDelete={handleDeleteWebsite}
-        onDiagnose={handleDiagnose}
-        onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-        onMove={moveWebsite}
-        onTogglePause={handleTogglePause}
-      />
+       {view === 'card' ? (
+        <WebsiteCardView
+            websites={sortedWebsites}
+            onDelete={handleDeleteWebsite}
+            onDiagnose={handleDiagnose}
+            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+            onMove={moveWebsite}
+            onTogglePause={handleTogglePause}
+        />
+        ) : (
+        <WebsiteListView
+            websites={sortedWebsites}
+            onDelete={handleDeleteWebsite}
+            onDiagnose={handleDiagnose}
+            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+            onMove={moveWebsite}
+            onTogglePause={handleTogglePause}
+        />
+        )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Accordion type="single" collapsible className="w-full md:col-start-1">
             <Card>
