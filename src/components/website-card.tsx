@@ -119,11 +119,11 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-             <DropdownMenuItem onClick={() => onMove(website.id, 'up')} disabled={isFirst}>
+             <DropdownMenuItem onClick={() => onMove(website.id, 'up')} disabled={isFirst || website.isPaused}>
               <ArrowUp className="mr-2 h-4 w-4" />
               Move Up
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast}>
+            <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast || website.isPaused}>
               <ArrowDown className="mr-2 h-4 w-4" />
               Move Down
             </DropdownMenuItem>

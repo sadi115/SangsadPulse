@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Website, MonitorType } from '@/lib/types';
 import { AddWebsiteForm } from './add-website-form';
 import { WebsiteList } from './website-list';
@@ -14,7 +14,7 @@ import { Button } from './ui/button';
 import { EditWebsiteDialog } from './edit-website-dialog';
 import type { z } from 'zod';
 
-const initialWebsites: Website[] = [
+const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
   { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
   { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -40,7 +40,9 @@ type WebsiteFormData = {
 }
 
 export function MonitoringDashboard() {
-  const [websites, setWebsites] = useState<Website[]>(initialWebsites);
+  const [websites, setWebsites] = useState<Website[]>(() => 
+    initialWebsites.map((site, index) => ({ ...site, displayOrder: index }))
+  );
   const [pollingInterval, setPollingInterval] = useState(30); // in seconds
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
@@ -116,6 +118,7 @@ export function MonitoringDashboard() {
       ...data,
       status: 'Idle',
       latencyHistory: [],
+      displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder)) + 1 : 0,
     };
     const newWebsites = [...websites, newWebsite];
     setWebsites(newWebsites);
@@ -179,18 +182,24 @@ export function MonitoringDashboard() {
 
   const moveWebsite = (id: string, direction: 'up' | 'down') => {
     setWebsites(prev => {
-      const index = prev.findIndex(site => site.id === id);
-      if (index === -1) return prev;
+        const sites = [...prev].sort((a,b) => a.displayOrder - b.displayOrder);
+        const index = sites.findIndex(site => site.id === id);
+  
+        if (index === -1) return prev;
+    
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+    
+        if (newIndex < 0 || newIndex >= sites.length) return prev;
+  
+        const newWebsites = [...sites];
+        const item = newWebsites[index];
+        const otherItem = newWebsites[newIndex];
+  
+        // Swap displayOrder
+        [item.displayOrder, otherItem.displayOrder] = [otherItem.displayOrder, item.displayOrder];
 
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= prev.length) return prev;
-      
-      const newWebsites = [...prev];
-      const [movedItem] = newWebsites.splice(index, 1);
-      newWebsites.splice(newIndex, 0, movedItem);
-      
-      return newWebsites;
-    });
+        return newWebsites;
+      });
   };
 
   const handleTogglePause = useCallback((id: string) => {
@@ -209,11 +218,19 @@ export function MonitoringDashboard() {
     );
   }, []);
 
+  const sortedWebsites = useMemo(() => {
+    return [...websites].sort((a, b) => {
+      if (a.isPaused && !b.isPaused) return 1;
+      if (!a.isPaused && b.isPaused) return -1;
+      return a.displayOrder - b.displayOrder;
+    });
+  }, [websites]);
+
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
       <SummaryOverview websites={websites} />
       <WebsiteList
-        websites={websites}
+        websites={sortedWebsites}
         onDelete={handleDeleteWebsite}
         onDiagnose={handleDiagnose}
         onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}

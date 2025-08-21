@@ -28,21 +28,29 @@ export function WebsiteList({ websites, onDelete, onDiagnose, onEdit, onMove, on
     );
   }
 
+  const nonPausedCount = websites.filter(w => !w.isPaused).length;
+
   return (
     <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      {websites.map((website, index) => (
-        <WebsiteCard
-          key={website.id}
-          website={website}
-          onDelete={onDelete}
-          onDiagnose={onDiagnose}
-          onEdit={onEdit}
-          onMove={onMove}
-          onTogglePause={onTogglePause}
-          isFirst={index === 0}
-          isLast={index === websites.length - 1}
-        />
-      ))}
+      {websites.map((website, index) => {
+        const nonPausedIndex = websites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
+        const isFirst = nonPausedIndex === 0;
+        const isLast = nonPausedIndex === nonPausedCount - 1;
+
+        return (
+            <WebsiteCard
+            key={website.id}
+            website={website}
+            onDelete={onDelete}
+            onDiagnose={onDiagnose}
+            onEdit={onEdit}
+            onMove={onMove}
+            onTogglePause={onTogglePause}
+            isFirst={isFirst}
+            isLast={isLast}
+            />
+        )
+      })}
     </div>
   );
 }
