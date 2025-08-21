@@ -31,7 +31,7 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
   const nonPausedCount = websites.filter(w => !w.isPaused).length;
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
       {websites.map((website, index) => {
         const nonPausedIndex = websites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
         const isFirst = nonPausedIndex === 0;

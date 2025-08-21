@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { WebsiteCardDetails } from './website-card-details';
 import { Card } from './ui/card';
 
@@ -44,7 +43,6 @@ type WebsiteCardProps = {
 };
 
 export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, isFirst, isLast }: WebsiteCardProps) {
-  const [isOpen, setIsOpen] = useState(false);
   
   const statusColor = useMemo(() => {
     switch (website.status) {
@@ -57,73 +55,64 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
   }, [website.status]);
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
-        <Card className="group transition-all">
-          <div className="flex items-center p-4 gap-4">
-              <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
-              <div className="flex-1 grid grid-cols-2 md:grid-cols-4 items-center gap-4">
-                  <div className="flex flex-col">
-                      <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
-                      <span className="text-sm text-muted-foreground truncate" title={website.url}>{website.url}</span>
-                  </div>
-                  <div className="hidden md:flex justify-center">
+    <Card className="group transition-all flex flex-col">
+      <div className="flex items-center p-4 gap-4">
+          <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-4 items-center gap-4">
+              <div className="flex flex-col col-span-2 md:col-span-1">
+                  <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
+                  <span className="text-sm text-muted-foreground truncate" title={website.url}>{website.url}</span>
+              </div>
+              <div className="hidden md:flex justify-center">
+                <StatusBadge status={website.status} />
+              </div>
+              <div className="hidden md:flex justify-center font-medium text-muted-foreground">
+                  {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
+              </div>
+              <div className="flex items-center justify-end gap-2 col-start-2 md:col-start-4">
+                  <div className="md:hidden">
                     <StatusBadge status={website.status} />
                   </div>
-                  <div className="hidden md:flex justify-center font-medium text-muted-foreground">
-                      {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
-                  </div>
-                  <div className="flex items-center justify-end gap-2">
-                      <div className="md:hidden">
-                        <StatusBadge status={website.status} />
-                      </div>
-                      <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                          <MoreVertical className="h-4 w-4" />
-                          </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onTogglePause(website.id)}>
-                          {website.isPaused ? <PlayCircle className="mr-2 h-4 w-4" /> : <PauseCircle className="mr-2 h-4 w-4" />}
-                          {website.isPaused ? 'Resume' : 'Pause'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onEdit(website.id)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => onMove(website.id, 'up')} disabled={isFirst || website.isPaused}>
-                          <ArrowUp className="mr-2 h-4 w-4" />
-                          Move Up
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast || website.isPaused}>
-                          <ArrowDown className="mr-2 h-4 w-4" />
-                          Move Down
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => onDiagnose(website.id)} disabled={website.status !== 'Down'}>
-                          <Wand2 className="mr-2 h-4 w-4" />
-                          Diagnose with AI
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                          </DropdownMenuItem>
-                      </DropdownMenuContent>
-                      </DropdownMenu>
-                      <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </Button>
-                      </CollapsibleTrigger>
-                  </div>
+                  <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                      <MoreVertical className="h-4 w-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onTogglePause(website.id)}>
+                      {website.isPaused ? <PlayCircle className="mr-2 h-4 w-4" /> : <PauseCircle className="mr-2 h-4 w-4" />}
+                      {website.isPaused ? 'Resume' : 'Pause'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onEdit(website.id)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onMove(website.id, 'up')} disabled={isFirst || website.isPaused}>
+                      <ArrowUp className="mr-2 h-4 w-4" />
+                      Move Up
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast || website.isPaused}>
+                      <ArrowDown className="mr-2 h-4 w-4" />
+                      Move Down
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onDiagnose(website.id)} disabled={website.status !== 'Down'}>
+                      <Wand2 className="mr-2 h-4 w-4" />
+                      Diagnose with AI
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+                  </DropdownMenu>
               </div>
           </div>
-          <CollapsibleContent>
-            <WebsiteCardDetails website={website} />
-          </CollapsibleContent>
-        </Card>
-    </Collapsible>
+      </div>
+      <WebsiteCardDetails website={website} />
+    </Card>
   );
 }
