@@ -23,6 +23,7 @@ export interface Website {
   lastChecked?: string;
   diagnosis?: string;
   latency?: number;
+  averageLatency?: number;
   latencyHistory?: { time: string; latency: number }[];
   lastDownTime?: string;
   displayOrder: number;

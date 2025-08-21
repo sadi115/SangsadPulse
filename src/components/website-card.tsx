@@ -5,7 +5,7 @@ import type { Website, WebsiteStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown, Hash, Search, PauseCircle, PlayCircle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown, Hash, Search, PauseCircle, PlayCircle, BarChart2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
@@ -146,8 +146,16 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
         <div className="space-y-2 text-xs text-muted-foreground pt-2">
             <div className="flex items-center justify-between">
                 <span>{website.httpResponse ? `Response: ${website.httpResponse}`: 'No response yet'}</span>
-                {website.latency !== undefined && <span>{website.latency} ms</span>}
             </div>
+            {(website.latency !== undefined || website.averageLatency !== undefined) && (
+              <div className="flex items-center gap-4" title="Current and average latency">
+                  <BarChart2 className="h-3 w-3" />
+                  <div className="flex items-center gap-4">
+                    {website.latency !== undefined && <span>Latency: {website.latency} ms</span>}
+                    {website.averageLatency !== undefined && <span>Avg: {website.averageLatency} ms</span>}
+                  </div>
+              </div>
+            )}
             {website.lastChecked && (
                  <div className="flex items-center gap-2" title={format(new Date(website.lastChecked), 'PPpp')}>
                     <Clock className="h-3 w-3" />

@@ -62,7 +62,16 @@ export function MonitoringDashboard() {
             ...(updates.latency !== undefined ? [{ time: new Date().toISOString(), latency: updates.latency }] : []),
           ].slice(-MAX_LATENCY_HISTORY);
           
-          const newSite = { ...site, ...updates, latencyHistory: newHistory };
+          let averageLatency;
+          if (newHistory.length > 0) {
+            const upHistory = newHistory.filter(h => h.latency > 0);
+            if(upHistory.length > 0) {
+              const totalLatency = upHistory.reduce((acc, curr) => acc + curr.latency, 0);
+              averageLatency = Math.round(totalLatency / upHistory.length);
+            }
+          }
+
+          const newSite = { ...site, ...updates, latencyHistory: newHistory, averageLatency };
           
           if (updates.status === 'Down' && site.status !== 'Down') {
             newSite.lastDownTime = new Date().toISOString();
