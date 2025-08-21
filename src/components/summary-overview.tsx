@@ -66,22 +66,6 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
       .sort((a, b) => new Date(b.lastDownTime!).getTime() - new Date(a.lastDownTime!).getTime())[0];
   }, [websites]);
 
-  const aggregatedLatencyData = useMemo(() => {
-    const allLatencyPoints: { time: string; latency: number }[] = [];
-    websites.forEach(site => {
-      if (site.status === 'Up' && site.latencyHistory) {
-        allLatencyPoints.push(...site.latencyHistory);
-      }
-    });
-
-    // Simple aggregation for demonstration. For more accuracy, you'd group by time intervals.
-    // This sorts by time and takes the most recent points.
-    return allLatencyPoints
-      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
-      .slice(-50); // Limit to last 50 data points for performance
-
-  }, [websites]);
-
   return (
     <Card>
       <CardHeader className="text-center">
@@ -101,7 +85,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 data={chartData}
                                 dataKey="value"
                                 nameKey="name"
-                                innerRadius={60}
+                                innerRadius={0}
                                 outerRadius={80}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
@@ -186,14 +170,6 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                 </div>
             </div>
         </div>
-         {aggregatedLatencyData.length > 0 && (
-          <div className="pt-4">
-            <h3 className="text-lg font-semibold mb-2 text-center">Average Latency (ms)</h3>
-            <div className="h-48 w-full">
-              <LatencyChart data={aggregatedLatencyData} />
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
