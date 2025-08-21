@@ -9,10 +9,10 @@ export default function Home() {
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex items-center justify-between h-24">
-            <div className="w-28">
+            <div className="flex-1">
                 <LiveClock />
             </div>
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2 flex-1">
                <Image 
                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png"
                 alt="Parliament Logo"
@@ -25,7 +25,7 @@ export default function Home() {
                 Bangladesh Parliament Web Services Monitoring Dashboard
               </h1>
             </div>
-            <div className="w-28 flex justify-end">
+            <div className="flex-1 flex justify-end">
                 <ThemeToggle />
             </div>
           </div>
