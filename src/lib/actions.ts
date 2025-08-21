@@ -23,22 +23,35 @@ export async function checkStatus(url: string): Promise<CheckStatusResult> {
 
   try {
     const startTime = performance.now();
-    // Use 'manual' redirect to handle redirects ourselves for more control
-    const initialResponse = await fetch(url, { method: 'GET', headers, redirect: 'manual', cache: 'no-store' });
-    let response = initialResponse;
+    
+    let currentUrl = url;
+    let response;
+    let redirectCount = 0;
+    const maxRedirects = 5;
 
-    // Follow redirects manually if needed (up to 5 times)
-    if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
-        let redirectUrl = response.headers.get('location')!;
-        // Handle relative redirect URLs
-        if (redirectUrl.startsWith('/')) {
-            const origin = new URL(url).origin;
-            redirectUrl = origin + redirectUrl;
+    while(redirectCount < maxRedirects) {
+        response = await fetch(currentUrl, { method: 'GET', headers, redirect: 'manual', cache: 'no-store' });
+
+        if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+            let redirectUrl = response.headers.get('location')!;
+            
+            // Handle relative redirect URLs
+            if (redirectUrl.startsWith('/')) {
+                const origin = new URL(currentUrl).origin;
+                redirectUrl = origin + redirectUrl;
+            }
+            
+            currentUrl = redirectUrl;
+            redirectCount++;
+        } else {
+            break; // Not a redirect, so we have our final response
         }
-        
-        // For this simple check, we'll just check the redirected URL directly one time.
-        response = await fetch(redirectUrl, { method: 'GET', headers, cache: 'no-store' });
     }
+
+    if (redirectCount >= maxRedirects) {
+        throw new Error('Exceeded maximum number of redirects.');
+    }
+
 
     const endTime = performance.now();
     const latency = Math.round(endTime - startTime);
