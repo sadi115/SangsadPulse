@@ -31,7 +31,7 @@ const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
 ];
 
-const MAX_LATENCY_HISTORY = 20;
+const MAX_LATENCY_HISTORY = 50;
 
 type WebsiteFormData = {
     name: string;
@@ -65,15 +65,17 @@ export function MonitoringDashboard() {
           ].slice(-MAX_LATENCY_HISTORY);
           
           let averageLatency;
+          let uptimePercentage;
           if (newHistory.length > 0) {
             const upHistory = newHistory.filter(h => h.latency > 0);
             if(upHistory.length > 0) {
               const totalLatency = upHistory.reduce((acc, curr) => acc + curr.latency, 0);
               averageLatency = Math.round(totalLatency / upHistory.length);
             }
+            uptimePercentage = (upHistory.length / newHistory.length) * 100;
           }
 
-          const newSite = { ...site, ...updates, latencyHistory: newHistory, averageLatency };
+          const newSite = { ...site, ...updates, latencyHistory: newHistory, averageLatency, uptimePercentage };
           
           if (updates.status === 'Down' && site.status !== 'Down') {
             newSite.lastDownTime = new Date().toISOString();
@@ -249,7 +251,7 @@ export function MonitoringDashboard() {
         onTogglePause={handleTogglePause}
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible className="w-full md:col-start-1">
             <Card>
             <AccordionItem value="add-service" className='border-b-0'>
                 <AccordionTrigger className='p-6'>
@@ -264,7 +266,7 @@ export function MonitoringDashboard() {
             </AccordionItem>
             </Card>
         </Accordion>
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible className="w-full md:col-start-2">
             <Card>
             <AccordionItem value="settings" className='border-b-0'>
                 <AccordionTrigger className='p-6'>
@@ -292,7 +294,7 @@ export function MonitoringDashboard() {
             </AccordionItem>
             </Card>
         </Accordion>
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible className="w-full md:col-start-3">
             <Card>
                 <AccordionItem value="reporting" className='border-b-0'>
                     <AccordionTrigger className='p-6'>
