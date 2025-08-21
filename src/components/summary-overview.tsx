@@ -6,7 +6,6 @@ import { PieChart, Pie, Cell } from 'recharts';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Clock } from 'lucide-react';
-import { LatencyChart } from './latency-chart';
 
 type SummaryOverviewProps = {
     websites: Website[];
@@ -85,7 +84,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 data={chartData}
                                 dataKey="value"
                                 nameKey="name"
-                                innerRadius={0}
+                                innerRadius={50}
                                 outerRadius={80}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
@@ -108,8 +107,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                     <text
                                         x={x}
                                         y={y}
-                                        className="text-xs"
-                                        fill={chartData[index].fill}
+                                        className="text-xs fill-foreground"
                                         textAnchor={x > cx ? 'start' : 'end'}
                                         dominantBaseline="central"
                                     >

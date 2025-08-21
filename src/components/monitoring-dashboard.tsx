@@ -10,13 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
+import { WebsiteCard } from './website-card';
 import { EditWebsiteDialog } from './edit-website-dialog';
 import type { z } from 'zod';
+import Image from 'next/image';
 import { ReportGenerator } from './report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { WebsiteCardView } from './website-card-view';
-import { List, LayoutGrid } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -245,14 +244,40 @@ export function MonitoringDashboard() {
     <div className="container mx-auto p-4 md:p-8 space-y-8">
         <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
       <SummaryOverview websites={websites} />
-        <WebsiteCardView
-            websites={sortedWebsites}
-            onDelete={handleDeleteWebsite}
-            onDiagnose={handleDiagnose}
-            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-            onMove={moveWebsite}
-            onTogglePause={handleTogglePause}
-        />
+        <div className="space-y-4">
+        {websites.length > 0 ? (
+          sortedWebsites.map((website, index) => {
+             const nonPausedCount = sortedWebsites.filter(w => !w.isPaused).length;
+             const nonPausedIndex = sortedWebsites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
+             const isFirst = nonPausedIndex === 0;
+             const isLast = nonPausedIndex === nonPausedCount - 1;
+
+            return (
+                <WebsiteCard
+                key={website.id}
+                website={website}
+                onDelete={handleDeleteWebsite}
+                onDiagnose={handleDiagnose}
+                onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+                onMove={moveWebsite}
+                onTogglePause={handleTogglePause}
+                isFirst={isFirst}
+                isLast={isLast}
+                />
+            )
+        })
+        ) : (
+          <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
+             <div className="mx-auto h-24 w-24 relative">
+                <Image src="https://placehold.co/128x128.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
+            </div>
+            <h2 className="mt-6 text-xl font-medium text-foreground">No websites yet</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Add a website below to start monitoring its status.
+            </p>
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Accordion type="single" collapsible className="w-full md:col-start-1">
             <Card>
