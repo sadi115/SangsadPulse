@@ -31,6 +31,14 @@ const initialWebsites: Website[] = [
 
 const MAX_LATENCY_HISTORY = 20;
 
+type WebsiteFormData = {
+    name: string;
+    url: string;
+    monitorType: MonitorType;
+    port?: number;
+    keyword?: string;
+}
+
 export function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
   const [pollingInterval, setPollingInterval] = useState(30); // in seconds
@@ -93,11 +101,11 @@ export function MonitoringDashboard() {
   }, [pollingInterval, pollWebsites]);
 
 
-  const handleAddWebsite = useCallback(({name, url, monitorType}: {name: string, url: string, monitorType: MonitorType}) => {
-    if (websites.some(site => site.url === url)) {
+  const handleAddWebsite = useCallback((data: WebsiteFormData) => {
+    if (websites.some(site => site.url === data.url && site.port === data.port)) {
       toast({
-        title: 'Duplicate URL',
-        description: 'This website is already being monitored.',
+        title: 'Duplicate Service',
+        description: 'This service is already being monitored.',
         variant: 'destructive',
       });
       return;
@@ -105,9 +113,7 @@ export function MonitoringDashboard() {
 
     const newWebsite: Website = {
       id: crypto.randomUUID(),
-      name,
-      url,
-      monitorType,
+      ...data,
       status: 'Idle',
       latencyHistory: [],
     };
@@ -120,11 +126,11 @@ export function MonitoringDashboard() {
     setWebsites(prev => prev.filter(site => site.id !== id));
   }, []);
   
-  const handleEditWebsite = (id: string, data: { name: string; url: string; monitorType: MonitorType }) => {
+  const handleEditWebsite = (id: string, data: WebsiteFormData) => {
     setWebsites(prev =>
       prev.map(site =>
         site.id === id
-          ? { ...site, name: data.name, url: data.url, monitorType: data.monitorType }
+          ? { ...site, ...data }
           : site
       )
     );

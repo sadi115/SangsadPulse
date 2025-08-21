@@ -24,4 +24,7 @@ export interface Website {
   latency?: number;
   latencyHistory?: { time: string; latency: number }[];
   lastDownTime?: string;
+  // Options for specific monitor types
+  port?: number;
+  keyword?: string;
 }

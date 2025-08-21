@@ -5,7 +5,7 @@ import type { Website, WebsiteStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown, Hash, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
@@ -85,6 +85,20 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
                 {website.url}
             </a>
           </CardDescription>
+          <div className="text-xs text-muted-foreground flex items-center gap-4 mt-1">
+             {website.monitorType === 'TCP Port' && website.port && (
+              <div className="flex items-center gap-1">
+                <Hash className="h-3 w-3" />
+                <span>Port: {website.port}</span>
+              </div>
+            )}
+             {website.monitorType === 'HTTP(s) - Keyword' && website.keyword && (
+              <div className="flex items-center gap-1">
+                <Search className="h-3 w-3" />
+                <span>Keyword: {website.keyword}</span>
+              </div>
+            )}
+          </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

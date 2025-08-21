@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Tag } from 'lucide-react';
+import { Globe, Tag, Hash, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import type { MonitorType, Website } from '@/lib/types';
 import { useEffect } from 'react';
@@ -15,27 +15,19 @@ const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] 
     { label: "TCP Port", value: "TCP Port" },
     { label: "Ping", value: "Ping" },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
-    { label: "HTTP(s) - Json Query", value: "HTTP(s) - Json Query" },
-    { label: "gRPC(s) - Keyword", value: "gRPC(s) - Keyword" },
-    { label: "DNS", value: "DNS" },
-    { label: "Docker Container", value: "Docker Container" },
-    { label: "HTTP(s) - Browser Engine", value: "HTTP(s) - Browser Engine (Chrome/Chromium) (Beta)" },
+    { label: "HTTP(s) - Json Query", value: "HTTP(s) - Json Query", disabled: true },
+    { label: "gRPC(s) - Keyword", value: "gRPC(s) - Keyword", disabled: true },
+    { label: "DNS", value: "DNS", disabled: true },
+    { label: "Docker Container", value: "Docker Container", disabled: true },
+    { label: "HTTP(s) - Browser Engine", value: "HTTP(s) - Browser Engine (Chrome/Chromium) (Beta)", disabled: true },
 ];
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
-  url: z.string().url({ message: 'Please enter a valid URL.' }).refine(
-    (url) => {
-      try {
-        const parsed = new URL(url);
-        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-      } catch {
-        return false;
-      }
-    },
-    { message: 'URL must start with http:// or https://' }
-  ),
+  url: z.string().min(1, { message: 'URL/Host is required.' }),
   monitorType: z.custom<MonitorType>(),
+  port: z.coerce.number().optional(),
+  keyword: z.string().optional(),
 });
 
 type EditWebsiteDialogProps = {
@@ -55,12 +47,16 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
     },
   });
 
+  const monitorType = form.watch('monitorType');
+
   useEffect(() => {
     if (website) {
       form.reset({
         name: website.name,
         url: website.url,
         monitorType: website.monitorType,
+        port: website.port,
+        keyword: website.keyword,
       });
     }
   }, [website, form]);
@@ -131,7 +127,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
               name="url"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>URL</FormLabel>
+                  <FormLabel>{monitorType === 'TCP Port' || monitorType === 'Ping' ? 'Hostname or IP' : 'URL'}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -142,6 +138,43 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                 </FormItem>
               )}
             />
+             {monitorType === 'TCP Port' && (
+                 <FormField
+                    control={form.control}
+                    name="port"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Port</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input type="number" placeholder="e.g. 443" {...field} className="pl-10" />
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                 />
+            )}
+
+             {monitorType === 'HTTP(s) - Keyword' && (
+                 <FormField
+                    control={form.control}
+                    name="keyword"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Keyword</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input placeholder="e.g. 'verification_code'" {...field} className="pl-10" />
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                 />
+            )}
             <DialogFooter>
                 <Button type="submit">Save changes</Button>
             </DialogFooter>
