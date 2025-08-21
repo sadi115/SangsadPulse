@@ -8,8 +8,8 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-24">
-            <div className="absolute top-1/2 left-4 -translate-y-1/2">
+          <div className="relative flex items-center justify-between h-24">
+            <div className="w-28">
                 <LiveClock />
             </div>
             <div className="flex flex-col items-center gap-2">
@@ -25,7 +25,7 @@ export default function Home() {
                 Bangladesh Parliament Web Services Monitoring Dashboard
               </h1>
             </div>
-            <div className="absolute top-1/2 right-4 -translate-y-1/2">
+            <div className="w-28 flex justify-end">
                 <ThemeToggle />
             </div>
           </div>
