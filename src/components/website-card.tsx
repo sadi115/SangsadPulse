@@ -5,7 +5,7 @@ import type { Website, WebsiteStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
@@ -53,10 +53,10 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
 
   useEffect(() => {
     if (website.lastChecked) {
-      setLastCheckedTime(format(new Date(website.lastChecked), 'HH:mm:ss'));
+      setLastCheckedTime(format(new Date(website.lastChecked), 'hh:mm:ss a'));
     }
     if (website.lastDownTime) {
-      setLastDownTime(format(new Date(website.lastDownTime), 'HH:mm:ss'));
+      setLastDownTime(format(new Date(website.lastDownTime), 'hh:mm:ss a'));
     }
   }, [website.lastChecked, website.lastDownTime]);
 
@@ -107,6 +107,11 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
               Move Down
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onDiagnose(website.id)} disabled={website.status !== 'Down'}>
+              <Wand2 className="mr-2 h-4 w-4" />
+              Diagnose with AI
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
@@ -136,8 +141,7 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
             )}
         </div>
       </CardContent>
-      {hasContentForFooter && (
-        <CardFooter className="flex-col items-start pt-4">
+       <CardFooter className="flex-col items-start pt-4">
            {website.latencyHistory && website.latencyHistory.length > 0 && (
              <div className="w-full">
                  <p className="text-sm font-semibold mb-2">Latency (ms)</p>
@@ -153,7 +157,6 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
             </div>
            )}
         </CardFooter>
-      )}
     </Card>
   );
 }

@@ -1,5 +1,6 @@
 import { MonitoringDashboard } from '@/components/monitoring-dashboard';
 import { ParliamentLogo } from '@/components/parliament-logo';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
                 Bangladesh Parliament Web Services Monitoring Dashboard
               </h1>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>
