@@ -22,7 +22,7 @@ export function LatencyChart({ data }: LatencyChartProps) {
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
         <XAxis
           dataKey="time"
-          tickFormatter={(time) => format(new Date(time), 'HH:mm:ss')}
+          tickFormatter={(time) => format(new Date(time), 'hh:mm:ss a')}
           fontSize={10}
           tick={{ fill: 'hsl(var(--muted-foreground))' }}
           axisLine={{ stroke: 'hsl(var(--border))' }}
@@ -47,7 +47,7 @@ export function LatencyChart({ data }: LatencyChartProps) {
           }}
           labelStyle={{ fontWeight: 'bold' }}
           itemStyle={{ color: 'hsl(var(--primary))' }}
-          labelFormatter={(label) => format(new Date(label), 'PPpp')}
+          labelFormatter={(label) => format(new Date(label), 'PP hh:mm:ss a')}
           formatter={(value: number) => [`${value} ms`, 'Latency']}
         />
         <Line
