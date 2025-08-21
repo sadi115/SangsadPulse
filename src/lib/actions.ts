@@ -7,9 +7,9 @@ type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked'
 
 export async function checkStatus(url: string): Promise<CheckStatusResult> {
   const headers = {
-    'User-Agent': 'WebWatch/1.0 (+https://your-domain.com/bot)',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    'Accept-Language': 'en-US,en;q=0.9',
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
@@ -17,13 +17,29 @@ export async function checkStatus(url: string): Promise<CheckStatusResult> {
     'Sec-Fetch-Mode': 'navigate',
     'Sec-Fetch-Site': 'none',
     'Sec-Fetch-User': '?1',
-    'Cache-Control': 'max-age=0',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
   };
 
   try {
     const startTime = performance.now();
-    // Use no-cache to ensure we're getting a fresh response
-    const response = await fetch(url, { method: 'GET', redirect: 'follow', headers, cache: 'no-store' });
+    // Use 'manual' redirect to handle redirects ourselves for more control
+    const initialResponse = await fetch(url, { method: 'GET', headers, redirect: 'manual', cache: 'no-store' });
+    let response = initialResponse;
+
+    // Follow redirects manually if needed (up to 5 times)
+    if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+        let redirectUrl = response.headers.get('location')!;
+        // Handle relative redirect URLs
+        if (redirectUrl.startsWith('/')) {
+            const origin = new URL(url).origin;
+            redirectUrl = origin + redirectUrl;
+        }
+        
+        // For this simple check, we'll just check the redirected URL directly one time.
+        response = await fetch(redirectUrl, { method: 'GET', headers, cache: 'no-store' });
+    }
+
     const endTime = performance.now();
     const latency = Math.round(endTime - startTime);
 
@@ -38,7 +54,12 @@ export async function checkStatus(url: string): Promise<CheckStatusResult> {
   } catch (error: unknown) {
     let message = 'An unknown error occurred.';
     if (error instanceof Error) {
-        message = error.message;
+        // More specific error messages can be helpful
+        if (error.cause) {
+            message = `${error.message} (cause: ${String(error.cause)})`;
+        } else {
+            message = error.message;
+        }
     }
     return {
       status: 'Down',
