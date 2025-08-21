@@ -248,60 +248,66 @@ export function MonitoringDashboard() {
         onMove={moveWebsite}
         onTogglePause={handleTogglePause}
       />
-      <Accordion type="single" collapsible className="w-full space-y-4">
-        <Card>
-          <AccordionItem value="add-service" className='border-b-0'>
-            <AccordionTrigger className='p-6'>
-              <CardHeader className='p-0 text-left'>
-                <CardTitle>Add Service</CardTitle>
-                <CardDescription>Add a new service to the monitoring list.</CardDescription>
-              </CardHeader>
-            </AccordionTrigger>
-            <AccordionContent className='p-6 pt-0'>
-                <AddWebsiteForm onAddWebsite={handleAddWebsite} />
-            </AccordionContent>
-          </AccordionItem>
-        </Card>
-        <Card>
-          <AccordionItem value="settings" className='border-b-0'>
-            <AccordionTrigger className='p-6'>
-                <CardHeader className='p-0 text-left'>
-                  <CardTitle>Settings</CardTitle>
-                  <CardDescription>Customize the monitoring settings.</CardDescription>
-                </CardHeader>
-              </AccordionTrigger>
-            <AccordionContent className="p-6 pt-0">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className='w-full sm:w-auto'>
-                        <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
-                        <Input
-                        id="polling-interval"
-                        type="number"
-                        value={tempPollingInterval}
-                        onChange={(e) => setTempPollingInterval(Number(e.target.value))}
-                        placeholder="e.g. 30"
-                        className="w-full sm:w-48"
-                        />
-                    </div>
-                    <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
-                </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Card>
-         <Card>
-            <AccordionItem value="reporting" className='border-b-0'>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Accordion type="single" collapsible className="w-full">
+            <Card>
+            <AccordionItem value="add-service" className='border-b-0'>
                 <AccordionTrigger className='p-6'>
-                    <CardHeader className='p-0 text-left'>
-                        <CardTitle>Generate Report</CardTitle>
-                        <CardDescription>Download a performance report for your monitored services.</CardDescription>
-                    </CardHeader>
+                <CardHeader className='p-0 text-left'>
+                    <CardTitle>Add Service</CardTitle>
+                    <CardDescription>Add a new service to the monitoring list.</CardDescription>
+                </CardHeader>
                 </AccordionTrigger>
                 <AccordionContent className='p-6 pt-0'>
-                    <ReportGenerator websites={websites} />
+                    <AddWebsiteForm onAddWebsite={handleAddWebsite} />
                 </AccordionContent>
             </AccordionItem>
-         </Card>
-      </Accordion>
+            </Card>
+        </Accordion>
+        <Accordion type="single" collapsible className="w-full">
+            <Card>
+            <AccordionItem value="settings" className='border-b-0'>
+                <AccordionTrigger className='p-6'>
+                    <CardHeader className='p-0 text-left'>
+                    <CardTitle>Settings</CardTitle>
+                    <CardDescription>Customize the monitoring settings.</CardDescription>
+                    </CardHeader>
+                </AccordionTrigger>
+                <AccordionContent className="p-6 pt-0">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className='w-full sm:w-auto'>
+                            <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                            <Input
+                            id="polling-interval"
+                            type="number"
+                            value={tempPollingInterval}
+                            onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                            placeholder="e.g. 30"
+                            className="w-full sm:w-48"
+                            />
+                        </div>
+                        <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+            </Card>
+        </Accordion>
+        <Accordion type="single" collapsible className="w-full">
+            <Card>
+                <AccordionItem value="reporting" className='border-b-0'>
+                    <AccordionTrigger className='p-6'>
+                        <CardHeader className='p-0 text-left'>
+                            <CardTitle>Generate Report</CardTitle>
+                            <CardDescription>Download a performance report for your monitored services.</CardDescription>
+                        </CardHeader>
+                    </AccordionTrigger>
+                    <AccordionContent className='p-6 pt-0'>
+                        <ReportGenerator websites={websites} />
+                    </AccordionContent>
+                </AccordionItem>
+            </Card>
+        </Accordion>
+      </div>
       <EditWebsiteDialog 
         isOpen={!!editingWebsite}
         onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
