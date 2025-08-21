@@ -1,7 +1,7 @@
 'use client';
 import type { Website } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartStyle } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell } from 'recharts';
 import { useMemo } from 'react';
 
@@ -12,19 +12,19 @@ type SummaryOverviewProps = {
 const CHART_CONFIG = {
   up: {
     label: 'Up',
-    color: 'hsl(var(--chart-2))',
+    color: 'hsl(142.1 76.2% 42.2%)', // green-600
   },
   down: {
     label: 'Down',
-    color: 'hsl(var(--chart-5))',
+    color: 'hsl(0 84.2% 60.2%)', // red-500
   },
   checking: {
     label: 'Checking',
-    color: 'hsl(var(--chart-4))',
+    color: 'hsl(47.9 95.8% 53.1%)', // yellow-500
   },
   idle: {
     label: 'Idle',
-    color: 'hsl(var(--muted))',
+    color: 'hsl(215.4 16.3% 46.9%)', // slate-500
   },
 };
 
@@ -76,6 +76,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 innerRadius={60}
                                 outerRadius={80}
                                 strokeWidth={2}
+                                stroke="hsl(var(--background))"
                                 labelLine={false}
                                 label={({
                                     cx,
@@ -115,19 +116,19 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                 )}
             </div>
             <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
-                <div className="p-4 bg-card rounded-lg border">
+                <div className="p-4 bg-secondary rounded-lg border">
                     <p className="text-sm text-muted-foreground">Total</p>
                     <p className="text-3xl font-bold">{summary.Total}</p>
                 </div>
-                <div className="p-4 bg-card rounded-lg border">
+                <div className="p-4 bg-secondary rounded-lg border">
                     <p className="text-sm text-muted-foreground">Up</p>
                     <p className="text-3xl font-bold text-green-500">{summary.Up}</p>
                 </div>
-                 <div className="p-4 bg-card rounded-lg border">
+                 <div className="p-4 bg-secondary rounded-lg border">
                     <p className="text-sm text-muted-foreground">Down</p>
                     <p className="text-3xl font-bold text-red-500">{summary.Down}</p>
                 </div>
-                <div className="p-4 bg-card rounded-lg border col-span-2 sm:col-span-3">
+                <div className="p-4 bg-secondary rounded-lg border col-span-2 sm:col-span-3">
                      <p className="text-sm text-muted-foreground">Last Service Down</p>
                     <p className="text-lg font-semibold text-foreground truncate">
                         {lastDownService ? new URL(lastDownService.url).hostname : 'N/A'}
