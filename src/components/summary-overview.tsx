@@ -108,7 +108,8 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                     <text
                                         x={x}
                                         y={y}
-                                        className="fill-muted-foreground text-xs"
+                                        className="text-xs"
+                                        fill={chartData[index].fill}
                                         textAnchor={x > cx ? 'start' : 'end'}
                                         dominantBaseline="central"
                                     >
