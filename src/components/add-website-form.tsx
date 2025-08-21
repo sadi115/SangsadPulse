@@ -42,6 +42,8 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
       name: '',
       url: '',
       monitorType: 'HTTP(s)',
+      port: undefined,
+      keyword: '',
     },
   });
 
@@ -134,7 +136,7 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
                         <FormControl>
                             <div className="relative">
                             <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input type="number" placeholder="e.g. 443" {...field} className="pl-10" />
+                            <Input type="number" placeholder="e.g. 443" {...field} value={field.value ?? ''} className="pl-10" />
                             </div>
                         </FormControl>
                         <FormMessage />
@@ -153,7 +155,7 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
                         <FormControl>
                             <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input placeholder="e.g. 'verification_code'" {...field} className="pl-10" />
+                            <Input placeholder="e.g. 'verification_code'" {...field} value={field.value ?? ''} className="pl-10" />
                             </div>
                         </FormControl>
                         <FormMessage />
