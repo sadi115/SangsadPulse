@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
@@ -49,24 +48,18 @@ type WebsiteCardProps = {
 
 
 export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isFirst, isLast }: WebsiteCardProps) {
-  const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [lastCheckedTime, setLastCheckedTime] = useState('');
   const [lastDownTime, setLastDownTime] = useState('');
 
-  useState(() => {
+  useEffect(() => {
     if (website.lastChecked) {
-      setLastCheckedTime(new Date(website.lastChecked).toLocaleString());
+      setLastCheckedTime(format(new Date(website.lastChecked), 'HH:mm:ss'));
     }
     if (website.lastDownTime) {
-      setLastDownTime(new Date(website.lastDownTime).toLocaleString());
+      setLastDownTime(format(new Date(website.lastDownTime), 'HH:mm:ss'));
     }
-  });
+  }, [website.lastChecked, website.lastDownTime]);
 
-  const handleDiagnoseClick = async () => {
-    setIsDiagnosing(true);
-    await onDiagnose(website.id);
-    setIsDiagnosing(false);
-  };
 
   const getStatusBorderColor = (status: WebsiteStatus) => {
     switch (status) {
@@ -142,44 +135,23 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
                 </div>
             )}
         </div>
-        
-         {website.status === 'Down' && (
-          <Button onClick={handleDiagnoseClick} disabled={isDiagnosing} variant="destructive" size="sm" className="w-full">
-            {isDiagnosing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Wand2 className="mr-2 h-4 w-4" />
-            )}
-            {isDiagnosing ? 'Analyzing...' : 'Diagnose with AI'}
-          </Button>
-        )}
       </CardContent>
       {hasContentForFooter && (
-        <CardFooter>
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1" className="border-t pt-4">
-              <AccordionTrigger>Details</AccordionTrigger>
-              <AccordionContent className="space-y-4 text-sm pt-4">
-                   {website.diagnosis && (
-                    <div className="flex items-start gap-3">
-                      <Wand2 className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                      <p className="text-muted-foreground">{website.diagnosis}</p>
-                    </div>
-                   )}
-                   {website.latencyHistory && website.latencyHistory.length > 0 && (
-                     <div className="flex items-start gap-3">
-                        <BarChart3 className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                        <div className="w-full">
-                             <p className="font-semibold mb-2">Latency (ms)</p>
-                             <div className="h-24 w-full">
-                                <LatencyChart data={website.latencyHistory} />
-                             </div>
-                        </div>
-                     </div>
-                   )}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+        <CardFooter className="flex-col items-start pt-4">
+           {website.latencyHistory && website.latencyHistory.length > 0 && (
+             <div className="w-full">
+                 <p className="text-sm font-semibold mb-2">Latency (ms)</p>
+                 <div className="h-24 w-full">
+                    <LatencyChart data={website.latencyHistory} />
+                 </div>
+             </div>
+           )}
+           {website.diagnosis && (
+            <div className="flex items-start gap-3 mt-4 text-sm">
+              <Wand2 className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+              <p className="text-muted-foreground">{website.diagnosis}</p>
+            </div>
+           )}
         </CardFooter>
       )}
     </Card>
