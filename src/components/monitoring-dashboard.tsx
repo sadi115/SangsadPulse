@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Website } from '@/lib/types';
+import type { Website, MonitorType } from '@/lib/types';
 import { AddWebsiteForm } from './add-website-form';
 import { WebsiteList } from './website-list';
 import { checkStatus, getAIDiagnosis } from '@/lib/actions';
@@ -13,18 +13,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
 
 const initialWebsites: Website[] = [
-  { id: '1', url: 'https://www.parliament.gov.bd', status: 'Idle' },
-  { id: '2', url: 'https://prp.parliament.gov.bd', status: 'Idle' },
-  { id: '3', url: 'https://qams.parliament.gov.bd', status: 'Idle' },
-  { id: '4', url: 'https://cmis.parliament.gov.bd', status: 'Idle' },
-  { id: '5', url: 'https://debate.parliament.gov.bd', status: 'Idle' },
-  { id: '6', url: 'https://drm.parliament.gov.bd', status: 'Idle' },
-  { id: '7', url: 'https://ebilling.parliament.gov.bd', status: 'Idle' },
-  { id: '8', url: 'https://sitting.parliament.gov.bd', status: 'Idle' },
-  { id: '9', url: 'https://ebook.parliament.gov.bd', status: 'Idle' },
-  { id: '10', url: 'https://broadcast.parliament.gov.bd', status: 'Idle' },
-  { id: '11', url: 'https://library.parliament.gov.bd', status: 'Idle' },
-  { id: '12', url: 'https://www.google.com', status: 'Idle' },
+  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)' },
 ];
 
 export function MonitoringDashboard() {
@@ -74,7 +74,7 @@ export function MonitoringDashboard() {
   }, [pollingInterval, pollWebsites]);
 
 
-  const handleAddWebsite = useCallback((url: string) => {
+  const handleAddWebsite = useCallback(({name, url, monitorType}: {name: string, url: string, monitorType: MonitorType}) => {
     // Prevent duplicates
     if (websites.some(site => site.url === url)) {
       toast({
@@ -87,7 +87,9 @@ export function MonitoringDashboard() {
 
     const newWebsite: Website = {
       id: crypto.randomUUID(),
+      name,
       url,
+      monitorType,
       status: 'Idle',
     };
     const newWebsites = [...websites, newWebsite];

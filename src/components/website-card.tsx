@@ -36,6 +36,12 @@ const StatusDisplay = ({ status }: StatusDisplayProps) => {
   );
 };
 
+type WebsiteCardProps = {
+    website: Website;
+    onDelete: (id: string) => void;
+    onDiagnose: (id: string) => void;
+};
+
 
 export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps) {
   const [isDiagnosing, setIsDiagnosing] = useState(false);
@@ -59,13 +65,15 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
     <Card className={`flex flex-col transition-all duration-300 ease-in-out border-l-4 ${getStatusBorderColor(website.status)}`}>
       <CardHeader className="flex-row items-start gap-4 space-y-0 pb-4">
         <div className="flex-1">
-          <CardTitle className="text-lg font-semibold break-all">
-            <a href={website.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-2">
-              <LinkIcon className="h-4 w-4 text-muted-foreground" />
-              {new URL(website.url).hostname}
-            </a>
+          <CardTitle className="text-xl font-semibold break-all">
+            {website.name}
           </CardTitle>
-          <CardDescription className="break-all text-xs">{website.url}</CardDescription>
+          <CardDescription className="break-all text-xs">
+            <a href={website.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-2 text-muted-foreground">
+                <LinkIcon className="h-3 w-3" />
+                {website.url}
+            </a>
+          </CardDescription>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
