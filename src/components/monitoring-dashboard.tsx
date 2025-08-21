@@ -248,7 +248,46 @@ export function MonitoringDashboard() {
     <div className="container mx-auto p-4 md:p-8 space-y-8">
       <SummaryOverview websites={websites} />
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="space-y-4">
+         <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
+           <ToggleGroup
+            type="single"
+            value={view}
+            onValueChange={(value) => value && setView(value as 'card' | 'list')}
+            aria-label="View mode"
+          >
+            <ToggleGroupItem value="card" aria-label="Card view">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="List view">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+
+        {view === 'card' ? (
+          <WebsiteCardView 
+            websites={sortedWebsites}
+            onDelete={handleDeleteWebsite}
+            onDiagnose={handleDiagnose}
+            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+            onMove={moveWebsite}
+            onTogglePause={handleTogglePause}
+          />
+        ) : (
+          <WebsiteListView
+            websites={sortedWebsites}
+            onDelete={handleDeleteWebsite}
+            onDiagnose={handleDiagnose}
+            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+            onMove={moveWebsite}
+            onTogglePause={handleTogglePause}
+          />
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="add-service">
                 <AccordionTrigger>Add Service</AccordionTrigger>
@@ -312,45 +351,6 @@ export function MonitoringDashboard() {
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
-      </div>
-      
-      <div className="space-y-4">
-         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
-           <ToggleGroup
-            type="single"
-            value={view}
-            onValueChange={(value) => value && setView(value as 'card' | 'list')}
-            aria-label="View mode"
-          >
-            <ToggleGroupItem value="card" aria-label="Card view">
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="List view">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        {view === 'card' ? (
-          <WebsiteCardView 
-            websites={sortedWebsites}
-            onDelete={handleDeleteWebsite}
-            onDiagnose={handleDiagnose}
-            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-            onMove={moveWebsite}
-            onTogglePause={handleTogglePause}
-          />
-        ) : (
-          <WebsiteListView
-            websites={sortedWebsites}
-            onDelete={handleDeleteWebsite}
-            onDiagnose={handleDiagnose}
-            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-            onMove={moveWebsite}
-            onTogglePause={handleTogglePause}
-          />
-        )}
       </div>
       
       <EditWebsiteDialog 
