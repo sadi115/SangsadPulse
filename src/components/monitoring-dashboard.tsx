@@ -237,29 +237,31 @@ export function MonitoringDashboard() {
         onMove={moveWebsite}
         onTogglePause={handleTogglePause}
       />
-       <Card>
-        <CardHeader>
-          <CardTitle>Settings</CardTitle>
-          <CardDescription>Customize the monitoring settings.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className='w-full sm:w-auto'>
-                <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
-                <Input
-                id="polling-interval"
-                type="number"
-                value={tempPollingInterval}
-                onChange={(e) => setTempPollingInterval(Number(e.target.value))}
-                placeholder="e.g. 30"
-                className="w-full sm:w-48"
-                />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <Card>
+            <CardHeader>
+            <CardTitle>Settings</CardTitle>
+            <CardDescription>Customize the monitoring settings.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className='w-full sm:w-auto'>
+                    <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                    <Input
+                    id="polling-interval"
+                    type="number"
+                    value={tempPollingInterval}
+                    onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                    placeholder="e.g. 30"
+                    className="w-full sm:w-48"
+                    />
+                </div>
+                <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
             </div>
-            <Button onClick={handleIntervalChange} className="w-full sm:w-auto mt-0 sm:mt-5">Save Settings</Button>
-          </div>
-        </CardContent>
-      </Card>
-      <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+            </CardContent>
+        </Card>
+        <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+      </div>
       <EditWebsiteDialog 
         isOpen={!!editingWebsite}
         onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
