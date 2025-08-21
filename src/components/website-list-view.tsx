@@ -4,7 +4,6 @@ import type { Website } from '@/lib/types';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { WebsiteListItem } from './website-list-item';
-import { Separator } from './ui/separator';
 
 type WebsiteListViewProps = {
   websites: Website[];
@@ -53,7 +52,7 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
                           isFirst={isFirst}
                           isLast={isLast}
                         />
-                        {index < websites.length - 1 && <Separator />}
+                         {index < websites.length - 1 && <hr className="border-border" />}
                     </div>
                 )
             })}

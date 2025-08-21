@@ -7,7 +7,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './uptime-bar';
-import { WebsiteCardDetails } from './website-card-details';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
