@@ -2,7 +2,7 @@
 import type { Website } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { PieChart, Pie, Cell } from 'recharts';
+import { PieChart, Pie, Cell, Label } from 'recharts';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Clock } from 'lucide-react';
@@ -14,23 +14,23 @@ type SummaryOverviewProps = {
 const CHART_CONFIG = {
   up: {
     label: 'Up',
-    color: 'hsl(142.1 76.2% 42.2%)', // green-600
+    color: 'hsl(142.1 76.2% 36.1%)', 
   },
   down: {
     label: 'Down',
-    color: 'hsl(0 84.2% 60.2%)', // red-500
+    color: 'hsl(0 84.2% 60.2%)',
   },
   checking: {
     label: 'Checking',
-    color: 'hsl(47.9 95.8% 53.1%)', // yellow-500
+    color: 'hsl(47.9 95.8% 53.1%)',
   },
   idle: {
     label: 'Idle',
-    color: 'hsl(215.4 16.3% 46.9%)', // slate-500
+    color: 'hsl(215.4 16.3% 46.9%)',
   },
    paused: {
     label: 'Paused',
-    color: 'hsl(220 9% 46%)', // gray-500
+    color: 'hsl(220 9% 46%)',
   },
 };
 
@@ -59,11 +59,12 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
   ].filter(d => d.value > 0);
 
   const lastDownService = useMemo(() => {
-    // Find the service that went down most recently.
     return websites
       .filter(site => site.status === 'Down' && site.lastDownTime)
       .sort((a, b) => new Date(b.lastDownTime!).getTime() - new Date(a.lastDownTime!).getTime())[0];
   }, [websites]);
+  
+  const totalMonitors = websites.length;
 
   return (
     <Card>
@@ -84,7 +85,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 data={chartData}
                                 dataKey="value"
                                 nameKey="name"
-                                innerRadius={60}
+                                innerRadius={0}
                                 outerRadius={80}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
@@ -97,9 +98,11 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                     outerRadius,
                                     value,
                                     index,
+                                    name,
+                                    fill,
                                 }) => {
                                     const RADIAN = Math.PI / 180
-                                    const radius = 12 + innerRadius + (outerRadius - innerRadius)
+                                    const radius = 25 + innerRadius + (outerRadius - innerRadius)
                                     const x = cx + radius * Math.cos(-midAngle * RADIAN)
                                     const y = cy + radius * Math.sin(-midAngle * RADIAN)
 
@@ -107,15 +110,33 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                     <text
                                         x={x}
                                         y={y}
-                                        className="text-xs fill-muted-foreground"
+                                        className="text-xs"
+                                        fill={fill}
                                         textAnchor={x > cx ? 'start' : 'end'}
                                         dominantBaseline="central"
                                     >
-                                        {chartData[index].name} ({value})
+                                        {name} ({value})
                                     </text>
                                     )
                                 }}
                             >
+                                <Label
+                                  content={({ viewBox }) => {
+                                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                      return (
+                                        <text
+                                          x={viewBox.cx}
+                                          y={viewBox.cy}
+                                          textAnchor="middle"
+                                          dominantBaseline="middle"
+                                          className="fill-foreground text-3xl font-bold"
+                                        >
+                                          {totalMonitors}
+                                        </text>
+                                      )
+                                    }
+                                  }}
+                                />
                                 {chartData.map((entry) => (
                                     <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                                 ))}

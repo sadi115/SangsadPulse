@@ -40,8 +40,10 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set initial date after mount to avoid hydration mismatch
-    setDate({ from: new Date(), to: new Date() });
+    setDate({
+      from: new Date(new Date().setDate(new Date().getDate() - 7)),
+      to: new Date(),
+    });
   }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -61,6 +63,10 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         toast({ title: "Date range required", description: "Please select a start and end date.", variant: "destructive"});
         return;
     }
+    
+    const adjustedTo = new Date(to);
+    adjustedTo.setHours(23, 59, 59, 999);
+
 
     const selectedWebsites = serviceId === 'all'
       ? websites
@@ -74,7 +80,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
     const reportData = selectedWebsites.map(site => {
         const historyInRange = (site.latencyHistory || []).filter(h => {
             const hDate = new Date(h.time);
-            return hDate >= from && hDate <= to;
+            return hDate >= from && hDate <= adjustedTo;
         });
 
         return {
@@ -84,7 +90,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
             history: historyInRange.map(h => ({
                 time: format(new Date(h.time), 'yyyy-MM-dd HH:mm:ss'),
                 latency: h.latency > 0 ? h.latency : 'N/A',
-                status: h.latency > 0 ? 'Up' : 'Down', // Simplified status for history
+                status: h.latency > 0 ? 'Up' : 'Down',
             })),
         };
     });
@@ -97,11 +103,11 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
 
     const startDate = format(from, 'yyyy-MM-dd');
     const endDate = format(to, 'yyyy-MM-dd');
-    const serviceName = serviceId === 'all' ? 'All Services' : selectedWebsites[0]?.name || 'Service';
-    const fileName = `WebWatch_Report_${serviceName.replace(/\s+/g, '_')}_${startDate}_to_${endDate}`;
+    const serviceName = serviceId === 'all' ? 'All_Services' : selectedWebsites[0]?.name.replace(/\s+/g, '_') || 'Service';
+    const fileName = `WebWatch_Report_${serviceName}_${startDate}_to_${endDate}`;
 
     if (format === 'pdf') {
-      generatePdf(reportData, fileName, startDate, endDate, serviceName);
+      generatePdf(reportData, fileName, startDate, endDate, serviceName.replace(/_/g, ' '));
     } else {
       generateExcel(reportData, fileName);
     }
@@ -119,7 +125,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
     let yPos = 50;
 
     data.forEach(site => {
-      if (yPos > 250) { // Add new page if content overflows
+      if (yPos > 250) { 
         doc.addPage();
         yPos = 20;
       }
@@ -153,24 +159,30 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
     const wb = XLSX.utils.book_new();
 
     data.forEach(site => {
-      const wsData = [
-        ['Service Name', site.name],
-        ['URL', site.url],
-        [],
-        ['Time', 'Status', 'Latency (ms)'],
-        ...site.history.map((h: any) => [h.time, h.status, h.latency])
-      ];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      XLSX.utils.book_append_sheet(wb, ws, site.name.substring(0, 30));
+        if(site.history.length > 0) {
+            const wsData = [
+                ['Service Name', site.name],
+                ['URL', site.url],
+                [],
+                ['Time', 'Status', 'Latency (ms)'],
+                ...site.history.map((h: any) => [h.time, h.status, h.latency])
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, site.name.replace(/[/\\?*:[\]]/g, '').substring(0, 31));
+        }
     });
 
-    XLSX.writeFile(wb, `${fileName}.xlsx`);
+    if (wb.SheetNames.length > 0) {
+        XLSX.writeFile(wb, `${fileName}.xlsx`);
+    } else {
+        toast({ title: "No Data Available", description: "No monitoring data found for the selected services in the chosen date range.", variant: "destructive" });
+    }
   };
 
   return (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <FormField
                 control={form.control}
                 name="serviceId"

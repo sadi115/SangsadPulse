@@ -10,10 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
-import { WebsiteCard } from './website-card';
 import { EditWebsiteDialog } from './edit-website-dialog';
-import type { z } from 'zod';
-import Image from 'next/image';
+import { ReportGenerator } from './report-generator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { LayoutGrid, List } from 'lucide-react';
+import { WebsiteCardView } from './website-card-view';
+import { WebsiteListView } from './website-list-view';
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -44,9 +47,11 @@ export function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(() => 
     initialWebsites.map((site, index) => ({ ...site, displayOrder: index }))
   );
-  const [pollingInterval, setPollingInterval] = useState(30); // in seconds
+  const [pollingInterval, setPollingInterval] = useState(30);
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
+  const [view, setView] = useState<'card' | 'list'>('card');
+
 
   const { toast } = useToast();
   const websitesRef = useRef(websites);
@@ -242,74 +247,110 @@ export function MonitoringDashboard() {
     <div className="container mx-auto p-4 md:p-8 space-y-8">
       <SummaryOverview websites={websites} />
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Add a New Monitor</CardTitle>
-          <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AddWebsiteForm onAddWebsite={handleAddWebsite} />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="add-service">
+                <AccordionTrigger>Add Service</AccordionTrigger>
+                <AccordionContent>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Add a New Service</CardTitle>
+                            <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+                        </CardContent>
+                    </Card>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="settings">
+                <AccordionTrigger>Settings</AccordionTrigger>
+                <AccordionContent>
+                    <Card>
+                        <CardHeader>
+                        <CardTitle>Settings</CardTitle>
+                        <CardDescription>Customize the monitoring settings.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                <div className='w-full sm:w-auto'>
+                                    <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                                    <Input
+                                    id="polling-interval"
+                                    type="number"
+                                    value={tempPollingInterval}
+                                    onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                                    placeholder="e.g. 30"
+                                    className="w-full sm:w-48"
+                                    />
+                                </div>
+                                <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="report-generator">
+                <AccordionTrigger>Generate Report</AccordionTrigger>
+                <AccordionContent>
+                    <Card>
+                         <CardHeader>
+                            <CardTitle>Generate Report</CardTitle>
+                             <CardDescription>Download a monitoring report for your services.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ReportGenerator websites={websites} />
+                        </CardContent>
+                    </Card>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+      </div>
       
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
-        {websites.length > 0 ? (
-          sortedWebsites.map((website, index) => {
-             const nonPausedCount = sortedWebsites.filter(w => !w.isPaused).length;
-             const nonPausedIndex = sortedWebsites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
-             const isFirst = nonPausedIndex === 0;
-             const isLast = nonPausedIndex === nonPausedCount - 1;
+         <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
+           <ToggleGroup
+            type="single"
+            value={view}
+            onValueChange={(value) => value && setView(value as 'card' | 'list')}
+            aria-label="View mode"
+          >
+            <ToggleGroupItem value="card" aria-label="Card view">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="List view">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
 
-            return (
-                <WebsiteCard
-                key={website.id}
-                website={website}
-                onDelete={handleDeleteWebsite}
-                onDiagnose={handleDiagnose}
-                onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-                onMove={moveWebsite}
-                onTogglePause={handleTogglePause}
-                isFirst={isFirst}
-                isLast={isLast}
-                />
-            )
-        })
+        {view === 'card' ? (
+          <WebsiteCardView 
+            websites={sortedWebsites}
+            onDelete={handleDeleteWebsite}
+            onDiagnose={handleDiagnose}
+            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+            onMove={moveWebsite}
+            onTogglePause={handleTogglePause}
+          />
         ) : (
-          <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
-             <div className="mx-auto h-24 w-24 relative">
-                <Image src="https://placehold.co/128x128.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
-            </div>
-            <h2 className="mt-6 text-xl font-medium text-foreground">No websites yet</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Add a website above to start monitoring its status.
-            </p>
-          </div>
+          <WebsiteListView
+            websites={sortedWebsites}
+            onDelete={handleDeleteWebsite}
+            onDiagnose={handleDiagnose}
+            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+            onMove={moveWebsite}
+            onTogglePause={handleTogglePause}
+          />
         )}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Settings</CardTitle>
-          <CardDescription>Customize the monitoring settings.</CardDescription>
-        </CardHeader>
-        <CardContent>
-             <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className='w-full sm:w-auto'>
-                    <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
-                    <Input
-                    id="polling-interval"
-                    type="number"
-                    value={tempPollingInterval}
-                    onChange={(e) => setTempPollingInterval(Number(e.target.value))}
-                    placeholder="e.g. 30"
-                    className="w-full sm:w-48"
-                    />
-                </div>
-                <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
-            </div>
-        </CardContent>
-      </Card>
       
       <EditWebsiteDialog 
         isOpen={!!editingWebsite}

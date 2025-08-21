@@ -58,55 +58,55 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
       <div className="group transition-all">
           <div className="flex items-center p-4 gap-4">
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
-              <div className="flex-1 flex items-center gap-4">
-                <div className="flex items-center gap-3 w-1/3">
+              <div className="flex-1 grid grid-cols-3 items-center gap-4">
+                <div className="flex items-center gap-3">
                     <StatusBadge status={website.status} uptimePercentage={website.uptimePercentage} />
                     <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
                 </div>
-                 <div className="flex-1">
+                 <div className="col-span-1">
                     <UptimeBar history={website.latencyHistory} max-items={50} />
                 </div>
-              </div>
-               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">
-                    {website.latency !== undefined ? `${website.latency} ms` : ''}
-                </span>
-                <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                    <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onTogglePause(website.id)}>
-                    {website.isPaused ? <PlayCircle className="mr-2 h-4 w-4" /> : <PauseCircle className="mr-2 h-4 w-4" />}
-                    {website.isPaused ? 'Resume' : 'Pause'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(website.id)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onMove(website.id, 'up')} disabled={isFirst || website.isPaused}>
-                    <ArrowUp className="mr-2 h-4 w-4" />
-                    Move Up
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast || website.isPaused}>
-                    <ArrowDown className="mr-2 h-4 w-4" />
-                    Move Down
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onDiagnose(website.id)} disabled={website.status !== 'Down'}>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Diagnose with AI
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center justify-end gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                        {website.latency !== undefined ? `${website.latency} ms` : ''}
+                    </span>
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onTogglePause(website.id)}>
+                        {website.isPaused ? <PlayCircle className="mr-2 h-4 w-4" /> : <PauseCircle className="mr-2 h-4 w-4" />}
+                        {website.isPaused ? 'Resume' : 'Pause'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(website.id)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onMove(website.id, 'up')} disabled={isFirst || website.isPaused}>
+                        <ArrowUp className="mr-2 h-4 w-4" />
+                        Move Up
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast || website.isPaused}>
+                        <ArrowDown className="mr-2 h-4 w-4" />
+                        Move Down
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onDiagnose(website.id)} disabled={website.status !== 'Down'}>
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        Diagnose with AI
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
               </div>
           </div>
       </div>

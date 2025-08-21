@@ -34,26 +34,24 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="space-y-0">
+        <div className="divide-y divide-border">
             {websites.map((website, index) => {
                 const nonPausedIndex = websites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
                 const isFirst = nonPausedIndex === 0;
                 const isLast = nonPausedIndex === nonPausedCount - 1;
 
                 return (
-                    <div key={website.id}>
-                        <WebsiteListItem
-                          website={website}
-                          onDelete={onDelete}
-                          onDiagnose={onDiagnose}
-                          onEdit={onEdit}
-                          onMove={onMove}
-                          onTogglePause={onTogglePause}
-                          isFirst={isFirst}
-                          isLast={isLast}
-                        />
-                         {index < websites.length - 1 && <hr className="border-border" />}
-                    </div>
+                    <WebsiteListItem
+                        key={website.id}
+                        website={website}
+                        onDelete={onDelete}
+                        onDiagnose={onDiagnose}
+                        onEdit={onEdit}
+                        onMove={onMove}
+                        onTogglePause={onTogglePause}
+                        isFirst={isFirst}
+                        isLast={isLast}
+                    />
                 )
             })}
         </div>
