@@ -24,8 +24,8 @@ export function LiveClock() {
   if (!currentTime) {
     // Render a placeholder on the server and during initial client render
     return (
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <Clock className="h-4 w-4" />
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <Clock className="h-3 w-3" />
         <span>Loading time...</span>
       </div>
     );
@@ -33,8 +33,8 @@ export function LiveClock() {
 
   return (
     <div className="flex flex-col items-start font-medium text-muted-foreground">
-        <span className="text-sm">{format(currentTime, 'EEEE, MMMM do')}</span>
-        <span className="text-lg font-semibold text-foreground">{format(currentTime, 'h:mm:ss a')}</span>
+        <span className="text-xs">{format(currentTime, 'EEEE, MMMM do')}</span>
+        <span className="text-base font-semibold text-foreground">{format(currentTime, 'h:mm:ss a')}</span>
     </div>
   );
 }
