@@ -288,7 +288,7 @@ export function MonitoringDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible className="w-full md:col-span-1">
             <AccordionItem value="add-service">
                 <AccordionTrigger>Add Service</AccordionTrigger>
                 <AccordionContent>
@@ -305,7 +305,7 @@ export function MonitoringDashboard() {
             </AccordionItem>
         </Accordion>
 
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible className="w-full md:col-span-1">
             <AccordionItem value="settings">
                 <AccordionTrigger>Settings</AccordionTrigger>
                 <AccordionContent>
@@ -335,7 +335,7 @@ export function MonitoringDashboard() {
             </AccordionItem>
         </Accordion>
 
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible className="w-full md:col-span-1">
             <AccordionItem value="report-generator">
                 <AccordionTrigger>Generate Report</AccordionTrigger>
                 <AccordionContent>
