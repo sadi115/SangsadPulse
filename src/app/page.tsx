@@ -9,7 +9,7 @@ export default function Home() {
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex items-center justify-between h-24">
-            <div className="flex-1">
+            <div className="flex-1 flex justify-start">
                 <LiveClock />
             </div>
             <div className="flex flex-col items-center gap-2 flex-1">
