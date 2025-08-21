@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,8 +37,13 @@ type ReportGeneratorProps = {
 };
 
 export function ReportGenerator({ websites }: ReportGeneratorProps) {
-  const [date, setDate] = useState<DateRange | undefined>({ from: new Date(), to: new Date() });
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Set initial date after mount to avoid hydration mismatch
+    setDate({ from: new Date(), to: new Date() });
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
