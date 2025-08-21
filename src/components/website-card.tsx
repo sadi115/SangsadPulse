@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
 type StatusDisplayProps = {
@@ -50,6 +50,17 @@ type WebsiteCardProps = {
 
 export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isFirst, isLast }: WebsiteCardProps) {
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [lastCheckedTime, setLastCheckedTime] = useState('');
+  const [lastDownTime, setLastDownTime] = useState('');
+
+  useState(() => {
+    if (website.lastChecked) {
+      setLastCheckedTime(new Date(website.lastChecked).toLocaleString());
+    }
+    if (website.lastDownTime) {
+      setLastDownTime(new Date(website.lastDownTime).toLocaleString());
+    }
+  });
 
   const handleDiagnoseClick = async () => {
     setIsDiagnosing(true);
@@ -121,13 +132,13 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
             {website.lastChecked && (
                  <div className="flex items-center gap-2" title={format(new Date(website.lastChecked), 'PPpp')}>
                     <Clock className="h-3 w-3" />
-                    <span>Last checked: {formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })}</span>
+                    <span>Last checked: {lastCheckedTime}</span>
                  </div>
             )}
              {website.lastDownTime && (
                 <div className="flex items-center gap-2 text-red-500/90" title={format(new Date(website.lastDownTime), 'PPpp')}>
                     <AlertCircle className="h-3 w-3" />
-                    <span>Last down: {formatDistanceToNow(new Date(website.lastDownTime), { addSuffix: true })}</span>
+                    <span>Last down: {lastDownTime}</span>
                 </div>
             )}
         </div>
