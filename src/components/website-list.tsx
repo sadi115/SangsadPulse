@@ -10,9 +10,10 @@ type WebsiteListProps = {
   onDiagnose: (id: string) => void;
   onEdit: (id: string) => void;
   onMove: (id: string, direction: 'up' | 'down') => void;
+  onTogglePause: (id: string) => void;
 };
 
-export function WebsiteList({ websites, onDelete, onDiagnose, onEdit, onMove }: WebsiteListProps) {
+export function WebsiteList({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause }: WebsiteListProps) {
   if (websites.length === 0) {
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
@@ -37,6 +38,7 @@ export function WebsiteList({ websites, onDelete, onDiagnose, onEdit, onMove }: 
           onDiagnose={onDiagnose}
           onEdit={onEdit}
           onMove={onMove}
+          onTogglePause={onTogglePause}
           isFirst={index === 0}
           isLast={index === websites.length - 1}
         />

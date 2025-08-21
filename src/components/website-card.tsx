@@ -5,7 +5,7 @@ import type { Website, WebsiteStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown, Hash, Search } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown, Hash, Search, PauseCircle, PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
@@ -19,6 +19,7 @@ const StatusDisplay = ({ status }: StatusDisplayProps) => {
     Down: { icon: <AlertTriangle className="h-5 w-5" />, text: 'Down', color: 'text-red-500', barColor: 'bg-red-500' },
     Checking: { icon: <Loader2 className="h-5 w-5 animate-spin" />, text: 'Checking...', color: 'text-yellow-500', barColor: 'bg-yellow-500' },
     Idle: { icon: <Hourglass className="h-5 w-5" />, text: 'Idle', color: 'text-muted-foreground', barColor: 'bg-muted' },
+    Paused: { icon: <PauseCircle className="h-5 w-5" />, text: 'Paused', color: 'text-muted-foreground', barColor: 'bg-muted' },
   };
 
   const current = statusInfo[status];
@@ -30,7 +31,7 @@ const StatusDisplay = ({ status }: StatusDisplayProps) => {
         <span className="text-lg">{current.text}</span>
       </div>
       <div className="w-full bg-secondary rounded-full h-1.5">
-        <div className={`h-1.5 rounded-full ${current.barColor} ${status === 'Checking' ? 'animate-pulse' : ''}`} style={{ width: status === 'Idle' ? '0%' : '100%' }}></div>
+        <div className={`h-1.5 rounded-full ${current.barColor} ${status === 'Checking' ? 'animate-pulse' : ''}`} style={{ width: status === 'Idle' || status === 'Paused' ? '0%' : '100%' }}></div>
       </div>
     </div>
   );
@@ -42,12 +43,13 @@ type WebsiteCardProps = {
     onDiagnose: (id: string) => void;
     onEdit: (id: string) => void;
     onMove: (id: string, direction: 'up' | 'down') => void;
+    onTogglePause: (id: string) => void;
     isFirst: boolean;
     isLast: boolean;
 };
 
 
-export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isFirst, isLast }: WebsiteCardProps) {
+export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, isFirst, isLast }: WebsiteCardProps) {
   const [lastCheckedTime, setLastCheckedTime] = useState('');
   const [lastDownTime, setLastDownTime] = useState('');
 
@@ -66,6 +68,7 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
       case 'Up': return 'border-green-500';
       case 'Down': return 'border-red-500';
       case 'Checking': return 'border-yellow-500';
+      case 'Paused': return 'border-gray-500';
       default: return 'border-transparent';
     }
   }
@@ -107,6 +110,10 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isF
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+             <DropdownMenuItem onClick={() => onTogglePause(website.id)}>
+              {website.isPaused ? <PlayCircle className="mr-2 h-4 w-4" /> : <PauseCircle className="mr-2 h-4 w-4" />}
+              {website.isPaused ? 'Resume' : 'Pause'}
+            </DropdownMenuItem>
              <DropdownMenuItem onClick={() => onEdit(website.id)}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit

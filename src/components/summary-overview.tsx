@@ -26,6 +26,10 @@ const CHART_CONFIG = {
     label: 'Idle',
     color: 'hsl(215.4 16.3% 46.9%)', // slate-500
   },
+   paused: {
+    label: 'Paused',
+    color: 'hsl(215.4 16.3% 46.9%)', // slate-500
+  },
 };
 
 
@@ -33,10 +37,14 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
   const summary = useMemo(() => {
     return websites.reduce(
       (acc, site) => {
-        acc[site.status]++;
+        if (site.isPaused) {
+            acc['Paused']++;
+        } else {
+            acc[site.status]++;
+        }
         return acc;
       },
-      { Up: 0, Down: 0, Checking: 0, Idle: 0, Total: websites.length }
+      { Up: 0, Down: 0, Checking: 0, Idle: 0, Paused: 0, Total: websites.length }
     );
   }, [websites]);
 
@@ -45,6 +53,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
     { name: 'Down', value: summary.Down, fill: CHART_CONFIG.down.color },
     { name: 'Checking', value: summary.Checking, fill: CHART_CONFIG.checking.color },
     { name: 'Idle', value: summary.Idle, fill: CHART_CONFIG.idle.color },
+    { name: 'Paused', value: summary.Paused, fill: CHART_CONFIG.paused.color },
   ].filter(d => d.value > 0);
 
   const lastDownService = useMemo(() => {
@@ -128,7 +137,11 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                     <p className="text-sm text-muted-foreground">Down</p>
                     <p className="text-3xl font-bold text-red-500">{summary.Down}</p>
                 </div>
-                <div className="p-4 bg-secondary rounded-lg border col-span-2 sm:col-span-3">
+                <div className="p-4 bg-secondary rounded-lg border">
+                    <p className="text-sm text-muted-foreground">Paused</p>
+                    <p className="text-3xl font-bold">{summary.Paused}</p>
+                </div>
+                <div className="p-4 bg-secondary rounded-lg border col-span-2 sm:col-span-2">
                      <p className="text-sm text-muted-foreground">Last Service Down</p>
                     <p className="text-lg font-semibold text-foreground truncate">
                         {lastDownService ? lastDownService.name : 'N/A'}

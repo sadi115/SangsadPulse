@@ -1,4 +1,4 @@
-export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle';
+export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
 export type MonitorType =
   | 'Group'
@@ -18,6 +18,7 @@ export interface Website {
   url: string;
   monitorType: MonitorType;
   status: WebsiteStatus;
+  isPaused?: boolean;
   httpResponse?: string;
   lastChecked?: string;
   diagnosis?: string;

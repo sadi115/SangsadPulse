@@ -77,7 +77,7 @@ export function MonitoringDashboard() {
     if (sites.length === 0) return;
   
     const checks = sites.map(async website => {
-      if (website.status === 'Checking') return;
+      if (website.status === 'Checking' || website.isPaused) return;
       
       updateWebsite(website.id, { status: 'Checking' });
       try {
@@ -93,9 +93,9 @@ export function MonitoringDashboard() {
   }, [updateWebsite]);
 
   useEffect(() => {
-    pollWebsites(websitesRef.current.filter(w => w.status === 'Idle'));
+    pollWebsites(websitesRef.current.filter(w => w.status === 'Idle' && !w.isPaused));
     
-    const intervalId = setInterval(() => pollWebsites(websitesRef.current), pollingInterval * 1000);
+    const intervalId = setInterval(() => pollWebsites(websitesRef.current.filter(w => !w.isPaused)), pollingInterval * 1000);
 
     return () => clearInterval(intervalId);
   }, [pollingInterval, pollWebsites]);
@@ -193,6 +193,22 @@ export function MonitoringDashboard() {
     });
   };
 
+  const handleTogglePause = useCallback((id: string) => {
+    setWebsites(prev =>
+      prev.map(site => {
+        if (site.id === id) {
+          const isPaused = !site.isPaused;
+          return {
+            ...site,
+            isPaused,
+            status: isPaused ? 'Paused' : 'Idle',
+          };
+        }
+        return site;
+      })
+    );
+  }, []);
+
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
       <SummaryOverview websites={websites} />
@@ -202,6 +218,7 @@ export function MonitoringDashboard() {
         onDiagnose={handleDiagnose}
         onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
         onMove={moveWebsite}
+        onTogglePause={handleTogglePause}
       />
        <Card>
         <CardHeader>
