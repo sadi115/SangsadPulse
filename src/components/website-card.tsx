@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
 type StatusDisplayProps = {
@@ -101,7 +101,7 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
                 {website.latency !== undefined && <span>{website.latency} ms</span>}
             </div>
             {website.lastChecked && (
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2" title={format(new Date(website.lastChecked), 'PPpp')}>
                     <Clock className="h-3 w-3" />
                     <span>Last checked: {formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })}</span>
                  </div>

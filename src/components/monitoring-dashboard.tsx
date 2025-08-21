@@ -155,7 +155,6 @@ export function MonitoringDashboard() {
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
       <SummaryOverview websites={websites} />
-      <AddWebsiteForm onAddWebsite={handleAddWebsite} />
       <WebsiteList
         websites={websites}
         onDelete={handleDeleteWebsite}
@@ -183,6 +182,7 @@ export function MonitoringDashboard() {
           </div>
         </CardContent>
       </Card>
+      <AddWebsiteForm onAddWebsite={handleAddWebsite} />
     </div>
   );
 }
