@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Website } from '@/lib/types';
 import { AddWebsiteForm } from './add-website-form';
 import { WebsiteList } from './website-list';
@@ -27,6 +27,11 @@ const initialWebsites: Website[] = [
 export function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
   const { toast } = useToast();
+  // Create a ref to hold the websites array for use in the polling interval
+  const websitesRef = useRef(websites);
+  useEffect(() => {
+    websitesRef.current = websites;
+  }, [websites]);
 
   const updateWebsite = useCallback((id: string, updates: Partial<Website>) => {
     setWebsites(prev =>
@@ -52,11 +57,16 @@ export function MonitoringDashboard() {
   }, [updateWebsite]);
 
   useEffect(() => {
-    pollWebsites(websites); // Initial check
-    const intervalId = setInterval(() => pollWebsites(websites), POLLING_INTERVAL);
+    // Initial check
+    pollWebsites(websitesRef.current);
+    
+    const intervalId = setInterval(() => pollWebsites(websitesRef.current), POLLING_INTERVAL);
 
     return () => clearInterval(intervalId);
-  }, [websites, pollWebsites]);
+  // We only want this effect to run once on mount, so we pass an empty dependency array.
+  // We use websitesRef.current to access the latest websites state inside the interval.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   const handleAddWebsite = useCallback((url: string) => {
@@ -75,8 +85,11 @@ export function MonitoringDashboard() {
       url,
       status: 'Idle',
     };
-    setWebsites(prev => [...prev, newWebsite]);
-  }, [websites, toast]);
+    const newWebsites = [...websites, newWebsite];
+    setWebsites(newWebsites);
+    // Immediately poll the new website
+    pollWebsites([newWebsite]);
+  }, [websites, toast, pollWebsites]);
 
   const handleDeleteWebsite = useCallback((id: string) => {
     setWebsites(prev => prev.filter(site => site.id !== id));
