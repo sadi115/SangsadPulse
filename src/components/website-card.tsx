@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { LatencyChart } from './latency-chart';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
@@ -60,6 +61,8 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
       default: return 'border-transparent';
     }
   }
+  
+  const hasContentForFooter = website.diagnosis || (website.latencyHistory && website.latencyHistory.length > 0);
 
   return (
     <Card className={`flex flex-col transition-all duration-300 ease-in-out border-l-4 ${getStatusBorderColor(website.status)}`}>
@@ -93,11 +96,14 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
         <StatusDisplay status={website.status} />
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
           <span>{website.httpResponse ? `Response: ${website.httpResponse}`: 'No response yet'}</span>
-          {website.lastChecked && (
-            <span className="flex-shrink-0">
-              {formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })}
-            </span>
-          )}
+           {website.latency !== undefined && <span>{website.latency} ms</span>}
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+            {website.lastChecked && (
+                <span className="flex-shrink-0">
+                {formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })}
+                </span>
+            )}
         </div>
          {website.status === 'Down' && (
           <Button onClick={handleDiagnoseClick} disabled={isDiagnosing} variant="destructive" size="sm" className="w-full">
@@ -110,16 +116,29 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
           </Button>
         )}
       </CardContent>
-      {website.diagnosis && (
+      {hasContentForFooter && (
         <CardFooter>
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1" className="border-t pt-4">
-              <AccordionTrigger>AI Diagnosis</AccordionTrigger>
+              <AccordionTrigger>Details</AccordionTrigger>
               <AccordionContent className="space-y-4 text-sm pt-4">
-                   <div className="flex items-start gap-3">
-                    <Wand2 className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                    <p className="text-muted-foreground">{website.diagnosis}</p>
-                   </div>
+                   {website.diagnosis && (
+                    <div className="flex items-start gap-3">
+                      <Wand2 className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                      <p className="text-muted-foreground">{website.diagnosis}</p>
+                    </div>
+                   )}
+                   {website.latencyHistory && website.latencyHistory.length > 0 && (
+                     <div className="flex items-start gap-3">
+                        <BarChart3 className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                        <div className="w-full">
+                             <p className="font-semibold mb-2">Latency (ms)</p>
+                             <div className="h-24 w-full">
+                                <LatencyChart data={website.latencyHistory} />
+                             </div>
+                        </div>
+                     </div>
+                   )}
               </AccordionContent>
             </AccordionItem>
           </Accordion>

@@ -21,4 +21,6 @@ export interface Website {
   httpResponse?: string;
   lastChecked?: string;
   diagnosis?: string;
+  latency?: number;
+  latencyHistory?: { time: string; latency: number }[];
 }

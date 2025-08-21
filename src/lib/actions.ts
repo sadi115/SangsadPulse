@@ -3,7 +3,7 @@
 import { diagnoseWebsiteOutage } from '@/ai/flows/diagnose-website-outage';
 import type { Website } from '@/lib/types';
 
-type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked'>;
+type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
 
 export async function checkStatus(url: string): Promise<CheckStatusResult> {
   const headers = {
@@ -21,14 +21,19 @@ export async function checkStatus(url: string): Promise<CheckStatusResult> {
   };
 
   try {
+    const startTime = performance.now();
     // Use no-cache to ensure we're getting a fresh response
     const response = await fetch(url, { method: 'GET', redirect: 'follow', headers, cache: 'no-store' });
+    const endTime = performance.now();
+    const latency = Math.round(endTime - startTime);
+
     const responseText = `${response.status} ${response.statusText}`;
 
     return {
       status: response.ok ? 'Up' : 'Down',
       httpResponse: responseText,
       lastChecked: new Date().toISOString(),
+      latency,
     };
   } catch (error: unknown) {
     let message = 'An unknown error occurred.';
@@ -39,6 +44,7 @@ export async function checkStatus(url: string): Promise<CheckStatusResult> {
       status: 'Down',
       httpResponse: message,
       lastChecked: new Date().toISOString(),
+      latency: 0,
     };
   }
 }

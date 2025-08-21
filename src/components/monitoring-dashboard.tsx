@@ -13,19 +13,21 @@ import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
 
 const initialWebsites: Website[] = [
-  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)' },
-  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)' },
+  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
 ];
+
+const MAX_LATENCY_HISTORY = 20;
 
 export function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
@@ -40,7 +42,17 @@ export function MonitoringDashboard() {
 
   const updateWebsite = useCallback((id: string, updates: Partial<Website>) => {
     setWebsites(prev =>
-      prev.map(site => (site.id === id ? { ...site, ...updates } : site))
+      prev.map(site => {
+        if (site.id === id) {
+          const newHistory = [
+            ...(site.latencyHistory || []),
+            ...(updates.latency !== undefined ? [{ time: new Date().toISOString(), latency: updates.latency }] : []),
+          ].slice(-MAX_LATENCY_HISTORY);
+
+          return { ...site, ...updates, latencyHistory: newHistory };
+        }
+        return site;
+      })
     );
   }, []);
 
@@ -91,6 +103,7 @@ export function MonitoringDashboard() {
       url,
       monitorType,
       status: 'Idle',
+      latencyHistory: [],
     };
     const newWebsites = [...websites, newWebsite];
     setWebsites(newWebsites);
