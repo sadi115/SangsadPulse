@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
@@ -94,17 +94,20 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
       </CardHeader>
       <CardContent className="flex-grow space-y-4">
         <StatusDisplay status={website.status} />
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-          <span>{website.httpResponse ? `Response: ${website.httpResponse}`: 'No response yet'}</span>
-           {website.latency !== undefined && <span>{website.latency} ms</span>}
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+        
+        <div className="space-y-2 text-xs text-muted-foreground pt-2">
+            <div className="flex items-center justify-between">
+                <span>{website.httpResponse ? `Response: ${website.httpResponse}`: 'No response yet'}</span>
+                {website.latency !== undefined && <span>{website.latency} ms</span>}
+            </div>
             {website.lastChecked && (
-                <span className="flex-shrink-0">
-                {formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })}
-                </span>
+                 <div className="flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    <span>Last checked: {formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })}</span>
+                 </div>
             )}
         </div>
+        
          {website.status === 'Down' && (
           <Button onClick={handleDiagnoseClick} disabled={isDiagnosing} variant="destructive" size="sm" className="w-full">
             {isDiagnosing ? (
