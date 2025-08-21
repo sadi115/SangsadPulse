@@ -161,7 +161,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                     <p className="text-3xl font-bold text-gray-500">{summary.Paused}</p>
                 </div>
                 <div className="p-4 bg-secondary rounded-lg border col-span-2 sm:col-span-2">
-                     <p className="text-sm text-muted-foreground">Last Service Down</p>
+                     <p className="text-sm text-muted-foreground">Last Down Service</p>
                     {lastDownService ? (
                          <div className="flex flex-col items-center justify-center h-full pt-2">
                              <p className="text-lg font-semibold text-foreground truncate" title={lastDownService.name}>
