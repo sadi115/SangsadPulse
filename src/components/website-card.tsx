@@ -4,9 +4,9 @@ import { useState } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Hourglass, MoreVertical, Trash2, Wand2, Loader2, Link as LinkIcon, BarChart3, Clock, AlertCircle, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { LatencyChart } from './latency-chart';
 
@@ -41,10 +41,14 @@ type WebsiteCardProps = {
     website: Website;
     onDelete: (id: string) => void;
     onDiagnose: (id: string) => void;
+    onEdit: (id: string) => void;
+    onMove: (id: string, direction: 'up' | 'down') => void;
+    isFirst: boolean;
+    isLast: boolean;
 };
 
 
-export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps) {
+export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, isFirst, isLast }: WebsiteCardProps) {
   const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   const handleDiagnoseClick = async () => {
@@ -85,6 +89,20 @@ export function WebsiteCard({ website, onDelete, onDiagnose }: WebsiteCardProps)
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+             <DropdownMenuItem onClick={() => onEdit(website.id)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+             <DropdownMenuItem onClick={() => onMove(website.id, 'up')} disabled={isFirst}>
+              <ArrowUp className="mr-2 h-4 w-4" />
+              Move Up
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast}>
+              <ArrowDown className="mr-2 h-4 w-4" />
+              Move Down
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete

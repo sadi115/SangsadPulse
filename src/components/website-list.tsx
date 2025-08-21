@@ -8,9 +8,11 @@ type WebsiteListProps = {
   websites: Website[];
   onDelete: (id: string) => void;
   onDiagnose: (id: string) => void;
+  onEdit: (id: string) => void;
+  onMove: (id: string, direction: 'up' | 'down') => void;
 };
 
-export function WebsiteList({ websites, onDelete, onDiagnose }: WebsiteListProps) {
+export function WebsiteList({ websites, onDelete, onDiagnose, onEdit, onMove }: WebsiteListProps) {
   if (websites.length === 0) {
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
@@ -27,12 +29,16 @@ export function WebsiteList({ websites, onDelete, onDiagnose }: WebsiteListProps
 
   return (
     <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      {websites.map(website => (
+      {websites.map((website, index) => (
         <WebsiteCard
           key={website.id}
           website={website}
           onDelete={onDelete}
           onDiagnose={onDiagnose}
+          onEdit={onEdit}
+          onMove={onMove}
+          isFirst={index === 0}
+          isLast={index === websites.length - 1}
         />
       ))}
     </div>

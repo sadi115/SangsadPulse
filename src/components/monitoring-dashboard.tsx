@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
+import { EditWebsiteDialog } from './edit-website-dialog';
+import type { z } from 'zod';
 
 const initialWebsites: Website[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', latencyHistory: [] },
@@ -33,8 +35,9 @@ export function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
   const [pollingInterval, setPollingInterval] = useState(30); // in seconds
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
+  const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
+
   const { toast } = useToast();
-  // Create a ref to hold the websites array for use in the polling interval
   const websitesRef = useRef(websites);
   useEffect(() => {
     websitesRef.current = websites;
@@ -51,7 +54,6 @@ export function MonitoringDashboard() {
           
           const newSite = { ...site, ...updates, latencyHistory: newHistory };
           
-          // If status is changing to 'Down', set the lastDownTime
           if (updates.status === 'Down' && site.status !== 'Down') {
             newSite.lastDownTime = new Date().toISOString();
           }
@@ -67,7 +69,6 @@ export function MonitoringDashboard() {
     if (sites.length === 0) return;
   
     const checks = sites.map(async website => {
-      // Don't re-check a site that's already being checked
       if (website.status === 'Checking') return;
       
       updateWebsite(website.id, { status: 'Checking' });
@@ -84,7 +85,6 @@ export function MonitoringDashboard() {
   }, [updateWebsite]);
 
   useEffect(() => {
-    // Initial check
     pollWebsites(websitesRef.current.filter(w => w.status === 'Idle'));
     
     const intervalId = setInterval(() => pollWebsites(websitesRef.current), pollingInterval * 1000);
@@ -94,7 +94,6 @@ export function MonitoringDashboard() {
 
 
   const handleAddWebsite = useCallback(({name, url, monitorType}: {name: string, url: string, monitorType: MonitorType}) => {
-    // Prevent duplicates
     if (websites.some(site => site.url === url)) {
       toast({
         title: 'Duplicate URL',
@@ -114,13 +113,26 @@ export function MonitoringDashboard() {
     };
     const newWebsites = [...websites, newWebsite];
     setWebsites(newWebsites);
-    // Immediately poll the new website
     pollWebsites([newWebsite]);
   }, [websites, toast, pollWebsites]);
 
   const handleDeleteWebsite = useCallback((id: string) => {
     setWebsites(prev => prev.filter(site => site.id !== id));
   }, []);
+  
+  const handleEditWebsite = (id: string, data: { name: string; url: string; monitorType: MonitorType }) => {
+    setWebsites(prev =>
+      prev.map(site =>
+        site.id === id
+          ? { ...site, name: data.name, url: data.url, monitorType: data.monitorType }
+          : site
+      )
+    );
+    toast({
+        title: "Service Updated",
+        description: `${data.name} has been updated successfully.`
+    })
+  };
 
   const handleDiagnose = useCallback(async (id: string) => {
     const website = websites.find(site => site.id === id);
@@ -159,6 +171,22 @@ export function MonitoringDashboard() {
     }
   };
 
+  const moveWebsite = (id: string, direction: 'up' | 'down') => {
+    setWebsites(prev => {
+      const index = prev.findIndex(site => site.id === id);
+      if (index === -1) return prev;
+
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= prev.length) return prev;
+      
+      const newWebsites = [...prev];
+      const [movedItem] = newWebsites.splice(index, 1);
+      newWebsites.splice(newIndex, 0, movedItem);
+      
+      return newWebsites;
+    });
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
       <SummaryOverview websites={websites} />
@@ -166,6 +194,8 @@ export function MonitoringDashboard() {
         websites={websites}
         onDelete={handleDeleteWebsite}
         onDiagnose={handleDiagnose}
+        onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+        onMove={moveWebsite}
       />
        <Card>
         <CardHeader>
@@ -190,6 +220,12 @@ export function MonitoringDashboard() {
         </CardContent>
       </Card>
       <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+      <EditWebsiteDialog 
+        isOpen={!!editingWebsite}
+        onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
+        website={editingWebsite}
+        onEditWebsite={handleEditWebsite}
+      />
     </div>
   );
 }
