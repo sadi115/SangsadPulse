@@ -374,7 +374,7 @@ export default function MonitoringDashboard() {
                              <CardHeader>
                                 <CardTitle>Generate Report</CardTitle>
                                  <CardDescription>Download a monitoring report for your services.</CardDescription>
-                            </Header>
+                            </CardHeader>
                             <CardContent>
                                 <ReportGenerator websites={websites} />
                             </CardContent>
@@ -394,9 +394,10 @@ export default function MonitoringDashboard() {
       </main>
       <footer className="bg-card border-t py-4">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <p>Developed by Network & Operation Section, Bangladesh Parliament Secretariat</p>
+          <p>Developed by Network &amp; Operation Section, Bangladesh Parliament Secretariat</p>
         </div>
       </footer>
     </div>
   );
-}
+
+    
