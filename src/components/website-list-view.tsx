@@ -1,9 +1,11 @@
+
 'use client';
 
 import type { Website } from '@/lib/types';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { WebsiteListItem } from './website-list-item';
+import { Skeleton } from './ui/skeleton';
 
 type WebsiteListViewProps = {
   websites: Website[];
@@ -14,6 +16,28 @@ type WebsiteListViewProps = {
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
 };
+
+const ListSkeleton = () => (
+    <div className="p-4">
+        <div className="flex items-center gap-4">
+            <Skeleton className="w-2 h-8 rounded-full" />
+            <div className="flex-1 grid grid-cols-3 items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <Skeleton className="w-24 h-6 rounded-full" />
+                    <Skeleton className="h-4 w-32" />
+                </div>
+                <div className="col-span-1 flex items-center justify-end h-6 gap-px">
+                     {Array.from({ length: 50 }).map((_, index) => (
+                         <Skeleton key={index} className="w-1.5 h-full rounded-sm" />
+                     ))}
+                </div>
+                 <div className="flex items-center justify-end gap-2">
+                     <Skeleton className="h-8 w-8 rounded-md" />
+                 </div>
+            </div>
+        </div>
+    </div>
+)
 
 export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory }: WebsiteListViewProps) {
   if (websites.length === 0) {
@@ -37,6 +61,9 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
       <CardContent className="p-0">
         <div className="divide-y divide-border">
             {websites.map((website, index) => {
+                 if (website.isLoading) {
+                    return <ListSkeleton key={website.id} />;
+                 }
                 const nonPausedIndex = websites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
                 const isFirst = nonPausedIndex === 0;
                 const isLast = nonPausedIndex === nonPausedCount - 1;
@@ -61,3 +88,5 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
     </Card>
   );
 }
+
+    

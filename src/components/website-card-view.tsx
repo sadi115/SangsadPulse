@@ -4,6 +4,7 @@
 import type { Website } from '@/lib/types';
 import { WebsiteCard } from './website-card';
 import Image from 'next/image';
+import { Skeleton } from './ui/skeleton';
 
 type WebsiteCardViewProps = {
   websites: Website[];
@@ -14,6 +15,21 @@ type WebsiteCardViewProps = {
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
 };
+
+const CardSkeleton = () => (
+    <div className="p-4 border rounded-lg shadow-sm bg-card">
+        <div className="flex items-center gap-4">
+            <Skeleton className="w-2 h-8 rounded-full" />
+            <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+            </div>
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+        </div>
+    </div>
+);
+
 
 export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory }: WebsiteCardViewProps) {
   if (websites.length === 0) {
@@ -35,6 +51,10 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {websites.map((website, index) => {
+        if (website.isLoading) {
+            return <CardSkeleton key={website.id} />;
+        }
+        
         const nonPausedIndex = websites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
         const isFirst = nonPausedIndex === 0;
         const isLast = nonPausedIndex === nonPausedCount - 1;
@@ -57,3 +77,5 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
     </div>
   );
 }
+
+    

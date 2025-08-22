@@ -1,3 +1,4 @@
+
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
 export type MonitorType =
@@ -16,7 +17,7 @@ export type StatusHistory = {
     time: string;
     status: 'Up' | 'Down';
     latency: number;
-    reason: string;
+    reason:string;
 };
 
 export interface Website {
@@ -26,6 +27,7 @@ export interface Website {
   monitorType: MonitorType;
   status: WebsiteStatus;
   isPaused?: boolean;
+  isLoading?: boolean;
   httpResponse?: string;
   lastChecked?: string;
   diagnosis?: string;
@@ -40,3 +42,5 @@ export interface Website {
   port?: number;
   keyword?: string;
 }
+
+    

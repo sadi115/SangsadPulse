@@ -22,6 +22,7 @@ import Image from 'next/image';
 import { LiveClock } from '@/components/live-clock';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { HistoryDialog } from './history-dialog';
+import { DeleteConfirmDialog } from './delete-confirm-dialog';
 
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
@@ -52,12 +53,13 @@ type WebsiteFormData = {
 
 export default function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(() => 
-    initialWebsites.map((site, index) => ({ ...site, displayOrder: index }))
+    initialWebsites.map((site, index) => ({ ...site, displayOrder: index, isLoading: true }))
   );
   const [pollingInterval, setPollingInterval] = useState(30);
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
   const [historyWebsite, setHistoryWebsite] = useState<Website | null>(null);
+  const [deletingWebsite, setDeletingWebsite] = useState<Website | null>(null);
   const [view, setView] = useState<'card' | 'list'>('card');
 
 
@@ -66,6 +68,25 @@ export default function MonitoringDashboard() {
   useEffect(() => {
     websitesRef.current = websites;
   }, [websites]);
+
+   useEffect(() => {
+    try {
+      const savedView = localStorage.getItem('monitoring-view') as 'card' | 'list';
+      if (savedView) {
+        setView(savedView);
+      }
+    } catch (error) {
+        console.warn("Could not read view from localStorage", error)
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('monitoring-view', view);
+    } catch (error) {
+        console.warn("Could not save view to localStorage", error)
+    }
+  }, [view]);
 
   const updateWebsite = useCallback((id: string, updates: Partial<Website> & { newStatusHistoryEntry?: StatusHistory }) => {
     setWebsites(prev =>
@@ -100,7 +121,8 @@ export default function MonitoringDashboard() {
             latencyHistory: newLatencyHistory,
             statusHistory: newStatusHistory, 
             averageLatency, 
-            uptimePercentage 
+            uptimePercentage,
+            isLoading: false,
           };
           
           if (updates.status === 'Down' && site.status !== 'Down') {
@@ -174,6 +196,7 @@ export default function MonitoringDashboard() {
       latencyHistory: [],
       statusHistory: [],
       displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder)) + 1 : 0,
+      isLoading: true,
     };
     const newWebsites = [...websites, newWebsite];
     setWebsites(newWebsites);
@@ -181,8 +204,15 @@ export default function MonitoringDashboard() {
   }, [websites, toast, pollWebsites]);
 
   const handleDeleteWebsite = useCallback((id: string) => {
-    setWebsites(prev => prev.filter(site => site.id !== id));
-  }, []);
+    const siteToDelete = websites.find(site => site.id === id);
+    if (siteToDelete) {
+        setWebsites(prev => prev.filter(site => site.id !== id));
+        toast({
+            title: "Service Removed",
+            description: `"${siteToDelete.name}" has been removed from monitoring.`,
+        });
+    }
+  }, [websites, toast]);
   
   const handleEditWebsite = (id: string, data: WebsiteFormData) => {
     setWebsites(prev =>
@@ -333,7 +363,7 @@ export default function MonitoringDashboard() {
             {view === 'card' ? (
               <WebsiteCardView 
                 websites={sortedWebsites}
-                onDelete={handleDeleteWebsite}
+                onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
                 onMove={moveWebsite}
@@ -343,7 +373,7 @@ export default function MonitoringDashboard() {
             ) : (
               <WebsiteListView
                 websites={sortedWebsites}
-                onDelete={handleDeleteWebsite}
+                onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
                 onMove={moveWebsite}
@@ -430,6 +460,17 @@ export default function MonitoringDashboard() {
             onOpenChange={(isOpen) => !isOpen && setHistoryWebsite(null)}
             website={historyWebsite}
           />
+          <DeleteConfirmDialog
+            isOpen={!!deletingWebsite}
+            onOpenChange={(isOpen) => !isOpen && setDeletingWebsite(null)}
+            website={deletingWebsite}
+            onConfirmDelete={() => {
+                if (deletingWebsite) {
+                    handleDeleteWebsite(deletingWebsite.id);
+                }
+                setDeletingWebsite(null);
+            }}
+          />
         </div>
       </main>
       <footer className="bg-card border-t py-4">
@@ -440,3 +481,5 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    

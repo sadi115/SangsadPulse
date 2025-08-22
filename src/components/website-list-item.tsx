@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -7,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './uptime-bar';
+import { cn } from '@/lib/utils';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
@@ -56,7 +58,10 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
   }, [website.status]);
 
   return (
-      <div className="group transition-all">
+      <div className={cn(
+          "group transition-all",
+           website.isPaused && "opacity-60 hover:opacity-100"
+      )}>
           <div className="flex items-center p-4 gap-4">
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
               <div className="flex-1 grid grid-cols-3 items-center gap-4">
@@ -115,3 +120,5 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
       </div>
   );
 }
+
+    
