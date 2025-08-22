@@ -225,7 +225,7 @@ export default function MonitoringDashboard() {
   }, [updateWebsite]);
 
 
-  const schedulePoll = useCallback((website: Website) => {
+  const schedulePoll = useCallback((website: Website, globalIntervalOverride?: number) => {
       if (timeoutsRef.current.has(website.id)) {
           clearTimeout(timeoutsRef.current.get(website.id));
       }
@@ -235,7 +235,7 @@ export default function MonitoringDashboard() {
           return;
       }
 
-      const interval = (website.pollingInterval || pollingInterval) * 1000;
+      const interval = (website.pollingInterval || globalIntervalOverride || pollingInterval) * 1000;
       
       const run = async () => {
           let currentWebsite: Website | undefined;
@@ -406,7 +406,7 @@ export default function MonitoringDashboard() {
         // Reschedule polls for all services that use the global interval
         websites.forEach(site => {
             if (!site.pollingInterval && !site.isPaused) {
-                schedulePoll(site);
+                schedulePoll(site, tempPollingInterval);
             }
         });
         toast({
@@ -667,3 +667,5 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
