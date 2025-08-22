@@ -229,8 +229,7 @@ export default function MonitoringDashboard() {
         httpResponse: website.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
         isLoading: false
       });
-      // No reschedule
-      return;
+      return; 
     }
 
     updateWebsite(website.id, { status: 'Checking' });
@@ -255,36 +254,36 @@ export default function MonitoringDashboard() {
       console.error(`Failed to check status for ${website.url}`, error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       updateWebsite(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
-      
-    } finally {
-        // Use functional state update to get the latest site object
-        setWebsites(currentWebsites => {
-            const siteToReschedule = currentWebsites.find(w => w.id === website.id);
-            if (siteToReschedule) {
-                const interval = (siteToReschedule.pollingInterval || pollingIntervalRef.current) * 1000;
-                const timeoutId = setTimeout(() => pollWebsite(siteToReschedule), interval);
-                timeoutsRef.current.set(siteToReschedule.id, timeoutId);
-            }
-            return currentWebsites;
-        });
     }
+
+    setWebsites(currentWebsites => {
+        const siteToReschedule = currentWebsites.find(w => w.id === website.id);
+        if (siteToReschedule) {
+            const interval = (siteToReschedule.pollingInterval || pollingIntervalRef.current) * 1000;
+            const timeoutId = setTimeout(() => pollWebsite(siteToReschedule), interval);
+            timeoutsRef.current.set(siteToReschedule.id, timeoutId);
+        }
+        return currentWebsites;
+    });
+
   }, [updateWebsite]);
 
   useEffect(() => {
     if (!isLoaded) return;
     
     websites.forEach(website => {
-      // Stagger initial checks
-      const initialDelay = Math.random() * 5000;
-      const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
-      timeoutsRef.current.set(website.id, timeoutId);
+      if (!timeoutsRef.current.has(website.id)) {
+        const initialDelay = Math.random() * 5000;
+        const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
+        timeoutsRef.current.set(website.id, timeoutId);
+      }
     });
 
     return () => {
       timeoutsRef.current.forEach(clearTimeout);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded]); // Only run on initial load
+  }, [isLoaded]);
   
   useEffect(() => {
     if (!notificationsEnabled) return;
