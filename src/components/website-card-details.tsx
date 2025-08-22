@@ -3,7 +3,7 @@
 
 import type { Website } from '@/lib/types';
 import { LatencyChart } from './latency-chart';
-import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search, TrendingUp } from 'lucide-react';
+import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search, TrendingUp, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 
 type WebsiteCardDetailsProps = {
@@ -101,6 +101,12 @@ export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
                             <span>Lowest Latency:</span>
                             <span className="font-medium text-foreground">{website.lowestLatency} ms</span>
                         </div>
+                         {website.ttfb !== undefined && website.ttfb >= 0 && (
+                            <div className="flex justify-between">
+                                <span>TTFB:</span>
+                                <span className="font-medium text-foreground">{website.ttfb} ms</span>
+                            </div>
+                        )}
                     </div>
                   </div>
                 )}

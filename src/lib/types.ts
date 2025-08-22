@@ -1,12 +1,12 @@
 
-
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
 export type MonitorType =
   | 'HTTP(s)'
   | 'TCP Port'
   | 'Ping'
-  | 'HTTP(s) - Keyword';
+  | 'HTTP(s) - Keyword'
+  | 'Downtime';
 
 export type StatusHistory = {
     time: string;
@@ -34,6 +34,7 @@ export interface Website {
   lastChecked?: string;
   diagnosis?: string;
   latency?: number;
+  ttfb?: number;
   averageLatency?: number;
   lowestLatency?: number;
   highestLatency?: number;
@@ -47,5 +48,3 @@ export interface Website {
   keyword?: string;
   pollingInterval?: number; // Custom interval in seconds
 }
-
-    

@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Website, MonitorType, StatusHistory, UptimeData } from '@/lib/types';
 import { AddWebsiteForm } from '@/components/add-website-form';
-import { checkStatus, getAIDiagnosis } from '@/lib/actions';
+import { checkStatus, getAIDiagnosis, getTtfb } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { SummaryOverview } from '@/components/summary-overview';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -158,6 +158,11 @@ export default function MonitoringDashboard() {
           
           if (updates.status === 'Down' && site.status !== 'Down') {
             newSite.lastDownTime = new Date().toISOString();
+            toast({
+                title: 'Service Down',
+                description: `${newSite.name} is currently down.`,
+                variant: 'destructive',
+            });
           }
 
           return newSite;
@@ -165,14 +170,24 @@ export default function MonitoringDashboard() {
         return site;
       })
     );
-  }, []);
+  }, [toast]);
 
   const pollWebsite = useCallback(async (website: Website) => {
-    if (website.status === 'Checking' || website.isPaused) return;
+    if (website.status === 'Checking' || website.isPaused || website.monitorType === 'Downtime') {
+        if (website.monitorType === 'Downtime') {
+             updateWebsite(website.id, { status: 'Down', httpResponse: 'In scheduled downtime.' });
+        }
+        return;
+    }
 
     updateWebsite(website.id, { status: 'Checking' });
     try {
         const result = await checkStatus(website);
+        let ttfbResult;
+        if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
+            ttfbResult = await getTtfb({ url: website.url });
+        }
+
 
         const lastStatus = website.statusHistory?.[website.statusHistory.length - 1]?.status;
         const newStatus = result.status === 'Up' ? 'Up' : 'Down';
@@ -187,7 +202,7 @@ export default function MonitoringDashboard() {
             };
         }
         
-        updateWebsite(website.id, { ...result, newStatusHistoryEntry });
+        updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
 
     } catch (error) {
         console.error(`Failed to check status for ${website.url}`, error);
@@ -202,7 +217,7 @@ export default function MonitoringDashboard() {
           timeoutsRef.current.delete(website.id);
       }
 
-      if (website.isPaused) return;
+      if (website.isPaused || website.monitorType === 'Downtime') return;
 
       const interval = (website.pollingInterval || pollingInterval) * 1000;
       
@@ -577,7 +592,3 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
-
-    
-
-    

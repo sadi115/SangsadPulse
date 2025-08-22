@@ -16,6 +16,7 @@ const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] 
     { label: "TCP Port", value: "TCP Port" },
     { label: "Ping", value: "Ping" },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
+    { label: "Downtime", value: "Downtime" },
 ];
 
 const formSchema = z.object({

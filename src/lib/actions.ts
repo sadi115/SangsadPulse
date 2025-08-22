@@ -1,6 +1,7 @@
 'use server';
 
 import { diagnoseWebsiteOutage } from '@/ai/flows/diagnose-website-outage';
+import { measureTtfb } from '@/ai/flows/measure-ttfb';
 import type { Website } from '@/lib/types';
 import net from 'net';
 
@@ -141,6 +142,10 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
   const { monitorType, url, port } = website;
   
   try {
+      if (monitorType === 'Downtime') {
+        return { status: 'Down', httpResponse: 'In scheduled downtime.', lastChecked: new Date().toISOString(), latency: 0 };
+      }
+
       const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
       const hostname = urlObject.hostname || url;
 
@@ -203,4 +208,14 @@ export async function getAIDiagnosis(input: {
     console.error('AI diagnosis failed:', error);
     return { diagnosis: 'AI analysis failed. Please try again.' };
   }
+}
+
+export async function getTtfb(input: { url: string }): Promise<{ ttfb: number }> {
+    try {
+        const result = await measureTtfb({ url: input.url });
+        return result;
+    } catch (error) {
+        console.error('TTFB measurement failed:', error);
+        return { ttfb: -1 };
+    }
 }
