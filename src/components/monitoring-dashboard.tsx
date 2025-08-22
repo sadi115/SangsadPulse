@@ -232,94 +232,101 @@ export default function MonitoringDashboard() {
       })
     );
   }, []);
+  
+  const pollWebsite = useCallback(async (website: Website) => {
+      if (website.isPaused || website.monitorType === 'Downtime') {
+          if (website.monitorType === 'Downtime') {
+              updateWebsite(website.id, { status: 'Down', httpResponse: 'In scheduled downtime.' });
+          }
+          return;
+      }
 
-  const pollWebsite = useCallback(async (website: Website, currentWebsites: Website[]) => {
-    const currentWebsiteState = currentWebsites.find(w => w.id === website.id);
-    if (!currentWebsiteState || currentWebsiteState.isPaused || currentWebsiteState.monitorType === 'Downtime') {
-      if (currentWebsiteState?.monitorType === 'Downtime') {
-        updateWebsite(website.id, { status: 'Down', httpResponse: 'In scheduled downtime.' });
+      updateWebsite(website.id, { status: 'Checking' });
+
+      try {
+          const result = await checkStatus(website);
+          let ttfbResult;
+          if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
+              ttfbResult = await getTtfb({ url: website.url });
+          }
+          
+          let newStatusHistoryEntry: StatusHistory | undefined;
+          setWebsites(currentWebsites => {
+              const currentSiteState = currentWebsites.find(w => w.id === website.id);
+              if (currentSiteState) {
+                  const lastStatus = currentSiteState.statusHistory?.[currentSiteState.statusHistory.length - 1]?.status;
+                  const newStatus = result.status === 'Up' ? 'Up' : 'Down';
+                  if (newStatus !== lastStatus) {
+                      newStatusHistoryEntry = {
+                          time: result.lastChecked,
+                          status: newStatus,
+                          latency: result.latency,
+                          reason: result.httpResponse,
+                      };
+                  }
+              }
+              return currentWebsites;
+          });
+
+
+          updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
+      } catch (error) {
+          console.error(`Failed to check status for ${website.url}`, error);
+          updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
       }
-      return;
-    }
-  
-    updateWebsite(website.id, { status: 'Checking' });
-  
-    try {
-      const result = await checkStatus(website);
-      let ttfbResult;
-      if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
-        ttfbResult = await getTtfb({ url: website.url });
-      }
-  
-      const lastStatus = currentWebsiteState.statusHistory?.[currentWebsiteState.statusHistory.length - 1]?.status;
-      const newStatus = result.status === 'Up' ? 'Up' : 'Down';
-      let newStatusHistoryEntry: StatusHistory | undefined;
-  
-      if (newStatus !== lastStatus) {
-        newStatusHistoryEntry = {
-          time: result.lastChecked,
-          status: newStatus,
-          latency: result.latency,
-          reason: result.httpResponse,
-        };
-      }
-      
-      updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
-    } catch (error) {
-      console.error(`Failed to check status for ${website.url}`, error);
-      updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
-    }
   }, [updateWebsite]);
 
   
+  const scheduleNextPoll = useCallback((website: Website) => {
+      if (timeoutsRef.current.has(website.id)) {
+          clearTimeout(timeoutsRef.current.get(website.id)!);
+      }
+
+      if (website.isPaused || website.monitorType === 'Downtime') {
+          return;
+      }
+      
+      const poll = async () => {
+          await pollWebsite(website);
+          scheduleNextPoll(website);
+      };
+
+      const interval = (website.pollingInterval || pollingInterval) * 1000;
+      const timeoutId = setTimeout(poll, interval);
+      timeoutsRef.current.set(website.id, timeoutId);
+  }, [pollWebsite, pollingInterval]);
+
+
   useEffect(() => {
-    if (!isLoaded) return;
-  
-    const pollAndReschedule = async (website: Website) => {
-        // Use a function with setWebsites to get the most current state
-        let currentWebsite: Website | undefined;
-        setWebsites(current => {
-            currentWebsite = current.find(w => w.id === website.id);
-            return current;
-        });
+      if (!isLoaded) return;
 
-        if (currentWebsite && !currentWebsite.isPaused && currentWebsite.monitorType !== 'Downtime') {
-            await pollWebsite(currentWebsite, websites);
-        }
-
-        // After the poll, schedule the next one, but re-read the website state
-        // to ensure it hasn't been paused, deleted, or changed during the poll.
-        setWebsites(current => {
-            const postPollWebsite = current.find(w => w.id === website.id);
-            if (postPollWebsite && !postPollWebsite.isPaused && postPollWebsite.monitorType !== 'Downtime') {
-                const interval = (postPollWebsite.pollingInterval || pollingInterval) * 1000;
-                const timeoutId = setTimeout(() => pollAndReschedule(postPollWebsite), interval);
-                timeoutsRef.current.set(postPollWebsite.id, timeoutId);
-            }
-            return current;
-        });
-    };
-
-    // Clear existing timers
-    timeoutsRef.current.forEach(clearTimeout);
-    timeoutsRef.current.clear();
-  
-    // Start polling for all websites.
-    websites.forEach(site => {
-        if (!site.isPaused && site.monitorType !== 'Downtime') {
-            // Stagger initial checks to avoid overwhelming the browser/network
-            const initialDelay = site.isLoading ? Math.random() * 3000 : 0;
-            const timeoutId = setTimeout(() => pollAndReschedule(site), initialDelay);
-            timeoutsRef.current.set(site.id, timeoutId);
-        }
-    });
-  
-    // Cleanup function
-    return () => {
+      // Stop all existing timers
       timeoutsRef.current.forEach(clearTimeout);
       timeoutsRef.current.clear();
-    };
-  }, [websites, pollingInterval, isLoaded, pollWebsite]);
+      
+      // Start polling for all websites
+      websites.forEach(website => {
+          if (website.isPaused || website.monitorType === 'Downtime') {
+              if (website.monitorType === 'Downtime') {
+                  updateWebsite(website.id, { status: 'Down', httpResponse: 'In scheduled downtime.', isLoading: false });
+              }
+              return;
+          }
+          
+          // Stagger initial checks to avoid overwhelming the browser/network
+          const initialDelay = website.isLoading ? Math.random() * 3000 : 0;
+          const timeoutId = setTimeout(async () => {
+              await pollWebsite(website);
+              scheduleNextPoll(website);
+          }, initialDelay);
+          timeoutsRef.current.set(website.id, timeoutId);
+      });
+  
+      return () => {
+          timeoutsRef.current.forEach(clearTimeout);
+          timeoutsRef.current.clear();
+      };
+  }, [websites, isLoaded, pollingInterval, pollWebsite, scheduleNextPoll, updateWebsite]);
 
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
@@ -403,10 +410,20 @@ export default function MonitoringDashboard() {
           timeoutsRef.current.delete(id);
         }
 
-        // We pass the full websites array to pollWebsite
-        pollWebsite(website, websites);
+        const runCheck = async () => {
+          await pollWebsite(website);
+          // After manual check, reschedule the next poll based on its interval.
+          setWebsites(current => {
+              const postPollWebsite = current.find(w => w.id === id);
+              if (postPollWebsite) {
+                  scheduleNextPoll(postPollWebsite);
+              }
+              return current;
+          });
+        }
+        runCheck();
     }
-  }, [pollWebsite, websites, toast]);
+  }, [pollWebsite, websites, toast, scheduleNextPoll]);
 
   const handleDiagnose = useCallback(async (id: string) => {
     const website = websites.find(site => site.id === id);
@@ -699,7 +716,5 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
-
-    
 
     
