@@ -16,11 +16,6 @@ const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] 
     { label: "TCP Port", value: "TCP Port" },
     { label: "Ping", value: "Ping" },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
-    { label: "HTTP(s) - Json Query", value: "HTTP(s) - Json Query", disabled: true },
-    { label: "gRPC(s) - Keyword", value: "gRPC(s) - Keyword", disabled: true },
-    { label: "DNS", value: "DNS", disabled: true },
-    { label: "Docker Container", value: "Docker Container", disabled: true },
-    { label: "HTTP(s) - Browser Engine", value: "HTTP(s) - Browser Engine (Chrome/Chromium) (Beta)", disabled: true },
 ];
 
 const formSchema = z.object({
