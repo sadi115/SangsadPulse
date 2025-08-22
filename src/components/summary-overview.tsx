@@ -103,14 +103,22 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                   payload,
                                   ...props
                                 }) => {
+                                  const { name, value } = payload;
+                                  let className = 'fill-muted-foreground text-xs';
+                                  if (name === 'Up') {
+                                    className = 'fill-green-500 text-xs font-medium';
+                                  } else if (name === 'Down') {
+                                     className = 'fill-red-500 text-xs font-medium';
+                                  }
+
                                   return (
                                     <text
                                       {...props}
-                                      className="fill-muted-foreground text-xs"
+                                      className={className}
                                       textAnchor="middle"
                                       dominantBaseline="central"
                                     >
-                                      {payload.name} ({payload.value})
+                                      {name} ({value})
                                     </text>
                                   )
                                 }}
