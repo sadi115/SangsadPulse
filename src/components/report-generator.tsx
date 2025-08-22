@@ -31,6 +31,7 @@ const formSchema = z.object({
   }),
   format: z.enum(['pdf', 'excel']),
   reportType: z.enum(['summary', 'detail']),
+  eventFilter: z.enum(['all', 'down', 'up']).optional(),
 });
 
 type ReportGeneratorProps = {
@@ -55,8 +56,11 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
       dateRange: { from: undefined, to: undefined },
       format: 'pdf',
       reportType: 'summary',
+      eventFilter: 'all',
     },
   });
+
+  const reportType = form.watch('reportType');
 
   const generatePdf = async (data: any[], fileName: string, startDate: string, endDate: string, serviceName: string, reportType: 'summary' | 'detail') => {
     const doc = new jsPDF();
@@ -202,7 +206,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const { serviceId, format: fileFormat, reportType } = values;
+    const { serviceId, format: fileFormat, reportType, eventFilter } = values;
     const { from, to } = date || {};
 
     if (!from || !to) {
@@ -259,10 +263,17 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         });
     } else { // Detail Report
         reportData = selectedWebsites.map(site => {
-            const historyInRange = (site.latencyHistory || []).filter(h => {
+            let historyInRange = (site.latencyHistory || []).filter(h => {
                 const hDate = new Date(h.time);
                 return hDate >= from && hDate <= adjustedTo;
             });
+            
+            if (eventFilter === 'down') {
+                historyInRange = historyInRange.filter(h => h.latency <= 0);
+            } else if (eventFilter === 'up') {
+                historyInRange = historyInRange.filter(h => h.latency > 0);
+            }
+
 
             return {
                 name: site.name,
@@ -277,7 +288,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         });
 
         if (reportData.every(d => d.history.length === 0)) {
-            toast({ title: "No Data Available", description: "No monitoring data found for the selected services in the chosen date range.", variant: "destructive" });
+            toast({ title: "No Data Available", description: "No monitoring data found for the selected services and filter in the chosen date range.", variant: "destructive" });
             return;
         }
     }
@@ -330,6 +341,46 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
                   </FormItem>
                 )}
               />
+
+              {reportType === 'detail' && (
+                 <FormField
+                    control={form.control}
+                    name="eventFilter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Filter Events</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex items-center space-x-4 pt-2"
+                          >
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="all" />
+                              </FormControl>
+                              <FormLabel className="font-normal">All</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="down" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Down Only</FormLabel>
+                            </FormItem>
+                             <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="up" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Up Only</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                    />
+              )}
+
               <FormField
                 control={form.control}
                 name="serviceId"
@@ -442,3 +493,4 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         </Form>
   );
 }
+
