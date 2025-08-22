@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,9 +7,11 @@ import { Clock } from 'lucide-react';
 
 export function LiveClock() {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // Set initial time after mount to avoid hydration mismatch
+    // This effect runs only on the client, after the component has mounted.
+    setIsClient(true);
     setCurrentTime(new Date());
 
     const timer = setInterval(() => {
@@ -21,12 +24,13 @@ export function LiveClock() {
     };
   }, []); // Empty dependency array ensures this runs only once on the client
 
-  if (!currentTime) {
+  if (!isClient || !currentTime) {
     // Render a placeholder on the server and during initial client render
+    // to prevent hydration mismatch.
     return (
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Clock className="h-3 w-3" />
-        <span>Loading time...</span>
+      <div className="flex flex-col items-start font-medium text-muted-foreground text-xs">
+          <span>Loading...</span>
+          <span className="font-semibold text-foreground">Loading time...</span>
       </div>
     );
   }
