@@ -74,7 +74,7 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
               <div className="flex-1 grid grid-cols-12 items-center gap-4">
                 <div className="col-span-12 md:col-span-4 flex items-center gap-3">
-                    <StatusBadge status={website.status} uptimePercentage={website.uptimeData?.['24h']} />
+                    <StatusBadge status={website.status} uptimePercentage={website.uptimeData?.['total']} />
                     <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
                 </div>
                  <div className="hidden md:block col-span-4">
