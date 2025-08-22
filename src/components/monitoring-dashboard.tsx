@@ -15,7 +15,7 @@ import { EditWebsiteDialog } from '@/components/edit-website-dialog';
 import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutGrid, List, Bell } from 'lucide-react';
+import { LayoutGrid, List, Bell, Search } from 'lucide-react';
 import { WebsiteCardView } from '@/components/website-card-view';
 import { WebsiteListView } from '@/components/website-list-view';
 import Image from 'next/image';
@@ -93,6 +93,7 @@ export default function MonitoringDashboard() {
   const [deletingWebsite, setDeletingWebsite] = useState<Website | null>(null);
   const [view, setView] = useState<'card' | 'list'>('card');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
 
   const { toast } = useToast();
@@ -377,7 +378,16 @@ export default function MonitoringDashboard() {
     
     // Poll the website with its new data, and then schedule the next poll with the correct new interval
     pollWebsite(updatedSite).then(() => {
-        schedulePoll(updatedSite, data.pollingInterval);
+        // Find the latest version of the site from state after polling.
+        // This is important because pollWebsite also updates state.
+        setWebsites(prev => {
+            const latestSite = prev.find(w => w.id === updatedSite.id);
+            if (latestSite) {
+                // Use the new interval from the form data to schedule the next poll
+                schedulePoll(latestSite, data.pollingInterval);
+            }
+            return prev;
+        });
     });
     
     toast({
@@ -479,13 +489,18 @@ export default function MonitoringDashboard() {
     }
   }, [websites, pollWebsite, schedulePoll]);
 
-  const sortedWebsites = useMemo(() => {
-    return [...websites].sort((a, b) => {
+  const sortedAndFilteredWebsites = useMemo(() => {
+    const filtered = websites.filter(site => 
+        site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        site.url.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return filtered.sort((a, b) => {
       if (a.isPaused && !b.isPaused) return 1;
       if (!a.isPaused && b.isPaused) return -1;
       return a.displayOrder - b.displayOrder;
     });
-  }, [websites]);
+  }, [websites, searchTerm]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -521,6 +536,17 @@ export default function MonitoringDashboard() {
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-4">
               <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
+              <div className="w-full max-w-md">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search by name or URL..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
               <ToggleGroup
                 type="single"
                 value={view}
@@ -538,7 +564,7 @@ export default function MonitoringDashboard() {
 
             {view === 'card' ? (
               <WebsiteCardView 
-                websites={sortedWebsites}
+                websites={sortedAndFilteredWebsites}
                 onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
@@ -548,7 +574,7 @@ export default function MonitoringDashboard() {
               />
             ) : (
               <WebsiteListView
-                websites={sortedWebsites}
+                websites={sortedAndFilteredWebsites}
                 onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
