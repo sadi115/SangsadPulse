@@ -1,6 +1,6 @@
 
 'use client';
-import * as React from 'react';
+import React from 'react';
 import type { Website } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
@@ -111,9 +111,12 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                      className = 'fill-red-500 text-xs font-medium';
                                   }
 
+                                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                  const { cornerRadius, ...restProps } = props;
+
                                   return (
                                     <text
-                                      {...props}
+                                      {...restProps}
                                       className={className}
                                       textAnchor="middle"
                                       dominantBaseline="central"
