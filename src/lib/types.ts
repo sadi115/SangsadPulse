@@ -35,6 +35,8 @@ export interface Website {
   diagnosis?: string;
   latency?: number;
   averageLatency?: number;
+  lowestLatency?: number;
+  highestLatency?: number;
   uptimeData: UptimeData;
   latencyHistory?: { time: string; latency: number }[];
   statusHistory?: StatusHistory[];

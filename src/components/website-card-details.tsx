@@ -86,12 +86,20 @@ export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
                     <h4 className="font-semibold text-base flex items-center gap-2"><BarChart2 className="h-4 w-4" />Performance</h4>
                     <div className="space-y-1 text-muted-foreground">
                         <div className="flex justify-between">
-                            <span>Latency:</span>
+                            <span>Current Latency:</span>
                             <span className="font-medium text-foreground">{website.latency} ms</span>
                         </div>
                          <div className="flex justify-between">
                             <span>Average Latency:</span>
                             <span className="font-medium text-foreground">{website.averageLatency} ms</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Highest Latency:</span>
+                            <span className="font-medium text-foreground">{website.highestLatency} ms</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Lowest Latency:</span>
+                            <span className="font-medium text-foreground">{website.lowestLatency} ms</span>
                         </div>
                     </div>
                   </div>

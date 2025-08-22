@@ -133,12 +133,14 @@ export default function MonitoringDashboard() {
             ...(newStatusHistoryEntry ? [newStatusHistoryEntry] : []),
           ].slice(-MAX_STATUS_HISTORY);
 
-          let averageLatency;
+          let averageLatency, lowestLatency, highestLatency;
           if (newLatencyHistory.length > 0) {
             const upHistory = newLatencyHistory.filter(h => h.latency > 0);
             if(upHistory.length > 0) {
               const totalLatency = upHistory.reduce((acc, curr) => acc + curr.latency, 0);
               averageLatency = Math.round(totalLatency / upHistory.length);
+              lowestLatency = Math.min(...upHistory.map(h => h.latency));
+              highestLatency = Math.max(...upHistory.map(h => h.latency));
             }
           }
 
@@ -150,6 +152,8 @@ export default function MonitoringDashboard() {
             latencyHistory: newLatencyHistory,
             statusHistory: newStatusHistory, 
             averageLatency, 
+            lowestLatency,
+            highestLatency,
             uptimeData,
             isLoading: false,
           };
