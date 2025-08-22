@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown } from 'lucide-react';
+import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { WebsiteCardDetails } from './website-card-details';
 import { Card } from './ui/card';
@@ -43,11 +43,12 @@ type WebsiteCardProps = {
     onMove: (id: string, direction: 'up' | 'down') => void;
     onTogglePause: (id: string) => void;
     onShowHistory: (id: string) => void;
+    onManualCheck: (id: string) => void;
     isFirst: boolean;
     isLast: boolean;
 };
 
-export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, isFirst, isLast }: WebsiteCardProps) {
+export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast }: WebsiteCardProps) {
   
   const statusColor = useMemo(() => {
     switch (website.status) {
@@ -91,7 +92,11 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onShowHistory(website.id)}>
+                        <DropdownMenuItem onClick={() => onManualCheck(website.id)}>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Check Now
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => onShowHistory(website.id)}>
                           <History className="mr-2 h-4 w-4" />
                           History
                         </DropdownMenuItem>
@@ -145,5 +150,3 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
     </Collapsible>
   );
 }
-
-    

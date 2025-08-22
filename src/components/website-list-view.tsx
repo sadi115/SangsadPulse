@@ -15,6 +15,7 @@ type WebsiteListViewProps = {
   onMove: (id: string, direction: 'up' | 'down') => void;
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
+  onManualCheck: (id: string) => void;
 };
 
 const ListSkeleton = () => (
@@ -45,7 +46,7 @@ const ListSkeleton = () => (
     </div>
 )
 
-export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory }: WebsiteListViewProps) {
+export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
   if (websites.length === 0) {
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
@@ -94,6 +95,7 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
                         onMove={onMove}
                         onTogglePause={onTogglePause}
                         onShowHistory={onShowHistory}
+                        onManualCheck={onManualCheck}
                         isFirst={isFirst}
                         isLast={isLast}
                     />

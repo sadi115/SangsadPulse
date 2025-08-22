@@ -14,6 +14,7 @@ type WebsiteCardViewProps = {
   onMove: (id: string, direction: 'up' | 'down') => void;
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
+  onManualCheck: (id: string) => void;
 };
 
 const CardSkeleton = () => (
@@ -31,7 +32,7 @@ const CardSkeleton = () => (
 );
 
 
-export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory }: WebsiteCardViewProps) {
+export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteCardViewProps) {
   if (websites.length === 0) {
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
@@ -69,6 +70,7 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
               onMove={onMove}
               onTogglePause={onTogglePause}
               onShowHistory={onShowHistory}
+              onManualCheck={onManualCheck}
               isFirst={isFirst}
               isLast={isLast}
             />
@@ -77,5 +79,3 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
     </div>
   );
 }
-
-    

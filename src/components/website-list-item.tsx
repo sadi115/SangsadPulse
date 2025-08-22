@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, Clock } from 'lucide-react';
+import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, Clock, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './uptime-bar';
 import { cn } from '@/lib/utils';
@@ -44,11 +44,12 @@ type WebsiteListItemProps = {
     onMove: (id: string, direction: 'up' | 'down') => void;
     onTogglePause: (id: string) => void;
     onShowHistory: (id: string) => void;
+    onManualCheck: (id: string) => void;
     isFirst: boolean;
     isLast: boolean;
 };
 
-export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, isFirst, isLast }: WebsiteListItemProps) {
+export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast }: WebsiteListItemProps) {
   
   const statusColor = useMemo(() => {
     switch (website.status) {
@@ -93,6 +94,10 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                         <DropdownMenuItem onClick={() => onManualCheck(website.id)}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Check Now
+                         </DropdownMenuItem>
                          <DropdownMenuItem onClick={() => onShowHistory(website.id)}>
                             <History className="mr-2 h-4 w-4" />
                             History

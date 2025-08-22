@@ -79,31 +79,7 @@ const calculateUptime = (history: { time: string; latency: number }[]): UptimeDa
 };
 
 export default function MonitoringDashboard() {
-  const [websites, setWebsites] = useState<Website[]>(() => {
-    try {
-        const savedWebsites = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedWebsites) {
-            const parsed = JSON.parse(savedWebsites);
-            // Reset runtime state on load
-            return parsed.map((site: Website) => ({
-                ...site,
-                status: 'Idle',
-                isLoading: true,
-                latency: undefined,
-                lastDownTime: undefined,
-                httpResponse: undefined,
-            }));
-        }
-    } catch (error) {
-        console.warn("Could not load websites from localStorage", error);
-    }
-    return initialWebsites.map((site, index) => ({ 
-        ...site, 
-        displayOrder: index, 
-        isLoading: true,
-        uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
-    }));
-  });
+  const [websites, setWebsites] = useState<Website[]>([]);
   const [pollingInterval, setPollingInterval] = useState(30);
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
@@ -112,6 +88,7 @@ export default function MonitoringDashboard() {
   const [view, setView] = useState<'card' | 'list'>('card');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
 
 
   const { toast } = useToast();
@@ -131,13 +108,40 @@ export default function MonitoringDashboard() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('monitoring-view', view);
+        const savedWebsites = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedWebsites) {
+            const parsed = JSON.parse(savedWebsites);
+            // Reset runtime state on load
+            setWebsites(parsed.map((site: Website) => ({
+                ...site,
+                status: 'Idle',
+                isLoading: true,
+                latency: undefined,
+                lastDownTime: undefined,
+                httpResponse: undefined,
+            })));
+        } else {
+            setWebsites(initialWebsites.map((site, index) => ({ 
+                ...site, 
+                displayOrder: index, 
+                isLoading: true,
+                uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+            })));
+        }
     } catch (error) {
-        console.warn("Could not save view to localStorage", error)
+        console.warn("Could not load websites from localStorage", error);
+        setWebsites(initialWebsites.map((site, index) => ({ 
+            ...site, 
+            displayOrder: index, 
+            isLoading: true,
+            uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+        })));
     }
-  }, [view]);
+    setIsLoaded(true);
+  }, []);
 
   useEffect(() => {
+    if (!isLoaded) return;
     try {
         // We only want to store the "config" of the websites, not their runtime state
         const sitesToSave = websites.map(({ 
@@ -148,7 +152,15 @@ export default function MonitoringDashboard() {
     } catch (error) {
         console.warn("Could not save websites to localStorage", error);
     }
-  }, [websites]);
+  }, [websites, isLoaded]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('monitoring-view', view);
+    } catch (error) {
+        console.warn("Could not save view to localStorage", error)
+    }
+  }, [view]);
 
   useEffect(() => {
     if (!notificationsEnabled) return;
@@ -279,15 +291,6 @@ export default function MonitoringDashboard() {
 
           if (currentWebsite) {
               await pollWebsite(currentWebsite);
-              // After poll completes, find the *latest* version of the site from state
-              // to ensure we have the most up-to-date interval info for the next schedule.
-              setWebsites(prev => {
-                const latestSite = prev.find(w => w.id === website.id);
-                if (latestSite) {
-                    schedulePoll(latestSite);
-                }
-                return prev;
-              });
           }
       };
 
@@ -297,34 +300,62 @@ export default function MonitoringDashboard() {
   }, [pollWebsite, pollingInterval]);
 
   useEffect(() => {
-    // This effect runs only once on mount to start the initial polling cycle.
+    // This effect manages the polling loops for all websites.
+    // It runs whenever the list of websites or the global polling interval changes.
+    if (!isLoaded) return;
+    
+    // Create a new map for the current set of timeouts
+    const newTimeouts = new Map<string, NodeJS.Timeout>();
+
     websites.forEach(site => {
-        if (!site.isPaused && !timeoutsRef.current.has(site.id)) {
-            // Stagger initial checks to avoid overwhelming the server
-            const initialDelay = Math.random() * 5000; // 0-5 seconds
-            const initialTimeoutId = setTimeout(() => {
-                pollWebsite(site).then(() => {
-                    // After the very first poll, start the regular schedule
-                    let currentSite: Website | undefined;
-                    setWebsites(prev => {
-                        currentSite = prev.find(w => w.id === site.id);
-                        return prev;
-                    });
-                    if (currentSite) {
-                        schedulePoll(currentSite);
+        // Always clear the old timeout for this site, if one exists
+        if (timeoutsRef.current.has(site.id)) {
+            clearTimeout(timeoutsRef.current.get(site.id)!);
+        }
+
+        if (!site.isPaused && site.monitorType !== 'Downtime') {
+            const interval = (site.pollingInterval || pollingInterval) * 1000;
+            
+            const run = async () => {
+                // To ensure pollWebsite gets the latest state, we use the functional update form of setWebsites
+                let freshSite: Website | undefined;
+                setWebsites(currentWebsites => {
+                    freshSite = currentWebsites.find(w => w.id === site.id);
+                    if (freshSite) {
+                        pollWebsite(freshSite);
                     }
+                    return currentWebsites;
                 });
+            };
+
+            // Stagger initial checks when the app loads to avoid overwhelming the server
+            const isInitialLoad = !timeoutsRef.current.has(site.id);
+            const initialDelay = isInitialLoad ? Math.random() * 5000 : 0; // 0-5 seconds
+
+            const initialTimeoutId = setTimeout(() => {
+                run(); // Run the first poll
+                // Then set up the recurring poll
+                const recurringTimeoutId = setInterval(run, interval);
+                newTimeouts.set(site.id, recurringTimeoutId);
             }, initialDelay);
-            timeoutsRef.current.set(site.id, initialTimeoutId);
+            
+            // Store the initial timeout so we can clear it on unmount
+            newTimeouts.set(`${site.id}-initial`, initialTimeoutId);
         }
     });
 
+    // Replace the old timeouts map with the new one
+    timeoutsRef.current = newTimeouts;
+
+    // Cleanup function to clear all timeouts when the component unmounts or dependencies change
     return () => {
-        timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+        timeoutsRef.current.forEach(timeoutId => {
+            clearTimeout(timeoutId); // Works for both setTimeout and setInterval
+        });
         timeoutsRef.current.clear();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once.
+  }, [websites, pollingInterval, isLoaded, pollWebsite]);
+
 
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
@@ -347,28 +378,18 @@ export default function MonitoringDashboard() {
       displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder)) + 1 : 0,
       isLoading: true,
     };
+    
+    // Poll immediately for quick feedback
+    pollWebsite(newWebsite);
+    
+    // Add to state, which will trigger the main useEffect to schedule its regular polling
     setWebsites(prev => [...prev, newWebsite]);
-    // The initial poll will be scheduled by the main effect after state update
-    // For immediate feedback:
-    pollWebsite(newWebsite).then(() => {
-        let currentSite: Website | undefined;
-        setWebsites(prev => {
-            currentSite = prev.find(w => w.id === newWebsite.id);
-            return prev;
-        });
-        if (currentSite) {
-            schedulePoll(currentSite);
-        }
-    });
-  }, [websites, toast, pollWebsite, schedulePoll]);
+
+  }, [websites, toast, pollWebsite]);
 
   const handleDeleteWebsite = useCallback((id: string) => {
     const siteToDelete = websites.find(site => site.id === id);
     if (siteToDelete) {
-        if (timeoutsRef.current.has(id)) {
-          clearTimeout(timeoutsRef.current.get(id)!);
-          timeoutsRef.current.delete(id);
-        }
         setWebsites(prev => prev.filter(site => site.id !== id));
         toast({
             title: "Service Removed",
@@ -380,12 +401,6 @@ export default function MonitoringDashboard() {
   const handleEditWebsite = (id: string, data: WebsiteFormData) => {
     const siteToEdit = websites.find(w => w.id === id);
     if (!siteToEdit) return;
-
-    // Stop the current polling loop
-    if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id)!);
-        timeoutsRef.current.delete(id);
-    }
     
     // Create the updated site object with the new data
     const updatedSite: Website = {
@@ -403,21 +418,29 @@ export default function MonitoringDashboard() {
       lowestLatency: undefined,
       highestLatency: undefined,
     };
-
-    // Update the state immediately
-    setWebsites(prev => prev.map(s => s.id === id ? updatedSite : s));
     
-    // Poll the website with its new data, and then schedule the next poll with the correct new interval
-    pollWebsite(updatedSite).then(() => {
-        // Schedule the next poll using the new interval from the form data.
-        schedulePoll(updatedSite, data.pollingInterval);
-    });
+    // Poll the website with its new data immediately
+    pollWebsite(updatedSite);
+    
+    // Update the state, which will trigger the main useEffect to reschedule with the new interval
+    setWebsites(prev => prev.map(s => s.id === id ? updatedSite : s));
     
     toast({
         title: "Service Updated",
         description: `${data.name} has been updated successfully.`
     });
   };
+
+  const handleManualCheck = useCallback((id: string) => {
+    const website = websites.find(site => site.id === id);
+    if (website) {
+        toast({
+            title: 'Manual Check',
+            description: `Requesting a manual status check for ${website.name}.`,
+        });
+        pollWebsite(website);
+    }
+  }, [websites, pollWebsite, toast]);
 
   const handleDiagnose = useCallback(async (id: string) => {
     const website = websites.find(site => site.id === id);
@@ -443,12 +466,6 @@ export default function MonitoringDashboard() {
   const handleIntervalChange = () => {
     if(tempPollingInterval > 0) {
         setPollingInterval(tempPollingInterval);
-        // Reschedule polls for all services that use the global interval
-        websites.forEach(site => {
-            if (!site.pollingInterval && !site.isPaused) {
-                schedulePoll(site, tempPollingInterval);
-            }
-        });
         toast({
             title: 'Settings Saved',
             description: `Global monitoring interval updated to ${tempPollingInterval} seconds.`,
@@ -491,26 +508,13 @@ export default function MonitoringDashboard() {
     const isNowPaused = !site.isPaused;
     
     if (isNowPaused) {
-        if (timeoutsRef.current.has(id)) {
-            clearTimeout(timeoutsRef.current.get(id)!);
-            timeoutsRef.current.delete(id);
-        }
         setWebsites(prev => prev.map(s => s.id === id ? { ...s, isPaused: true, status: 'Paused' } : s));
     } else {
         const unpausedSite = { ...site, isPaused: false, status: 'Idle', isLoading: true };
         setWebsites(prev => prev.map(s => s.id === id ? unpausedSite : s));
-        pollWebsite(unpausedSite).then(() => {
-            let currentSite: Website | undefined;
-            setWebsites(prev => {
-                currentSite = prev.find(w => w.id === unpausedSite.id);
-                return prev;
-            });
-            if (currentSite) {
-                schedulePoll(currentSite);
-            }
-        });
+        pollWebsite(unpausedSite);
     }
-  }, [websites, pollWebsite, schedulePoll]);
+  }, [websites, pollWebsite]);
 
   const sortedAndFilteredWebsites = useMemo(() => {
     const filtered = websites.filter(site => 
@@ -594,6 +598,7 @@ export default function MonitoringDashboard() {
                 onMove={moveWebsite}
                 onTogglePause={handleTogglePause}
                 onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+                onManualCheck={handleManualCheck}
               />
             ) : (
               <WebsiteListView
@@ -604,6 +609,7 @@ export default function MonitoringDashboard() {
                 onMove={moveWebsite}
                 onTogglePause={handleTogglePause}
                 onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+                 onManualCheck={handleManualCheck}
               />
             )}
           </div>
@@ -723,7 +729,3 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
-
-    
-
-    
