@@ -3,21 +3,25 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Website, MonitorType } from '@/lib/types';
-import { AddWebsiteForm } from './add-website-form';
+import { AddWebsiteForm } from '@/components/add-website-form';
 import { checkStatus, getAIDiagnosis } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-import { SummaryOverview } from './summary-overview';
+import { SummaryOverview } from '@/components/summary-overview';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Button } from './ui/button';
-import { EditWebsiteDialog } from './edit-website-dialog';
-import { ReportGenerator } from './report-generator';
+import { Button } from '@/components/ui/button';
+import { EditWebsiteDialog } from '@/components/edit-website-dialog';
+import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LayoutGrid, List } from 'lucide-react';
-import { WebsiteCardView } from './website-card-view';
-import { WebsiteListView } from './website-list-view';
+import { WebsiteCardView } from '@/components/website-card-view';
+import { WebsiteListView } from '@/components/website-list-view';
+import Image from 'next/image';
+import { LiveClock } from '@/components/live-clock';
+import { ThemeToggle } from '@/components/theme-toggle';
+
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
@@ -44,7 +48,7 @@ type WebsiteFormData = {
     keyword?: string;
 }
 
-export function MonitoringDashboard() {
+export default function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(() => 
     initialWebsites.map((site, index) => ({ ...site, displayOrder: index }))
   );
@@ -245,120 +249,154 @@ export function MonitoringDashboard() {
   }, [websites]);
 
   return (
-    <div className="container mx-auto p-4 md:p-8 space-y-8">
-      <SummaryOverview websites={websites} />
-      
-      <div className="space-y-4">
-        <div className="flex flex-col items-center gap-4">
-          <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
-          <ToggleGroup
-            type="single"
-            value={view}
-            onValueChange={(value) => value && setView(value as 'card' | 'list')}
-            aria-label="View mode"
-          >
-            <ToggleGroupItem value="card" aria-label="Card view">
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="List view">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+    <div className="flex flex-col min-h-screen">
+      <header className="bg-card border-b sticky top-0 z-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-24">
+            <div className="w-48 flex justify-start">
+                <LiveClock />
+            </div>
+            <div className="flex flex-col items-center gap-2 text-center">
+               <Image 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png"
+                alt="Parliament Logo"
+                width={40}
+                height={40}
+                className="h-10 w-10"
+                data-ai-hint="emblem"
+              />
+              <h1 className="text-lg md:text-xl font-bold text-foreground">
+                Bangladesh Parliament Web Services Monitoring Dashboard
+              </h1>
+            </div>
+            <div className="w-48 flex justify-end">
+                <ThemeToggle />
+            </div>
+          </div>
         </div>
+      </header>
+      <main className="flex-1">
+        <div className="container mx-auto p-4 md:p-8 space-y-8">
+          <SummaryOverview websites={websites} />
+          
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-4">
+              <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
+              <ToggleGroup
+                type="single"
+                value={view}
+                onValueChange={(value) => value && setView(value as 'card' | 'list')}
+                aria-label="View mode"
+              >
+                <ToggleGroupItem value="card" aria-label="Card view">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="List view">
+                  <List className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
 
-        {view === 'card' ? (
-          <WebsiteCardView 
-            websites={sortedWebsites}
-            onDelete={handleDeleteWebsite}
-            onDiagnose={handleDiagnose}
-            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-            onMove={moveWebsite}
-            onTogglePause={handleTogglePause}
-          />
-        ) : (
-          <WebsiteListView
-            websites={sortedWebsites}
-            onDelete={handleDeleteWebsite}
-            onDiagnose={handleDiagnose}
-            onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-            onMove={moveWebsite}
-            onTogglePause={handleTogglePause}
-          />
-        )}
-      </div>
+            {view === 'card' ? (
+              <WebsiteCardView 
+                websites={sortedWebsites}
+                onDelete={handleDeleteWebsite}
+                onDiagnose={handleDiagnose}
+                onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+                onMove={moveWebsite}
+                onTogglePause={handleTogglePause}
+              />
+            ) : (
+              <WebsiteListView
+                websites={sortedWebsites}
+                onDelete={handleDeleteWebsite}
+                onDiagnose={handleDiagnose}
+                onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+                onMove={moveWebsite}
+                onTogglePause={handleTogglePause}
+              />
+            )}
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
-        <Accordion type="single" collapsible className="w-full md:col-span-1">
-            <AccordionItem value="add-service">
-                <AccordionTrigger>Add Service</AccordionTrigger>
-                <AccordionContent>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Add a New Service</CardTitle>
-                            <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AddWebsiteForm onAddWebsite={handleAddWebsite} />
-                        </CardContent>
-                    </Card>
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
+            <Accordion type="single" collapsible className="w-full md:col-span-1">
+                <AccordionItem value="add-service">
+                    <AccordionTrigger>Add Service</AccordionTrigger>
+                    <AccordionContent>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Add a New Service</CardTitle>
+                                <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+                            </CardContent>
+                        </Card>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
 
-        <Accordion type="single" collapsible className="w-full md:col-span-1">
-            <AccordionItem value="settings">
-                <AccordionTrigger>Settings</AccordionTrigger>
-                <AccordionContent>
-                    <Card>
-                        <CardHeader>
-                        <CardTitle>Settings</CardTitle>
-                        <CardDescription>Customize the monitoring settings.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col sm:flex-row items-center gap-4">
-                                <div className='w-full sm:w-auto'>
-                                    <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
-                                    <Input
-                                    id="polling-interval"
-                                    type="number"
-                                    value={tempPollingInterval}
-                                    onChange={(e) => setTempPollingInterval(Number(e.target.value))}
-                                    placeholder="e.g. 30"
-                                    className="w-full sm:w-48"
-                                    />
+            <Accordion type="single" collapsible className="w-full md:col-span-1">
+                <AccordionItem value="settings">
+                    <AccordionTrigger>Settings</AccordionTrigger>
+                    <AccordionContent>
+                        <Card>
+                            <CardHeader>
+                            <CardTitle>Settings</CardTitle>
+                            <CardDescription>Customize the monitoring settings.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex flex-col sm:flex-row items-center gap-4">
+                                    <div className='w-full sm:w-auto'>
+                                        <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                                        <Input
+                                        id="polling-interval"
+                                        type="number"
+                                        value={tempPollingInterval}
+                                        onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                                        placeholder="e.g. 30"
+                                        className="w-full sm:w-48"
+                                        />
+                                    </div>
+                                    <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
                                 </div>
-                                <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
+                            </CardContent>
+                        </Card>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
 
-        <Accordion type="single" collapsible className="w-full md:col-span-1">
-            <AccordionItem value="report-generator">
-                <AccordionTrigger>Generate Report</AccordionTrigger>
-                <AccordionContent>
-                    <Card>
-                         <CardHeader>
-                            <CardTitle>Generate Report</CardTitle>
-                             <CardDescription>Download a monitoring report for your services.</CardDescription>
-                        </Header>
-                        <CardContent>
-                            <ReportGenerator websites={websites} />
-                        </CardContent>
-                    </Card>
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
-      </div>
-      
-      <EditWebsiteDialog 
-        isOpen={!!editingWebsite}
-        onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
-        website={editingWebsite}
-        onEditWebsite={handleEditWebsite}
-      />
+            <Accordion type="single" collapsible className="w-full md:col-span-1">
+                <AccordionItem value="report-generator">
+                    <AccordionTrigger>Generate Report</AccordionTrigger>
+                    <AccordionContent>
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>Generate Report</CardTitle>
+                                 <CardDescription>Download a monitoring report for your services.</CardDescription>
+                            </Header>
+                            <CardContent>
+                                <ReportGenerator websites={websites} />
+                            </CardContent>
+                        </Card>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+          </div>
+          
+          <EditWebsiteDialog 
+            isOpen={!!editingWebsite}
+            onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
+            website={editingWebsite}
+            onEditWebsite={handleEditWebsite}
+          />
+        </div>
+      </main>
+      <footer className="bg-card border-t py-4">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
+          <p>Developed by Network & Operation Section, Bangladesh Parliament Secretariat</p>
+        </div>
+      </footer>
     </div>
   );
 }
