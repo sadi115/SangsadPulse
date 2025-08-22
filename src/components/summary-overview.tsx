@@ -18,23 +18,23 @@ type SummaryOverviewProps = {
 const CHART_CONFIG = {
   up: {
     label: 'Up',
-    color: 'hsl(var(--chart-2))',
+    color: 'hsl(142.1 76.2% 36.3%)', // green-500
   },
   down: {
     label: 'Down',
-    color: 'hsl(var(--chart-5))',
+    color: 'hsl(0 84.2% 60.2%)', // red-500
   },
   checking: {
     label: 'Checking',
-    color: 'hsl(var(--chart-4))',
+    color: 'hsl(47.9 95.8% 53.1%)', // yellow-500
   },
   idle: {
     label: 'Idle',
-    color: 'hsl(var(--muted-foreground))',
+    color: 'hsl(215.4 16.3% 46.9%)', // muted-foreground
   },
    paused: {
     label: 'Paused',
-    color: 'hsl(var(--muted))',
+    color: 'hsl(220 8.9% 46.1%)', // gray-500
   },
 } satisfies ChartConfig;
 
@@ -57,7 +57,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
         { name: 'Up', value: summaryData.Up, fill: 'var(--color-up)' },
         { name: 'Down', value: summaryData.Down, fill: 'var(--color-down)' },
         { name: 'Checking', value: summaryData.Checking, fill: 'var(--color-checking)' },
-        { name: 'Idle', value: summaryData.Idle + summaryData.Checking, fill: 'var(--color-idle)' },
+        { name: 'Idle', value: summaryData.Idle, fill: 'var(--color-idle)' },
         { name: 'Paused', value: summaryData.Paused, fill: 'var(--color-paused)' },
     ].filter(d => d.value > 0);
 
