@@ -3,7 +3,7 @@
 import * as React from 'react';
 import type { Website } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, Label } from 'recharts';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -98,6 +98,22 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 innerRadius={50}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
+                                labelLine={false}
+                                label={({
+                                  payload,
+                                  ...props
+                                }) => {
+                                  return (
+                                    <text
+                                      {...props}
+                                      className="fill-muted-foreground text-xs"
+                                      textAnchor="middle"
+                                      dominantBaseline="central"
+                                    >
+                                      {payload.name} ({payload.value})
+                                    </text>
+                                  )
+                                }}
                             >
                                 <Label
                                   content={({ viewBox }) => {
@@ -131,10 +147,6 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                     <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                                 ))}
                             </Pie>
-                            <ChartLegend
-                                content={<ChartLegendContent nameKey="name" />}
-                                className="-mt-4"
-                            />
                         </PieChart>
                     </ChartContainer>
                 ) : (
