@@ -565,7 +565,7 @@ export default function MonitoringDashboard() {
                 data-ai-hint="emblem"
               />
               <h1 className="text-xl font-bold text-foreground hidden md:block">
-                Bangladesh Parliament Web Services
+                Bangladesh Parliament Web Service Monitor System
               </h1>
             </div>
             <div className="flex items-center gap-4">
@@ -750,5 +750,7 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
 
     
