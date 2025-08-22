@@ -267,7 +267,7 @@ export default function MonitoringDashboard() {
     const siteToDelete = websites.find(site => site.id === id);
     if (siteToDelete) {
         if (timeoutsRef.current.has(id)) {
-          clearTimeout(timeoutsRef.current.get(id));
+          clearTimeout(timeoutsRef.current.get(id)!);
           timeoutsRef.current.delete(id);
         }
         setWebsites(prev => prev.filter(site => site.id !== id));
@@ -282,7 +282,7 @@ export default function MonitoringDashboard() {
     setWebsites(prev =>
       prev.map(site =>
         site.id === id
-          ? { ...site, ...data, status: 'Idle' } // Reset status to trigger re-check
+          ? { ...site, ...data, status: 'Idle', latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } } // Reset status and history to trigger re-check
           : site
       )
     );
@@ -356,16 +356,23 @@ export default function MonitoringDashboard() {
       prev.map(site => {
         if (site.id === id) {
           const isPaused = !site.isPaused;
-          return {
-            ...site,
-            isPaused,
-            status: isPaused ? 'Paused' : 'Idle',
-          };
+          const newStatus = isPaused ? 'Paused' : 'Idle';
+          
+          if (isPaused && timeoutsRef.current.has(id)) {
+              clearTimeout(timeoutsRef.current.get(id)!);
+              timeoutsRef.current.delete(id);
+          } else if (!isPaused) {
+              const newSite = {...site, isPaused, status: newStatus};
+              schedulePoll(newSite);
+              return newSite;
+          }
+
+          return { ...site, isPaused, status: newStatus };
         }
         return site;
       })
     );
-  }, []);
+  }, [schedulePoll]);
 
   const sortedWebsites = useMemo(() => {
     return [...websites].sort((a, b) => {

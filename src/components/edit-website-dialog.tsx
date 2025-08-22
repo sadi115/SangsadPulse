@@ -37,14 +37,6 @@ type EditWebsiteDialogProps = {
 export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite, globalPollingInterval }: EditWebsiteDialogProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      url: '',
-      monitorType: 'HTTP(s)',
-      port: undefined,
-      keyword: '',
-      pollingInterval: undefined,
-    },
   });
 
   const monitorType = form.watch('monitorType');
@@ -207,3 +199,5 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
     </Dialog>
   );
 }
+
+    
