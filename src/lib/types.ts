@@ -6,7 +6,9 @@ export type MonitorType =
   | 'TCP Port'
   | 'Ping'
   | 'HTTP(s) - Keyword'
-  | 'Downtime';
+  | 'Downtime'
+  | 'SSL Certificate'
+  | 'DNS Records';
 
 export type StatusHistory = {
     time: string;

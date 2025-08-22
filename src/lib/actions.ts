@@ -1,11 +1,17 @@
+
 'use server';
 
 import { diagnoseWebsiteOutage } from '@/ai/flows/diagnose-website-outage';
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
 import type { Website } from '@/lib/types';
 import net from 'net';
+import tls from 'tls';
+import dns from 'dns';
+import { promisify } from 'util';
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
+
+const dnsResolve = promisify(dns.resolve);
 
 async function checkTcpPort(host: string, port: number): Promise<CheckStatusResult> {
   return new Promise((resolve) => {
@@ -138,6 +144,106 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
     }
 }
 
+async function checkSsl(host: string): Promise<CheckStatusResult> {
+    return new Promise((resolve) => {
+        const startTime = performance.now();
+        const options = {
+            host: host,
+            port: 443,
+            rejectUnauthorized: false, // We handle errors manually
+        };
+
+        const socket = tls.connect(options, () => {
+            const endTime = performance.now();
+            const cert = socket.getPeerCertificate();
+            socket.end();
+
+            if (socket.authorizationError) {
+                resolve({
+                    status: 'Down',
+                    httpResponse: `SSL Error: ${socket.authorizationError}`,
+                    lastChecked: new Date().toISOString(),
+                    latency: 0,
+                });
+                return;
+            }
+
+            const validTo = new Date(cert.valid_to);
+            const daysRemaining = Math.floor((validTo.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+
+            if (daysRemaining <= 0) {
+                resolve({
+                    status: 'Down',
+                    httpResponse: `Certificate expired ${Math.abs(daysRemaining)} days ago.`,
+                    lastChecked: new Date().toISOString(),
+                    latency: 0,
+                });
+            } else {
+                 resolve({
+                    status: 'Up',
+                    httpResponse: `Certificate valid. Expires in ${daysRemaining} days.`,
+                    lastChecked: new Date().toISOString(),
+                    latency: Math.round(endTime - startTime),
+                });
+            }
+        });
+
+        socket.setTimeout(5000);
+
+        socket.on('error', (err) => {
+            socket.destroy();
+            resolve({
+                status: 'Down',
+                httpResponse: `SSL connection failed: ${err.message}`,
+                lastChecked: new Date().toISOString(),
+                latency: 0,
+            });
+        });
+
+        socket.on('timeout', () => {
+            socket.destroy();
+            resolve({
+                status: 'Down',
+                httpResponse: 'SSL connection timed out.',
+                lastChecked: new Date().toISOString(),
+                latency: 0,
+            });
+        });
+    });
+}
+
+async function checkDns(host: string): Promise<CheckStatusResult> {
+    try {
+        const startTime = performance.now();
+        const records = await dnsResolve(host);
+        const endTime = performance.now();
+
+        if (records && records.length > 0) {
+            return {
+                status: 'Up',
+                httpResponse: `DNS resolved successfully.`,
+                lastChecked: new Date().toISOString(),
+                latency: Math.round(endTime - startTime),
+            };
+        } else {
+            return {
+                status: 'Down',
+                httpResponse: 'No DNS records found.',
+                lastChecked: new Date().toISOString(),
+                latency: 0,
+            };
+        }
+    } catch (error: any) {
+        return {
+            status: 'Down',
+            httpResponse: `DNS resolution failed: ${error.code || error.message}`,
+            lastChecked: new Date().toISOString(),
+            latency: 0,
+        };
+    }
+}
+
+
 export async function checkStatus(website: Website): Promise<CheckStatusResult> {
   const { monitorType, url, port } = website;
   
@@ -163,6 +269,10 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
                 return { ...result, httpResponse: `Host is reachable` };
             }
             return { ...result, httpResponse: `Host is unreachable. Reason: ${result.httpResponse}` };
+        case 'SSL Certificate':
+             return checkSsl(hostname);
+        case 'DNS Records':
+            return checkDns(hostname);
         case 'HTTP(s)':
         case 'HTTP(s) - Keyword':
         default:
@@ -185,6 +295,10 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
                     return { ...result, httpResponse: `Host is reachable` };
                 }
                 return { ...result, httpResponse: `Host is unreachable. Reason: ${result.httpResponse}` };
+            case 'SSL Certificate':
+                return checkSsl(url);
+            case 'DNS Records':
+                return checkDns(url);
             default:
                  return { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
         }

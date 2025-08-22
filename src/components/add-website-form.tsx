@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Globe, Type, Tag, Hash, Search, Timer } from 'lucide-react';
+import { Globe, Type, Tag, Hash, Search, Timer, Lock, Book } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import type { MonitorType } from '@/lib/types';
 
@@ -18,6 +19,11 @@ const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] 
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
     { label: "Downtime", value: "Downtime" },
 ];
+
+const advancedMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
+     { label: "SSL Certificate", value: "SSL Certificate" },
+     { label: "DNS Records", value: "DNS Records" },
+]
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
@@ -71,12 +77,31 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval }: AddWebsi
                             </FormControl>
                             <SelectContent>
                                 <SelectGroup>
-                                    <SelectLabel>General Monitor Type</SelectLabel>
+                                    <SelectLabel>General Monitors</SelectLabel>
                                     {monitorTypes.map(type => (
                                         <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
-                                            {type.label}
+                                            <div className="flex items-center gap-2">
+                                                {type.value === 'HTTP(s)' && <Globe className="h-4 w-4" />}
+                                                {type.value === 'HTTP(s) - Keyword' && <Search className="h-4 w-4" />}
+                                                {type.value === 'TCP Port' && <Hash className="h-4 w-4" />}
+                                                {type.value === 'Ping' && <Timer className="h-4 w-4" />}
+                                                {type.value === 'Downtime' && <PauseCircle className="h-4 w-4" />}
+                                                {type.label}
+                                            </div>
                                         </SelectItem>
                                     ))}
+                                </SelectGroup>
+                                <SelectGroup>
+                                     <SelectLabel>Advanced Monitors</SelectLabel>
+                                     {advancedMonitorTypes.map(type => (
+                                        <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
+                                            <div className="flex items-center gap-2">
+                                                {type.value === 'SSL Certificate' && <Lock className="h-4 w-4" />}
+                                                {type.value === 'DNS Records' && <Book className="h-4 w-4" />}
+                                                {type.label}
+                                            </div>
+                                        </SelectItem>
+                                     ))}
                                 </SelectGroup>
                             </SelectContent>
                         </Select>
@@ -107,7 +132,7 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval }: AddWebsi
               name="url"
               render={({ field }) => (
                 <FormItem>
-                   <FormLabel>{monitorType === 'TCP Port' || monitorType === 'Ping' ? 'Hostname or IP' : 'URL'}</FormLabel>
+                   <FormLabel>{monitorType === 'TCP Port' || monitorType === 'Ping' || monitorType === 'SSL Certificate' || monitorType === 'DNS Records' ? 'Hostname or IP' : 'URL'}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
