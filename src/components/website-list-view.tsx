@@ -70,7 +70,7 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
             <div className="w-2 h-8"></div>
             <div className="flex-1 grid grid-cols-12 items-center gap-4">
                 <div className="col-span-4">SERVICE</div>
-                <div className="col-span-4 text-right pr-4">UPTIME (LAST 24H)</div>
+                <div className="col-span-4 text-right pr-4">UPTIME</div>
                 <div className="col-span-2 text-right">LATENCY</div>
                 <div className="col-span-1 text-right">LAST CHECK</div>
                 <div className="col-span-1 text-right">ACTIONS</div>
