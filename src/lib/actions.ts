@@ -28,7 +28,7 @@ async function checkTcpPort(host: string, port: number): Promise<CheckStatusResu
         status: 'Up',
         httpResponse: `Port ${port} is open`,
         lastChecked: new Date().toISOString(),
-        latency: Math.round(endTime - startTime),
+        latency: Math.max(1, Math.round(endTime - startTime)),
       });
     });
 
@@ -103,7 +103,7 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
         }
 
         const endTime = performance.now();
-        const latency = Math.round(endTime - startTime);
+        const latency = Math.max(1, Math.round(endTime - startTime));
 
         let responseText = `${response.status} ${response.statusText}`;
         let status: 'Up' | 'Down' = response.ok ? 'Up' : 'Down';
@@ -158,7 +158,7 @@ async function checkDns(host: string): Promise<CheckStatusResult> {
                     status: 'Up',
                     httpResponse: `Reverse DNS resolved successfully.`,
                     lastChecked: new Date().toISOString(),
-                    latency: Math.round(endTime - startTime),
+                    latency: Math.max(1, Math.round(endTime - startTime)),
                 };
             } else {
                  return {
@@ -178,7 +178,7 @@ async function checkDns(host: string): Promise<CheckStatusResult> {
                     status: 'Up',
                     httpResponse: `DNS resolved successfully.`,
                     lastChecked: new Date().toISOString(),
-                    latency: Math.round(endTime - startTime),
+                    latency: Math.max(1, Math.round(endTime - startTime)),
                 };
             } else {
                 return {
