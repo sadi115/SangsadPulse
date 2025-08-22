@@ -1,3 +1,4 @@
+
 'use client';
 import type { Website } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,7 +86,6 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 data={chartData}
                                 dataKey="value"
                                 nameKey="name"
-                                innerRadius={50}
                                 outerRadius={80}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
