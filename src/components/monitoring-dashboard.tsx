@@ -38,7 +38,9 @@ const initialWebsites: Omit<Website, 'displayOrder' | 'uptimeData'>[] = [
   { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
   { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
   { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [] },
+  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [] },
 ];
 
 const MAX_LATENCY_HISTORY = 50;
@@ -270,91 +272,70 @@ export default function MonitoringDashboard() {
   }, [updateWebsite]);
 
 
-  const schedulePoll = useCallback((website: Website, newInterval?: number) => {
-      if (timeoutsRef.current.has(website.id)) {
-          clearTimeout(timeoutsRef.current.get(website.id));
-      }
+  const schedulePoll = useCallback((website: Website) => {
+    // This function will be called by the main polling useEffect.
+    // It runs the pollWebsite function at the correct interval for a single website.
+    
+    // Clear any existing timeout for this website to avoid duplicates
+    if (timeoutsRef.current.has(website.id)) {
+        clearTimeout(timeoutsRef.current.get(website.id)!);
+    }
+    
+    if (website.isPaused || website.monitorType === 'Downtime') {
+        return; // Don't schedule polling for paused or downtime monitors
+    }
 
-      if (website.isPaused || website.monitorType === 'Downtime') {
-          timeoutsRef.current.delete(website.id);
-          return;
-      }
+    const interval = (website.pollingInterval || pollingInterval) * 1000;
 
-      const interval = (newInterval || website.pollingInterval || pollingInterval) * 1000;
-      
-      const run = async () => {
-          let currentWebsite: Website | undefined;
-          setWebsites(prev => {
-              currentWebsite = prev.find(w => w.id === website.id);
-              return prev;
-          });
+    const pollAndReschedule = async () => {
+        let currentWebsiteState: Website | undefined;
+        // Use functional update to get the absolute latest state of the website
+        setWebsites(currentWebsites => {
+            currentWebsiteState = currentWebsites.find(w => w.id === website.id);
+            return currentWebsites; // This doesn't change the state, just reads it
+        });
+        
+        if (currentWebsiteState && !currentWebsiteState.isPaused) {
+            await pollWebsite(currentWebsiteState);
+        }
+        
+        // After the poll is done, schedule the next one
+        const timeoutId = setTimeout(pollAndReschedule, interval);
+        timeoutsRef.current.set(website.id, timeoutId);
+    };
 
-          if (currentWebsite) {
-              await pollWebsite(currentWebsite);
-          }
-      };
-
-      const timeoutId = setTimeout(run, interval);
-      timeoutsRef.current.set(website.id, timeoutId);
+    // Stagger initial checks to avoid overwhelming the server on app load
+    const initialDelay = Math.random() * 5000; // 0-5 seconds
+    const initialTimeoutId = setTimeout(() => {
+        pollAndReschedule();
+    }, initialDelay);
+    
+    timeoutsRef.current.set(website.id, initialTimeoutId);
 
   }, [pollWebsite, pollingInterval]);
 
   useEffect(() => {
-    // This effect manages the polling loops for all websites.
-    // It runs whenever the list of websites or the global polling interval changes.
+    // This is the main polling orchestrator.
+    // It's responsible for starting and stopping the polling loops for ALL websites.
     if (!isLoaded) return;
     
-    // Create a new map for the current set of timeouts
-    const newTimeouts = new Map<string, NodeJS.Timeout>();
-
+    // Clear all existing timeouts before rescheduling
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current.clear();
+    
     websites.forEach(site => {
-        // Always clear the old timeout for this site, if one exists
-        if (timeoutsRef.current.has(site.id)) {
-            clearTimeout(timeoutsRef.current.get(site.id)!);
-        }
-
-        if (!site.isPaused && site.monitorType !== 'Downtime') {
-            const interval = (site.pollingInterval || pollingInterval) * 1000;
-            
-            const run = async () => {
-                // To ensure pollWebsite gets the latest state, we use the functional update form of setWebsites
-                let freshSite: Website | undefined;
-                setWebsites(currentWebsites => {
-                    freshSite = currentWebsites.find(w => w.id === site.id);
-                    if (freshSite) {
-                        pollWebsite(freshSite);
-                    }
-                    return currentWebsites;
-                });
-            };
-
-            // Stagger initial checks when the app loads to avoid overwhelming the server
-            const isInitialLoad = !timeoutsRef.current.has(site.id);
-            const initialDelay = isInitialLoad ? Math.random() * 5000 : 0; // 0-5 seconds
-
-            const initialTimeoutId = setTimeout(() => {
-                run(); // Run the first poll
-                // Then set up the recurring poll
-                const recurringTimeoutId = setInterval(run, interval);
-                newTimeouts.set(site.id, recurringTimeoutId);
-            }, initialDelay);
-            
-            // Store the initial timeout so we can clear it on unmount
-            newTimeouts.set(`${site.id}-initial`, initialTimeoutId);
-        }
+        schedulePoll(site);
     });
-
-    // Replace the old timeouts map with the new one
-    timeoutsRef.current = newTimeouts;
-
-    // Cleanup function to clear all timeouts when the component unmounts or dependencies change
+    
+    // The cleanup function is crucial. It runs when the component unmounts
+    // or when dependencies change, ensuring no memory leaks from old timers.
     return () => {
-        timeoutsRef.current.forEach(timeoutId => {
-            clearTimeout(timeoutId); // Works for both setTimeout and setInterval
-        });
+        timeoutsRef.current.forEach(clearTimeout);
         timeoutsRef.current.clear();
     };
-  }, [websites, pollingInterval, isLoaded, pollWebsite]);
+  // Re-run this ENTIRE effect if the list of websites or the global interval changes.
+  // This ensures that new websites get polled, removed ones are stopped, and interval changes are respected.
+  }, [websites, pollingInterval, isLoaded, schedulePoll]);
 
 
 
@@ -379,17 +360,23 @@ export default function MonitoringDashboard() {
       isLoading: true,
     };
     
-    // Poll immediately for quick feedback
+    // Set isLoading to true immediately
+    setWebsites(prev => [...prev, newWebsite]);
+
+    // Poll immediately for quick feedback. After this poll, the `isLoading` state will be set to false inside `updateWebsite`.
     pollWebsite(newWebsite);
     
-    // Add to state, which will trigger the main useEffect to schedule its regular polling
-    setWebsites(prev => [...prev, newWebsite]);
+    // The main useEffect will automatically pick up this new website and schedule its regular polling.
 
   }, [websites, toast, pollWebsite]);
 
   const handleDeleteWebsite = useCallback((id: string) => {
     const siteToDelete = websites.find(site => site.id === id);
     if (siteToDelete) {
+        if (timeoutsRef.current.has(id)) {
+            clearTimeout(timeoutsRef.current.get(id)!);
+            timeoutsRef.current.delete(id);
+        }
         setWebsites(prev => prev.filter(site => site.id !== id));
         toast({
             title: "Service Removed",
@@ -402,7 +389,12 @@ export default function MonitoringDashboard() {
     const siteToEdit = websites.find(w => w.id === id);
     if (!siteToEdit) return;
     
-    // Create the updated site object with the new data
+    // Stop the old timer
+    if (timeoutsRef.current.has(id)) {
+        clearTimeout(timeoutsRef.current.get(id)!);
+        timeoutsRef.current.delete(id);
+    }
+    
     const updatedSite: Website = {
       ...siteToEdit,
       ...data,
@@ -419,11 +411,9 @@ export default function MonitoringDashboard() {
       highestLatency: undefined,
     };
     
-    // Poll the website with its new data immediately
-    pollWebsite(updatedSite);
-    
-    // Update the state, which will trigger the main useEffect to reschedule with the new interval
     setWebsites(prev => prev.map(s => s.id === id ? updatedSite : s));
+    
+    pollWebsite(updatedSite);
     
     toast({
         title: "Service Updated",
@@ -508,11 +498,16 @@ export default function MonitoringDashboard() {
     const isNowPaused = !site.isPaused;
     
     if (isNowPaused) {
+        // Stop the timer
+        if (timeoutsRef.current.has(id)) {
+            clearTimeout(timeoutsRef.current.get(id)!);
+            timeoutsRef.current.delete(id);
+        }
         setWebsites(prev => prev.map(s => s.id === id ? { ...s, isPaused: true, status: 'Paused' } : s));
     } else {
         const unpausedSite = { ...site, isPaused: false, status: 'Idle', isLoading: true };
         setWebsites(prev => prev.map(s => s.id === id ? unpausedSite : s));
-        pollWebsite(unpausedSite);
+        pollWebsite(unpausedSite); // This will also reschedule polling via main effect
     }
   }, [websites, pollWebsite]);
 
