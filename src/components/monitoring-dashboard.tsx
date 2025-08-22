@@ -162,61 +162,61 @@ export default function MonitoringDashboard() {
     }
   }, [view]);
 
-  const updateWebsite = useCallback((id: string, updates: Partial<Website> & { newStatusHistoryEntry?: StatusHistory }) => {
-    setWebsites(prev =>
-      prev.map(site => {
-        if (site.id === id) {
-          const { newStatusHistoryEntry, ...restUpdates } = updates;
-          
-          const newLatencyHistory = [
-            ...(site.latencyHistory || []),
-            ...(updates.latency !== undefined ? [{ time: new Date().toISOString(), latency: updates.latency }] : []),
-          ].slice(-MAX_LATENCY_HISTORY);
-          
-          let newStatusHistory = [...(site.statusHistory || [])];
-          if(newStatusHistoryEntry) {
-              const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
-              if (newStatusHistoryEntry.status !== lastStatus) {
-                  newStatusHistory.push(newStatusHistoryEntry);
+    const updateWebsiteState = useCallback((id: string, updates: Partial<Website> & { newStatusHistoryEntry?: StatusHistory }) => {
+        setWebsites(prev =>
+          prev.map(site => {
+            if (site.id === id) {
+              const { newStatusHistoryEntry, ...restUpdates } = updates;
+              
+              const newLatencyHistory = [
+                ...(site.latencyHistory || []),
+                ...(updates.latency !== undefined ? [{ time: new Date().toISOString(), latency: updates.latency }] : []),
+              ].slice(-MAX_LATENCY_HISTORY);
+              
+              let newStatusHistory = [...(site.statusHistory || [])];
+              if(newStatusHistoryEntry) {
+                  const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
+                  if (newStatusHistoryEntry.status !== lastStatus) {
+                      newStatusHistory.push(newStatusHistoryEntry);
+                  }
               }
-          }
-          newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
-
-          let averageLatency, lowestLatency, highestLatency;
-          if (newLatencyHistory.length > 0) {
-            const upHistory = newLatencyHistory.filter(h => h.latency > 0);
-            if(upHistory.length > 0) {
-              const totalLatency = upHistory.reduce((acc, curr) => acc + curr.latency, 0);
-              averageLatency = Math.round(totalLatency / upHistory.length);
-              lowestLatency = Math.min(...upHistory.map(h => h.latency));
-              highestLatency = Math.max(...upHistory.map(h => h.latency));
+              newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
+    
+              let averageLatency, lowestLatency, highestLatency;
+              if (newLatencyHistory.length > 0) {
+                const upHistory = newLatencyHistory.filter(h => h.latency > 0);
+                if(upHistory.length > 0) {
+                  const totalLatency = upHistory.reduce((acc, curr) => acc + curr.latency, 0);
+                  averageLatency = Math.round(totalLatency / upHistory.length);
+                  lowestLatency = Math.min(...upHistory.map(h => h.latency));
+                  highestLatency = Math.max(...upHistory.map(h => h.latency));
+                }
+              }
+    
+              const uptimeData = calculateUptime(newLatencyHistory);
+    
+              const newSite = { 
+                ...site, 
+                ...restUpdates, 
+                latencyHistory: newLatencyHistory,
+                statusHistory: newStatusHistory, 
+                averageLatency, 
+                lowestLatency,
+                highestLatency,
+                uptimeData,
+                isLoading: false,
+              };
+              
+              if (updates.status === 'Down' && site.status !== 'Down') {
+                newSite.lastDownTime = new Date().toISOString();
+              }
+    
+              return newSite;
             }
-          }
-
-          const uptimeData = calculateUptime(newLatencyHistory);
-
-          const newSite = { 
-            ...site, 
-            ...restUpdates, 
-            latencyHistory: newLatencyHistory,
-            statusHistory: newStatusHistory, 
-            averageLatency, 
-            lowestLatency,
-            highestLatency,
-            uptimeData,
-            isLoading: false,
-          };
-          
-          if (updates.status === 'Down' && site.status !== 'Down') {
-            newSite.lastDownTime = new Date().toISOString();
-          }
-
-          return newSite;
-        }
-        return site;
-      })
-    );
-  }, []);
+            return site;
+          })
+        );
+      }, []);
 
   const scheduleNextPoll = useCallback((website: Website) => {
     if (timeoutsRef.current.has(website.id)) {
@@ -224,31 +224,30 @@ export default function MonitoringDashboard() {
     }
     
     const interval = (website.pollingInterval || pollingInterval) * 1000;
-    const timeoutId = setTimeout(() => pollWebsite(website.id), interval);
+    const timeoutId = setTimeout(() => pollWebsite(website), interval);
     timeoutsRef.current.set(website.id, timeoutId);
   }, [pollingInterval]);
 
 
-  const pollWebsite = useCallback(async (websiteId: string) => {
-    const siteToCheck = websites.find(w => w.id === websiteId);
-    if (!siteToCheck) return;
+  const pollWebsite = useCallback(async (website: Website) => {
+    if (!website) return;
 
-    if (siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
-      updateWebsite(siteToCheck.id, {
-        status: siteToCheck.monitorType === 'Downtime' ? 'Down' : 'Paused',
-        httpResponse: siteToCheck.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
+    if (website.isPaused || website.monitorType === 'Downtime') {
+      updateWebsiteState(website.id, {
+        status: website.monitorType === 'Downtime' ? 'Down' : 'Paused',
+        httpResponse: website.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
         isLoading: false
       });
       return; 
     }
 
-    updateWebsite(siteToCheck.id, { status: 'Checking' });
+    updateWebsiteState(website.id, { status: 'Checking' });
 
     try {
-      const result = await checkStatus(siteToCheck);
+      const result = await checkStatus(website);
       let ttfbResult;
-      if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-        ttfbResult = await getTtfb({ url: siteToCheck.url });
+      if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
+        ttfbResult = await getTtfb({ url: website.url });
       }
 
       const newStatusHistoryEntry: StatusHistory = {
@@ -258,24 +257,23 @@ export default function MonitoringDashboard() {
         reason: result.httpResponse,
       };
 
-      updateWebsite(siteToCheck.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
+      updateWebsiteState(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
     } catch (error) {
-      console.error(`Failed to check status for ${siteToCheck.url}`, error);
+      console.error(`Failed to check status for ${website.url}`, error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      updateWebsite(siteToCheck.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
+      updateWebsiteState(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
     }
-  }, [websites, updateWebsite]);
+  }, [websites, updateWebsiteState]);
 
   useEffect(() => {
     if (!isLoaded) return;
     
     websites.forEach(site => {
-        // Only schedule if it's not already scheduled, or if it has finished loading and is ready for its first real poll.
-        if (!timeoutsRef.current.has(site.id) && site.isLoading) {
+        if (site.isLoading && !timeoutsRef.current.has(site.id)) {
              const initialDelay = Math.random() * 5000; // Stagger initial polls
-             const timeoutId = setTimeout(() => pollWebsite(site.id), initialDelay);
+             const timeoutId = setTimeout(() => pollWebsite(site), initialDelay);
              timeoutsRef.current.set(site.id, timeoutId);
-        } else if (!site.isPaused && site.monitorType !== 'Downtime') {
+        } else if (!site.isPaused && site.monitorType !== 'Downtime' && !site.isLoading) {
             scheduleNextPoll(site);
         }
     });
@@ -427,7 +425,7 @@ export default function MonitoringDashboard() {
             clearTimeout(timeoutsRef.current.get(id)!);
             timeoutsRef.current.delete(id);
         }
-        pollWebsite(website.id);
+        pollWebsite(website);
     }
   }, [websites, pollWebsite, toast]);
 
@@ -436,22 +434,22 @@ export default function MonitoringDashboard() {
     if (!website || !website.httpResponse) return;
 
     try {
-      updateWebsite(id, { diagnosis: 'AI is analyzing...' });
+      updateWebsiteState(id, { diagnosis: 'AI is analyzing...' });
       const { diagnosis } = await getAIDiagnosis({
         url: website.url,
         httpResponse: website.httpResponse,
       });
-      updateWebsite(id, { diagnosis });
+      updateWebsiteState(id, { diagnosis });
     } catch (error) {
       console.error('Diagnosis failed for', website.url, error);
-      updateWebsite(id, { diagnosis: 'AI analysis failed.' });
+      updateWebsiteState(id, { diagnosis: 'AI analysis failed.' });
       toast({
         title: 'Diagnosis Failed',
         description: 'Could not get AI analysis for the website.',
         variant: 'destructive',
       });
     }
-  }, [websites, updateWebsite, toast]);
+  }, [websites, updateWebsiteState, toast]);
 
   const handleIntervalChange = () => {
     if(tempPollingInterval > 0) {
@@ -724,7 +722,3 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
-
-    
-
-    
