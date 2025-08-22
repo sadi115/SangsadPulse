@@ -226,6 +226,11 @@ export default function MonitoringDashboard() {
   }, []);
 
   const scheduleNextPoll = useCallback((website: Website) => {
+    // Clear any existing timeout for this website to prevent duplicates
+    if (timeoutsRef.current.has(website.id)) {
+        clearTimeout(timeoutsRef.current.get(website.id)!);
+    }
+    
     const interval = (website.pollingInterval || pollingIntervalRef.current) * 1000;
     const timeoutId = setTimeout(() => pollWebsite(website), interval);
     timeoutsRef.current.set(website.id, timeoutId);
@@ -238,6 +243,7 @@ export default function MonitoringDashboard() {
         httpResponse: website.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
         isLoading: false
       });
+      // Do not reschedule paused/downtime monitors
       return;
     }
 
@@ -263,38 +269,43 @@ export default function MonitoringDashboard() {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       updateWebsite(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
     }
+  }, [updateWebsite]);
 
-    // After the check, schedule the next one.
-    // Use setWebsites' functional update to get the latest site config.
-    setWebsites(currentWebsites => {
-        const siteToReschedule = currentWebsites.find(w => w.id === website.id);
-        if (siteToReschedule) {
-            scheduleNextPoll(siteToReschedule);
-        }
-        return currentWebsites;
-    });
-  }, [updateWebsite, scheduleNextPoll]);
-
+  // This effect hook is now responsible for scheduling and rescheduling polls.
   useEffect(() => {
     if (!isLoaded) return;
 
-    // Start polling for all websites.
     websites.forEach(website => {
-      if (!timeoutsRef.current.has(website.id)) {
-        // Stagger initial polls to avoid a thundering herd
-        const initialDelay = Math.random() * 5000; 
-        const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
-        timeoutsRef.current.set(website.id, timeoutId);
-      }
+        // If a site is not paused/downtime and has no scheduled poll, schedule one.
+        if (!website.isPaused && website.monitorType !== 'Downtime' && !timeoutsRef.current.has(website.id)) {
+           // Stagger initial polls to avoid a thundering herd
+           const initialDelay = Math.random() * 5000; 
+           const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
+           timeoutsRef.current.set(website.id, timeoutId);
+        } else if ((website.isPaused || website.monitorType === 'Downtime') && timeoutsRef.current.has(website.id)) {
+            // If a site becomes paused, clear its timeout
+            clearTimeout(timeoutsRef.current.get(website.id)!);
+            timeoutsRef.current.delete(website.id);
+        }
     });
 
-    // Cleanup function
+    // This is the dependency that makes rescheduling work correctly after an update.
+    // When `websites` changes, this effect re-evaluates scheduling for all sites.
+    const previousSites = previousWebsitesRef.current;
+    websites.forEach(site => {
+        const prevSite = previousSites.find(p => p.id === site.id);
+        if (prevSite && prevSite.isLoading === false) { // Reschedule only after the check is done
+             scheduleNextPoll(site);
+        }
+    });
+    previousWebsitesRef.current = websites;
+
+
+    // Cleanup function to clear all timeouts when the component unmounts
     return () => {
       timeoutsRef.current.forEach(clearTimeout);
     };
-    // This effect should only run when the component mounts and `isLoaded` becomes true.
-    // The polling loop is now self-sustaining via `scheduleNextPoll`.
-  }, [isLoaded, pollWebsite]);
+  }, [isLoaded, websites, pollWebsite, scheduleNextPoll]);
   
     const showNotification = (site: Website) => {
         if (!notificationsEnabled) return;
@@ -551,7 +562,7 @@ export default function MonitoringDashboard() {
   }, [websites, searchTerm]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-secondary/50 dark:bg-background">
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -750,6 +761,8 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
 
     
 
