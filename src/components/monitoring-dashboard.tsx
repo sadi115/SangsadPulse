@@ -43,6 +43,7 @@ const initialWebsites: Omit<Website, 'displayOrder' | 'uptimeData'>[] = [
 
 const MAX_LATENCY_HISTORY = 50;
 const MAX_STATUS_HISTORY = 100;
+const LOCAL_STORAGE_KEY = 'monitoring-websites';
 
 type WebsiteFormData = {
     name: string;
@@ -78,14 +79,31 @@ const calculateUptime = (history: { time: string; latency: number }[]): UptimeDa
 };
 
 export default function MonitoringDashboard() {
-  const [websites, setWebsites] = useState<Website[]>(() => 
-    initialWebsites.map((site, index) => ({ 
+  const [websites, setWebsites] = useState<Website[]>(() => {
+    try {
+        const savedWebsites = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedWebsites) {
+            const parsed = JSON.parse(savedWebsites);
+            // Reset runtime state on load
+            return parsed.map((site: Website) => ({
+                ...site,
+                status: 'Idle',
+                isLoading: true,
+                latency: undefined,
+                lastDownTime: undefined,
+                httpResponse: undefined,
+            }));
+        }
+    } catch (error) {
+        console.warn("Could not load websites from localStorage", error);
+    }
+    return initialWebsites.map((site, index) => ({ 
         ...site, 
         displayOrder: index, 
         isLoading: true,
         uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
-    }))
-  );
+    }));
+  });
   const [pollingInterval, setPollingInterval] = useState(30);
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
@@ -118,6 +136,19 @@ export default function MonitoringDashboard() {
         console.warn("Could not save view to localStorage", error)
     }
   }, [view]);
+
+  useEffect(() => {
+    try {
+        // We only want to store the "config" of the websites, not their runtime state
+        const sitesToSave = websites.map(({ 
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            status, lastChecked, httpResponse, diagnosis, latency, averageLatency, lowestLatency, highestLatency, lastDownTime, ttfb, isLoading, ...rest 
+        }) => rest);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sitesToSave));
+    } catch (error) {
+        console.warn("Could not save websites to localStorage", error);
+    }
+  }, [websites]);
 
   useEffect(() => {
     if (!notificationsEnabled) return;
@@ -692,5 +723,7 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
 
     
