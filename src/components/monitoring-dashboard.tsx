@@ -247,7 +247,15 @@ export default function MonitoringDashboard() {
 
           if (currentWebsite) {
               await pollWebsite(currentWebsite);
-              schedulePoll(currentWebsite); // Reschedule after completion
+              // After poll completes, find the *latest* version of the site from state
+              // to ensure we have the most up-to-date interval info for the next schedule.
+              setWebsites(prev => {
+                const latestSite = prev.find(w => w.id === website.id);
+                if (latestSite) {
+                    schedulePoll(latestSite);
+                }
+                return prev;
+              });
           }
       };
 
@@ -341,11 +349,13 @@ export default function MonitoringDashboard() {
     const siteToEdit = websites.find(w => w.id === id);
     if (!siteToEdit) return;
 
+    // Stop the current polling loop
     if (timeoutsRef.current.has(id)) {
         clearTimeout(timeoutsRef.current.get(id)!);
         timeoutsRef.current.delete(id);
     }
     
+    // Create the updated site object with the new data
     const updatedSite: Website = {
       ...siteToEdit,
       ...data,
@@ -362,16 +372,12 @@ export default function MonitoringDashboard() {
       highestLatency: undefined,
     };
 
+    // Update the state immediately
     setWebsites(prev => prev.map(s => s.id === id ? updatedSite : s));
+    
+    // Poll the website with its new data, and then schedule the next poll with the correct new interval
     pollWebsite(updatedSite).then(() => {
-        let currentSite: Website | undefined;
-        setWebsites(prev => {
-            currentSite = prev.find(w => w.id === updatedSite.id);
-            return prev;
-        });
-        if (currentSite) {
-            schedulePoll(currentSite, data.pollingInterval);
-        }
+        schedulePoll(updatedSite, data.pollingInterval);
     });
     
     toast({
