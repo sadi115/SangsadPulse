@@ -85,7 +85,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 data={chartData}
                                 dataKey="value"
                                 nameKey="name"
-                                innerRadius={0}
+                                innerRadius={50}
                                 outerRadius={80}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
@@ -194,3 +194,5 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
     </Card>
   );
 }
+
+    
