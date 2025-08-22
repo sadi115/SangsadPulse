@@ -296,6 +296,26 @@ export default function MonitoringDashboard() {
     // The polling loop is now self-sustaining via `scheduleNextPoll`.
   }, [isLoaded, pollWebsite]);
   
+    const showNotification = (site: Website) => {
+        if (!notificationsEnabled) return;
+
+        // In-app toast notification
+        toast({
+            title: 'Service Down',
+            description: `${site.name} is currently down.`,
+            variant: 'destructive',
+        });
+
+        // Browser push notification
+        if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+            new Notification('Service Alert', {
+                body: `${site.name} is currently down.`,
+                icon: '/favicon.ico', // Optional: you can add an icon
+            });
+        }
+    }
+
+
   useEffect(() => {
     if (!notificationsEnabled) return;
     
@@ -303,15 +323,33 @@ export default function MonitoringDashboard() {
     websites.forEach((site) => {
         const prevSite = prevWebsites.find(p => p.id === site.id);
         if (prevSite && prevSite.status !== 'Down' && site.status === 'Down') {
-            toast({
-                title: 'Service Down',
-                description: `${site.name} is currently down.`,
-                variant: 'destructive',
-            });
+            showNotification(site);
         }
     });
     previousWebsitesRef.current = websites;
-  }, [websites, toast, notificationsEnabled]);
+  }, [websites, notificationsEnabled]);
+
+    const handleNotificationToggle = (enabled: boolean) => {
+        setNotificationsEnabled(enabled);
+        if (enabled && 'Notification' in window && Notification.permission !== 'granted') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    toast({
+                        title: "Notifications Enabled",
+                        description: "You will now receive desktop notifications for alerts."
+                    });
+                } else {
+                     toast({
+                        title: "Notifications Blocked",
+                        description: "To receive alerts, you'll need to enable notifications in your browser settings.",
+                        variant: 'destructive'
+                    });
+                    setNotificationsEnabled(false);
+                }
+            });
+        }
+    };
+
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
     setWebsites(prev => {
@@ -652,7 +690,7 @@ export default function MonitoringDashboard() {
                                   <Switch
                                     id="notifications-switch"
                                     checked={notificationsEnabled}
-                                    onCheckedChange={setNotificationsEnabled}
+                                    onCheckedChange={handleNotificationToggle}
                                   />
                                 </div>
                             </CardContent>
@@ -712,3 +750,5 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
