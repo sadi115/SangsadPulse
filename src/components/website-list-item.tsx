@@ -5,10 +5,11 @@ import { useMemo } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History } from 'lucide-react';
+import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './uptime-bar';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
@@ -58,6 +59,10 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
       default: return 'bg-muted';
     }
   }, [website.status]);
+  
+  const lastCheckedTimeAgo = website.lastChecked 
+    ? formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })
+    : 'N/A';
 
   return (
       <div className={cn(
@@ -66,15 +71,21 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
       )}>
           <div className="flex items-center p-4 gap-4">
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
-              <div className="flex-1 grid grid-cols-3 items-center gap-4">
-                <div className="flex items-center gap-3">
+              <div className="flex-1 grid grid-cols-12 items-center gap-4">
+                <div className="col-span-12 md:col-span-4 flex items-center gap-3">
                     <StatusBadge status={website.status} uptimePercentage={website.uptimeData?.['24h']} />
                     <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
                 </div>
-                 <div className="col-span-1">
+                 <div className="hidden md:block col-span-4">
                     <UptimeBar history={website.latencyHistory} max-items={50} />
                 </div>
-                <div className="flex items-center justify-end gap-2">
+                 <div className="hidden md:block col-span-2 text-sm text-muted-foreground font-medium">
+                    {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
+                 </div>
+                <div className="hidden md:block col-span-1 text-sm text-muted-foreground truncate" title={website.lastChecked}>
+                    {lastCheckedTimeAgo}
+                </div>
+                <div className="flex items-center justify-end gap-1 col-span-12 md:col-span-1">
                     <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
@@ -122,5 +133,3 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
       </div>
   );
 }
-
-    
