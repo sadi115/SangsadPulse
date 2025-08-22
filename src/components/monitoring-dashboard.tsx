@@ -95,6 +95,7 @@ export default function MonitoringDashboard() {
 
   const { toast } = useToast();
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const previousWebsitesRef = useRef<Website[]>([]);
 
    useEffect(() => {
     try {
@@ -114,6 +115,20 @@ export default function MonitoringDashboard() {
         console.warn("Could not save view to localStorage", error)
     }
   }, [view]);
+
+  useEffect(() => {
+    websites.forEach((site) => {
+        const prevSite = previousWebsitesRef.current.find(p => p.id === site.id);
+        if (prevSite && prevSite.status !== 'Down' && site.status === 'Down') {
+            toast({
+                title: 'Service Down',
+                description: `${site.name} is currently down.`,
+                variant: 'destructive',
+            });
+        }
+    });
+    previousWebsitesRef.current = websites;
+  }, [websites, toast]);
 
   const updateWebsite = useCallback((id: string, updates: Partial<Website> & { newStatusHistoryEntry?: StatusHistory }) => {
     setWebsites(prev =>
@@ -158,11 +173,6 @@ export default function MonitoringDashboard() {
           
           if (updates.status === 'Down' && site.status !== 'Down') {
             newSite.lastDownTime = new Date().toISOString();
-            toast({
-                title: 'Service Down',
-                description: `${newSite.name} is currently down.`,
-                variant: 'destructive',
-            });
           }
 
           return newSite;
@@ -170,7 +180,7 @@ export default function MonitoringDashboard() {
         return site;
       })
     );
-  }, [toast]);
+  }, []);
 
   const pollWebsite = useCallback(async (website: Website) => {
     if (website.status === 'Checking' || website.isPaused || website.monitorType === 'Downtime') {
