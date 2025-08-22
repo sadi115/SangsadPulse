@@ -61,7 +61,8 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
     );
   }
 
-  const nonPausedCount = websites.filter(w => !w.isPaused).length;
+  const nonPausedWebsites = websites.filter(w => !w.isPaused);
+  const nonPausedCount = nonPausedWebsites.length;
 
   return (
     <Card>
@@ -77,11 +78,14 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
             </div>
         </div>
         <div className="divide-y divide-border">
-            {websites.map((website, index) => {
+            {websites.map((website) => {
                  if (website.isLoading) {
                     return <ListSkeleton key={website.id} />;
                  }
-                const nonPausedIndex = websites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
+                const nonPausedIndex = !website.isPaused 
+                    ? nonPausedWebsites.findIndex(w => w.id === website.id) 
+                    : -1;
+                
                 const isFirst = nonPausedIndex === 0;
                 const isLast = nonPausedIndex === nonPausedCount - 1;
 

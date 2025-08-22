@@ -47,16 +47,20 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
     );
   }
 
-  const nonPausedCount = websites.filter(w => !w.isPaused).length;
+  const nonPausedWebsites = websites.filter(w => !w.isPaused);
+  const nonPausedCount = nonPausedWebsites.length;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-      {websites.map((website, index) => {
+      {websites.map((website) => {
         if (website.isLoading) {
             return <CardSkeleton key={website.id} />;
         }
         
-        const nonPausedIndex = websites.slice(0, index + 1).filter(w => !w.isPaused).length -1;
+        const nonPausedIndex = !website.isPaused 
+            ? nonPausedWebsites.findIndex(w => w.id === website.id) 
+            : -1;
+            
         const isFirst = nonPausedIndex === 0;
         const isLast = nonPausedIndex === nonPausedCount - 1;
 
