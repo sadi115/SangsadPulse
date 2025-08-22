@@ -61,7 +61,7 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
   }, [website.status]);
   
   const lastCheckedTime = website.lastChecked 
-    ? format(new Date(website.lastChecked), 'HH:mm:ss')
+    ? format(new Date(website.lastChecked), 'hh:mm:ss a')
     : 'N/A';
 
   return (

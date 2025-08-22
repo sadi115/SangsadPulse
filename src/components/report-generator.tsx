@@ -88,7 +88,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
             url: site.url,
             monitorType: site.monitorType,
             history: historyInRange.map(h => ({
-                time: format(new Date(h.time), 'yyyy-MM-dd HH:mm:ss'),
+                time: format(new Date(h.time), 'yyyy-MM-dd hh:mm:ss a'),
                 latency: h.latency > 0 ? h.latency : 'N/A',
                 status: h.latency > 0 ? 'Up' : 'Down',
             })),

@@ -48,7 +48,7 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span title={format(new Date(item.time), 'PPpp')}>
-                                                    {format(new Date(item.time), 'HH:mm:ss, dd-MMM-yyyy')}
+                                                    {format(new Date(item.time), 'hh:mm:ss a, dd-MMM-yyyy')}
                                                 </span>
                                             </div>
                                         </TableCell>
