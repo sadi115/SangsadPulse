@@ -190,13 +190,13 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 <ScrollArea className="h-24">
                                     <div className="space-y-2">
                                     {currentlyDownServices.map((service, index) => (
-                                        <>
-                                            <div key={service.id} className="text-sm">
+                                        <React.Fragment key={service.id}>
+                                            <div className="text-sm">
                                                 <p className="font-semibold text-foreground truncate" title={service.name}>{service.name}</p>
                                                 <p className="text-xs text-muted-foreground truncate" title={service.httpResponse}>{service.httpResponse}</p>
                                             </div>
                                             {index < currentlyDownServices.length - 1 && <Separator />}
-                                        </>
+                                        </React.Fragment>
                                     ))}
                                     </div>
                                 </ScrollArea>
