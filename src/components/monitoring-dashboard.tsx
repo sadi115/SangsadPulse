@@ -99,6 +99,7 @@ export default function MonitoringDashboard() {
   const pollingIntervalRef = useRef(pollingInterval);
   pollingIntervalRef.current = pollingInterval;
 
+
    useEffect(() => {
     try {
       const savedView = localStorage.getItem('monitoring-view') as 'card' | 'list';
@@ -165,23 +166,6 @@ export default function MonitoringDashboard() {
     }
   }, [view]);
 
-  useEffect(() => {
-    if (!notificationsEnabled) return;
-    
-    const prevWebsites = previousWebsitesRef.current;
-    websites.forEach((site) => {
-        const prevSite = prevWebsites.find(p => p.id === site.id);
-        if (prevSite && prevSite.status !== 'Down' && site.status === 'Down') {
-            toast({
-                title: 'Service Down',
-                description: `${site.name} is currently down.`,
-                variant: 'destructive',
-            });
-        }
-    });
-    previousWebsitesRef.current = websites;
-  }, [websites, toast, notificationsEnabled]);
-
   const updateWebsite = useCallback((id: string, updates: Partial<Website> & { newStatusHistoryEntry?: StatusHistory }) => {
     setWebsites(prev =>
       prev.map(site => {
@@ -193,10 +177,14 @@ export default function MonitoringDashboard() {
             ...(updates.latency !== undefined ? [{ time: new Date().toISOString(), latency: updates.latency }] : []),
           ].slice(-MAX_LATENCY_HISTORY);
           
-          const newStatusHistory = [
-            ...(site.statusHistory || []),
-            ...(newStatusHistoryEntry ? [newStatusHistoryEntry] : []),
-          ].slice(-MAX_STATUS_HISTORY);
+          let newStatusHistory = [...(site.statusHistory || [])];
+          if(newStatusHistoryEntry) {
+              const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
+              if (newStatusHistoryEntry.status !== lastStatus) {
+                  newStatusHistory.push(newStatusHistoryEntry);
+              }
+          }
+          newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
 
           let averageLatency, lowestLatency, highestLatency;
           if (newLatencyHistory.length > 0) {
@@ -233,94 +221,104 @@ export default function MonitoringDashboard() {
       })
     );
   }, []);
-  
-  const pollWebsite = useCallback(async (website: Website) => {
-      // Find the latest version of the site from state in case it was updated
-      setWebsites(currentWebsites => {
-        const currentSite = currentWebsites.find(w => w.id === website.id);
-        if(!currentSite) return currentWebsites; // Site was deleted
-
-        (async () => {
-            if (currentSite.isPaused || currentSite.monitorType === 'Downtime') {
-                updateWebsite(currentSite.id, { 
-                    status: currentSite.monitorType === 'Downtime' ? 'Down' : 'Paused', 
-                    httpResponse: currentSite.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
-                    isLoading: false
-                });
-                // No reschedule
-                return;
-            }
-
-            updateWebsite(currentSite.id, { status: 'Checking' });
-            
-            try {
-                const result = await checkStatus(currentSite);
-                let ttfbResult;
-                if (result.status === 'Up' && (currentSite.monitorType === 'HTTP(s)' || currentSite.monitorType === 'HTTP(s) - Keyword')) {
-                    ttfbResult = await getTtfb({ url: currentSite.url });
-                }
-
-                let newStatusHistoryEntry: StatusHistory | undefined;
-                setWebsites(currentWebsitesForHistory => {
-                    const siteForHistory = currentWebsitesForHistory.find(w => w.id === currentSite.id);
-                    if (siteForHistory) {
-                        const lastStatus = siteForHistory.statusHistory?.[siteForHistory.statusHistory.length - 1]?.status;
-                        const newStatus = result.status === 'Up' ? 'Up' : 'Down';
-                        if (newStatus !== lastStatus) {
-                            newStatusHistoryEntry = {
-                                time: result.lastChecked,
-                                status: newStatus,
-                                latency: result.latency,
-                                reason: result.httpResponse,
-                            };
-                        }
-                    }
-                    return currentWebsitesForHistory;
-                });
-
-                updateWebsite(currentSite.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
-                
-                // Reschedule the next poll for this specific website
-                scheduleNextPoll(currentSite);
-            } catch (error) {
-                console.error(`Failed to check status for ${currentSite.url}`, error);
-                const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-                updateWebsite(currentSite.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
-                
-                // Reschedule even on failure
-                scheduleNextPoll(currentSite);
-            }
-        })();
-        
-        return currentWebsites;
-      });
-  }, [updateWebsite]); // removed scheduleNextPoll from dependencies
 
   const scheduleNextPoll = useCallback((website: Website) => {
-    if (timeoutsRef.current.has(website.id)) {
-        clearTimeout(timeoutsRef.current.get(website.id)!);
-        timeoutsRef.current.delete(website.id);
+    const currentTimeout = timeoutsRef.current.get(website.id);
+    if (currentTimeout) {
+      clearTimeout(currentTimeout);
     }
+
     const interval = (website.pollingInterval || pollingIntervalRef.current) * 1000;
-    const timeoutId = setTimeout(() => pollWebsite(website), interval);
+    const timeoutId = setTimeout(() => {
+      // Use setWebsites to get the latest version of the site, then poll
+      setWebsites(currentWebsites => {
+        const siteToPoll = currentWebsites.find(w => w.id === website.id);
+        if (siteToPoll) {
+          pollWebsite(siteToPoll);
+        }
+        return currentWebsites;
+      });
+    }, interval);
+
     timeoutsRef.current.set(website.id, timeoutId);
-  }, [pollWebsite]);
+  }, []); // pollWebsite is defined later, so we can't include it yet. We'll add it.
+
+  const pollWebsite = useCallback(async (website: Website) => {
+    if (website.isPaused || website.monitorType === 'Downtime') {
+      updateWebsite(website.id, {
+        status: website.monitorType === 'Downtime' ? 'Down' : 'Paused',
+        httpResponse: website.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
+        isLoading: false
+      });
+      // No reschedule
+      return;
+    }
+
+    updateWebsite(website.id, { status: 'Checking' });
+
+    try {
+      const result = await checkStatus(website);
+      let ttfbResult;
+      if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
+        ttfbResult = await getTtfb({ url: website.url });
+      }
+
+      const newStatusHistoryEntry: StatusHistory = {
+          time: result.lastChecked,
+          status: result.status === 'Up' ? 'Up' : 'Down',
+          latency: result.latency,
+          reason: result.httpResponse,
+      };
+
+      updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
+      
+      scheduleNextPoll(website);
+    } catch (error) {
+      console.error(`Failed to check status for ${website.url}`, error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      updateWebsite(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
+      
+      scheduleNextPoll(website);
+    }
+  }, [updateWebsite, scheduleNextPoll]);
+
+  useEffect(() => {
+    // Add pollWebsite to scheduleNextPoll's dependencies now that it's defined.
+    // This is safe because pollWebsite is memoized and stable.
+    scheduleNextPoll.prototype.pollWebsite = pollWebsite;
+  }, [pollWebsite, scheduleNextPoll]);
 
   useEffect(() => {
     if (!isLoaded) return;
     
     websites.forEach(website => {
-        // Stagger initial checks
-        const initialDelay = Math.random() * 5000;
-        const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
-        timeoutsRef.current.set(website.id, timeoutId);
+      // Stagger initial checks
+      const initialDelay = Math.random() * 5000;
+      const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
+      timeoutsRef.current.set(website.id, timeoutId);
     });
 
     return () => {
-        timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current.forEach(clearTimeout);
     };
-  }, [isLoaded, pollWebsite]); 
-
+  }, [isLoaded, pollWebsite]);
+  
+  useEffect(() => {
+    if (!notificationsEnabled) return;
+    
+    const prevWebsites = previousWebsitesRef.current;
+    websites.forEach((site) => {
+        const prevSite = prevWebsites.find(p => p.id === site.id);
+        if (prevSite && prevSite.status !== 'Down' && site.status === 'Down') {
+            toast({
+                title: 'Service Down',
+                description: `${site.name} is currently down.`,
+                variant: 'destructive',
+            });
+        }
+    });
+    previousWebsitesRef.current = websites;
+  }, [websites, toast, notificationsEnabled]);
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
     setWebsites(prev => {
@@ -429,6 +427,7 @@ export default function MonitoringDashboard() {
     if (!website || !website.httpResponse) return;
 
     try {
+      updateWebsite(id, { diagnosis: 'AI is analyzing...' });
       const { diagnosis } = await getAIDiagnosis({
         url: website.url,
         httpResponse: website.httpResponse,
@@ -727,7 +726,3 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
-
-    
-
-    
