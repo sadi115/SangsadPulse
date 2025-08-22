@@ -1,8 +1,9 @@
+
 'use client';
 import * as React from 'react';
 import type { Website } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, Label } from 'recharts';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -17,25 +18,25 @@ type SummaryOverviewProps = {
 const CHART_CONFIG = {
   up: {
     label: 'Up',
-    color: 'hsl(142.1 76.2% 36.1%)', 
+    color: 'hsl(var(--chart-2))',
   },
   down: {
     label: 'Down',
-    color: 'hsl(0 84.2% 60.2%)',
+    color: 'hsl(var(--chart-5))',
   },
   checking: {
     label: 'Checking',
-    color: 'hsl(47.9 95.8% 53.1%)',
+    color: 'hsl(var(--chart-4))',
   },
   idle: {
     label: 'Idle',
-    color: 'hsl(215.4 16.3% 46.9%)',
+    color: 'hsl(var(--muted-foreground))',
   },
    paused: {
     label: 'Paused',
-    color: 'hsl(220 9% 46%)',
+    color: 'hsl(var(--muted))',
   },
-};
+} satisfies ChartConfig;
 
 
 export function SummaryOverview({ websites }: SummaryOverviewProps) {
@@ -53,11 +54,11 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
     );
 
     const chartData = [
-        { name: 'Up', value: summaryData.Up, fill: CHART_CONFIG.up.color },
-        { name: 'Down', value: summaryData.Down, fill: CHART_CONFIG.down.color },
-        { name: 'Checking', value: summaryData.Checking, fill: CHART_CONFIG.checking.color },
-        { name: 'Idle', value: summaryData.Idle, fill: CHART_CONFIG.idle.color },
-        { name: 'Paused', value: summaryData.Paused, fill: CHART_CONFIG.paused.color },
+        { name: 'Up', value: summaryData.Up, fill: 'var(--color-up)' },
+        { name: 'Down', value: summaryData.Down, fill: 'var(--color-down)' },
+        { name: 'Checking', value: summaryData.Checking, fill: 'var(--color-checking)' },
+        { name: 'Idle', value: summaryData.Idle + summaryData.Checking, fill: 'var(--color-idle)' },
+        { name: 'Paused', value: summaryData.Paused, fill: 'var(--color-paused)' },
     ].filter(d => d.value > 0);
 
     const downSites = websites.filter(site => site.status === 'Down' && site.lastDownTime);
@@ -81,7 +82,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-            <div className="h-48 md:h-56 flex items-center justify-center">
+            <div className="h-48 md:h-56 flex flex-col items-center justify-center">
                 {websites.length > 0 ? (
                     <ChartContainer config={CHART_CONFIG} className="w-full h-full">
                          <PieChart>
@@ -130,6 +131,10 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                     <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                                 ))}
                             </Pie>
+                            <ChartLegend
+                                content={<ChartLegendContent nameKey="name" />}
+                                className="-mt-4"
+                            />
                         </PieChart>
                     </ChartContainer>
                 ) : (
