@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'Web Service Monitoring Tool',
+  title: 'Bangladesh Parliament - Web Services Status',
   description: 'Monitor your websites with AI-powered diagnostics.',
 };
 

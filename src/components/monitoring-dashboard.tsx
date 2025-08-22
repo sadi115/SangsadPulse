@@ -378,16 +378,8 @@ export default function MonitoringDashboard() {
     
     // Poll the website with its new data, and then schedule the next poll with the correct new interval
     pollWebsite(updatedSite).then(() => {
-        // Find the latest version of the site from state after polling.
-        // This is important because pollWebsite also updates state.
-        setWebsites(prev => {
-            const latestSite = prev.find(w => w.id === updatedSite.id);
-            if (latestSite) {
-                // Use the new interval from the form data to schedule the next poll
-                schedulePoll(latestSite, data.pollingInterval);
-            }
-            return prev;
-        });
+        // Schedule the next poll using the new interval from the form data.
+        schedulePoll(updatedSite, data.pollingInterval);
     });
     
     toast({
@@ -588,7 +580,7 @@ export default function MonitoringDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
             <Accordion type="single" collapsible className="w-full md:col-span-1">
                 <AccordionItem value="add-service">
-                    <AccordionTrigger>Add Service</AccordionTrigger>
+                    <AccordionTrigger>Add a New Service</AccordionTrigger>
                     <AccordionContent>
                         <Card>
                             <CardHeader>
@@ -605,7 +597,7 @@ export default function MonitoringDashboard() {
 
             <Accordion type="single" collapsible className="w-full md:col-span-1">
                 <AccordionItem value="settings">
-                    <AccordionTrigger>Settings</AccordionTrigger>
+                    <AccordionTrigger>Monitoring Settings</AccordionTrigger>
                     <AccordionContent>
                         <Card>
                             <CardHeader>
@@ -651,7 +643,7 @@ export default function MonitoringDashboard() {
 
             <Accordion type="single" collapsible className="w-full md:col-span-1">
                 <AccordionItem value="report-generator">
-                    <AccordionTrigger>Generate Report</AccordionTrigger>
+                    <AccordionTrigger>Generate Reports</AccordionTrigger>
                     <AccordionContent>
                         <Card>
                              <CardHeader>
