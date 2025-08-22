@@ -78,7 +78,7 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-center">Overall Summary</CardTitle>
+        <CardTitle className="text-center">Service Summary</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
@@ -105,10 +105,6 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                   y,
                                   cx,
                                   cy,
-                                  midAngle,
-                                  innerRadius,
-                                  outerRadius,
-                                  percent,
                                 }) => {
                                   const { name, value } = payload;
                                   let className = 'fill-muted-foreground text-xs';
