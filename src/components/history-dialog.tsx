@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Website, StatusHistory } from '@/lib/types';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { Badge } from './ui/badge';
 
 type HistoryDialogProps = {
@@ -47,7 +47,7 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span title={format(new Date(item.time), 'PPpp')}>
-                                                    {formatDistanceToNow(new Date(item.time), { addSuffix: true })}
+                                                    {format(new Date(item.time), 'HH:mm:ss, dd:MMM:yy')}
                                                 </span>
                                             </div>
                                         </TableCell>
