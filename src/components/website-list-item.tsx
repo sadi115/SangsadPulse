@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle } from 'lucide-react';
+import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './uptime-bar';
 
@@ -38,11 +38,12 @@ type WebsiteListItemProps = {
     onEdit: (id: string) => void;
     onMove: (id: string, direction: 'up' | 'down') => void;
     onTogglePause: (id: string) => void;
+    onShowHistory: (id: string) => void;
     isFirst: boolean;
     isLast: boolean;
 };
 
-export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, isFirst, isLast }: WebsiteListItemProps) {
+export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, isFirst, isLast }: WebsiteListItemProps) {
   
   const statusColor = useMemo(() => {
     switch (website.status) {
@@ -77,6 +78,11 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                         <DropdownMenuItem onClick={() => onShowHistory(website.id)}>
+                            <History className="mr-2 h-4 w-4" />
+                            History
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onTogglePause(website.id)}>
                         {website.isPaused ? <PlayCircle className="mr-2 h-4 w-4" /> : <PauseCircle className="mr-2 h-4 w-4" />}
                         {website.isPaused ? 'Resume' : 'Pause'}

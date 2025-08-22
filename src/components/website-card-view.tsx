@@ -12,9 +12,10 @@ type WebsiteCardViewProps = {
   onEdit: (id: string) => void;
   onMove: (id: string, direction: 'up' | 'down') => void;
   onTogglePause: (id: string) => void;
+  onShowHistory: (id: string) => void;
 };
 
-export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause }: WebsiteCardViewProps) {
+export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory }: WebsiteCardViewProps) {
   if (websites.length === 0) {
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
@@ -47,6 +48,7 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
               onEdit={onEdit}
               onMove={onMove}
               onTogglePause={onTogglePause}
+              onShowHistory={onShowHistory}
               isFirst={isFirst}
               isLast={isLast}
             />

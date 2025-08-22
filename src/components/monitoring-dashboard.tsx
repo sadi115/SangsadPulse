@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Website, MonitorType } from '@/lib/types';
+import type { Website, MonitorType, StatusHistory } from '@/lib/types';
 import { AddWebsiteForm } from '@/components/add-website-form';
 import { checkStatus, getAIDiagnosis } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -21,24 +21,26 @@ import { WebsiteListView } from '@/components/website-list-view';
 import Image from 'next/image';
 import { LiveClock } from '@/components/live-clock';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { HistoryDialog } from './history-dialog';
 
 
 const initialWebsites: Omit<Website, 'displayOrder'>[] = [
-  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
-  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [] },
+  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
 ];
 
 const MAX_LATENCY_HISTORY = 50;
+const MAX_STATUS_HISTORY = 100;
 
 type WebsiteFormData = {
     name: string;
@@ -55,6 +57,7 @@ export default function MonitoringDashboard() {
   const [pollingInterval, setPollingInterval] = useState(30);
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
+  const [historyWebsite, setHistoryWebsite] = useState<Website | null>(null);
   const [view, setView] = useState<'card' | 'list'>('card');
 
 
@@ -64,27 +67,41 @@ export default function MonitoringDashboard() {
     websitesRef.current = websites;
   }, [websites]);
 
-  const updateWebsite = useCallback((id: string, updates: Partial<Website>) => {
+  const updateWebsite = useCallback((id: string, updates: Partial<Website> & { newStatusHistoryEntry?: StatusHistory }) => {
     setWebsites(prev =>
       prev.map(site => {
         if (site.id === id) {
-          const newHistory = [
+          const { newStatusHistoryEntry, ...restUpdates } = updates;
+          
+          const newLatencyHistory = [
             ...(site.latencyHistory || []),
             ...(updates.latency !== undefined ? [{ time: new Date().toISOString(), latency: updates.latency }] : []),
           ].slice(-MAX_LATENCY_HISTORY);
           
+          const newStatusHistory = [
+            ...(site.statusHistory || []),
+            ...(newStatusHistoryEntry ? [newStatusHistoryEntry] : []),
+          ].slice(-MAX_STATUS_HISTORY);
+
           let averageLatency;
           let uptimePercentage;
-          if (newHistory.length > 0) {
-            const upHistory = newHistory.filter(h => h.latency > 0);
+          if (newLatencyHistory.length > 0) {
+            const upHistory = newLatencyHistory.filter(h => h.latency > 0);
             if(upHistory.length > 0) {
               const totalLatency = upHistory.reduce((acc, curr) => acc + curr.latency, 0);
               averageLatency = Math.round(totalLatency / upHistory.length);
             }
-            uptimePercentage = (upHistory.length / newHistory.length) * 100;
+            uptimePercentage = (upHistory.length / newLatencyHistory.length) * 100;
           }
 
-          const newSite = { ...site, ...updates, latencyHistory: newHistory, averageLatency, uptimePercentage };
+          const newSite = { 
+            ...site, 
+            ...restUpdates, 
+            latencyHistory: newLatencyHistory,
+            statusHistory: newStatusHistory, 
+            averageLatency, 
+            uptimePercentage 
+          };
           
           if (updates.status === 'Down' && site.status !== 'Down') {
             newSite.lastDownTime = new Date().toISOString();
@@ -106,7 +123,22 @@ export default function MonitoringDashboard() {
       updateWebsite(website.id, { status: 'Checking' });
       try {
         const result = await checkStatus(website);
-        updateWebsite(website.id, result);
+        
+        const lastStatus = website.statusHistory?.[website.statusHistory.length - 1]?.status;
+        const newStatus = result.status === 'Up' ? 'Up' : 'Down';
+        let newStatusHistoryEntry: StatusHistory | undefined;
+
+        if (newStatus !== lastStatus) {
+            newStatusHistoryEntry = {
+                time: result.lastChecked,
+                status: newStatus,
+                latency: result.latency,
+                reason: result.httpResponse,
+            };
+        }
+
+        updateWebsite(website.id, { ...result, newStatusHistoryEntry });
+
       } catch (error) {
         console.error(`Failed to check status for ${website.url}`, error);
         updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
@@ -140,6 +172,7 @@ export default function MonitoringDashboard() {
       ...data,
       status: 'Idle',
       latencyHistory: [],
+      statusHistory: [],
       displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder)) + 1 : 0,
     };
     const newWebsites = [...websites, newWebsite];
@@ -305,6 +338,7 @@ export default function MonitoringDashboard() {
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
                 onMove={moveWebsite}
                 onTogglePause={handleTogglePause}
+                onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
               />
             ) : (
               <WebsiteListView
@@ -314,6 +348,7 @@ export default function MonitoringDashboard() {
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
                 onMove={moveWebsite}
                 onTogglePause={handleTogglePause}
+                onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
               />
             )}
           </div>
@@ -390,6 +425,11 @@ export default function MonitoringDashboard() {
             website={editingWebsite}
             onEditWebsite={handleEditWebsite}
           />
+          <HistoryDialog
+            isOpen={!!historyWebsite}
+            onOpenChange={(isOpen) => !isOpen && setHistoryWebsite(null)}
+            website={historyWebsite}
+          />
         </div>
       </main>
       <footer className="bg-card border-t py-4">
@@ -399,5 +439,4 @@ export default function MonitoringDashboard() {
       </footer>
     </div>
   );
-
-    
+}

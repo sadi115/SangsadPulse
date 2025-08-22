@@ -12,6 +12,13 @@ export type MonitorType =
   | 'Docker Container'
   | 'HTTP(s) - Browser Engine (Chrome/Chromium) (Beta)';
 
+export type StatusHistory = {
+    time: string;
+    status: 'Up' | 'Down';
+    latency: number;
+    reason: string;
+};
+
 export interface Website {
   id: string;
   name: string;
@@ -26,6 +33,7 @@ export interface Website {
   averageLatency?: number;
   uptimePercentage?: number;
   latencyHistory?: { time: string; latency: number }[];
+  statusHistory?: StatusHistory[];
   lastDownTime?: string;
   displayOrder: number;
   // Options for specific monitor types
