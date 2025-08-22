@@ -1,9 +1,11 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Website, StatusHistory } from '@/lib/types';
+import type { Website } from '@/lib/types';
 import { format } from 'date-fns';
 import { Badge } from './ui/badge';
+import { useMemo } from 'react';
+import { Card, CardContent } from './ui/card';
 
 type HistoryDialogProps = {
     isOpen: boolean;
@@ -21,6 +23,18 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
     
     const reversedHistory = website.statusHistory ? [...website.statusHistory].reverse() : [];
 
+    const summaryStats = useMemo(() => {
+        if (!website.statusHistory || website.statusHistory.length === 0) {
+            return { uptime: null, downEvents: 0 };
+        }
+        const upCount = website.statusHistory.filter(h => h.status === 'Up').length;
+        const downEvents = website.statusHistory.filter(h => h.status === 'Up' && h.reason.startsWith('Keyword')).length + 
+                           website.statusHistory.filter(h => h.status === 'Down').length;
+
+        const uptime = (upCount / website.statusHistory.length) * 100;
+        return { uptime, downEvents };
+    }, [website.statusHistory]);
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl">
@@ -30,7 +44,25 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                         Showing the last {reversedHistory.length} status changes for this service.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto">
+
+                <Card className="bg-secondary/50">
+                    <CardContent className="p-4">
+                        <div className="grid grid-cols-2 gap-4 text-center">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Uptime</p>
+                                <p className="text-2xl font-bold">
+                                    {summaryStats.uptime !== null ? `${summaryStats.uptime.toFixed(2)}%` : 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Down Events</p>
+                                <p className="text-2xl font-bold">{summaryStats.downEvents}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="max-h-[50vh] overflow-y-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>

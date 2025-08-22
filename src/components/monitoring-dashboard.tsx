@@ -27,20 +27,20 @@ import { Switch } from '@/components/ui/switch';
 
 
 const initialWebsites: Omit<Website, 'displayOrder' | 'uptimeData'>[] = [
-  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', port: 443, latencyHistory: [], statusHistory: [] },
-  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [] },
-  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [] },
+  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', port: 443, latencyHistory: [], statusHistory: [], group: 'External Services' },
+  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [], group: 'External Services' },
+  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [], group: 'External Services' },
 ];
 
 const MAX_LATENCY_HISTORY = 50;
@@ -54,6 +54,7 @@ type WebsiteFormData = {
     port?: number;
     keyword?: string;
     pollingInterval?: number;
+    group?: string;
 }
 
 const calculateUptime = (history: { time: string; latency: number }[]): UptimeData => {
@@ -97,8 +98,11 @@ export default function MonitoringDashboard() {
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const previousWebsitesRef = useRef<Website[]>([]);
   const pollingIntervalRef = useRef(pollingInterval);
-  pollingIntervalRef.current = pollingInterval;
 
+
+   useEffect(() => {
+    pollingIntervalRef.current = pollingInterval;
+  }, [pollingInterval]);
 
    useEffect(() => {
     try {
@@ -222,6 +226,12 @@ export default function MonitoringDashboard() {
     );
   }, []);
 
+  const scheduleNextPoll = useCallback((website: Website) => {
+    const interval = (website.pollingInterval || pollingIntervalRef.current) * 1000;
+    const timeoutId = setTimeout(() => pollWebsite(website), interval);
+    timeoutsRef.current.set(website.id, timeoutId);
+  }, []);
+
   const pollWebsite = useCallback(async (website: Website) => {
     if (website.isPaused || website.monitorType === 'Downtime') {
       updateWebsite(website.id, {
@@ -229,7 +239,7 @@ export default function MonitoringDashboard() {
         httpResponse: website.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
         isLoading: false
       });
-      return; 
+      return;
     }
 
     updateWebsite(website.id, { status: 'Checking' });
@@ -242,48 +252,50 @@ export default function MonitoringDashboard() {
       }
 
       const newStatusHistoryEntry: StatusHistory = {
-          time: result.lastChecked,
-          status: result.status === 'Up' ? 'Up' : 'Down',
-          latency: result.latency,
-          reason: result.httpResponse,
+        time: result.lastChecked,
+        status: result.status === 'Up' ? 'Up' : 'Down',
+        latency: result.latency,
+        reason: result.httpResponse,
       };
 
       updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
-      
     } catch (error) {
       console.error(`Failed to check status for ${website.url}`, error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       updateWebsite(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
     }
 
+    // After the check, schedule the next one.
+    // Use setWebsites' functional update to get the latest site config.
     setWebsites(currentWebsites => {
         const siteToReschedule = currentWebsites.find(w => w.id === website.id);
         if (siteToReschedule) {
-            const interval = (siteToReschedule.pollingInterval || pollingIntervalRef.current) * 1000;
-            const timeoutId = setTimeout(() => pollWebsite(siteToReschedule), interval);
-            timeoutsRef.current.set(siteToReschedule.id, timeoutId);
+            scheduleNextPoll(siteToReschedule);
         }
         return currentWebsites;
     });
-
-  }, [updateWebsite]);
+  }, [updateWebsite, scheduleNextPoll]);
 
   useEffect(() => {
     if (!isLoaded) return;
-    
+
+    // Start polling for all websites.
     websites.forEach(website => {
       if (!timeoutsRef.current.has(website.id)) {
-        const initialDelay = Math.random() * 5000;
+        // Stagger initial polls to avoid a thundering herd
+        const initialDelay = Math.random() * 5000; 
         const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
         timeoutsRef.current.set(website.id, timeoutId);
       }
     });
 
+    // Cleanup function
     return () => {
       timeoutsRef.current.forEach(clearTimeout);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded]);
+    // This effect should only run when the component mounts and `isLoaded` becomes true.
+    // The polling loop is now self-sustaining via `scheduleNextPoll`.
+  }, [isLoaded, pollWebsite]);
   
   useEffect(() => {
     if (!notificationsEnabled) return;
@@ -388,24 +400,21 @@ export default function MonitoringDashboard() {
   };
 
   const handleManualCheck = useCallback((id: string) => {
-    setWebsites(currentWebsites => {
-        const website = currentWebsites.find(site => site.id === id);
-        if (website) {
-            toast({
-                title: 'Manual Check',
-                description: `Requesting a manual status check for ${website.name}.`,
-            });
-            
-            if (timeoutsRef.current.has(id)) {
-              clearTimeout(timeoutsRef.current.get(id)!);
-              timeoutsRef.current.delete(id);
-            }
-
-            pollWebsite(website);
+    const website = websites.find(site => site.id === id);
+    if (website) {
+        toast({
+            title: 'Manual Check',
+            description: `Requesting a manual status check for ${website.name}.`,
+        });
+        
+        if (timeoutsRef.current.has(id)) {
+            clearTimeout(timeoutsRef.current.get(id)!);
+            timeoutsRef.current.delete(id);
         }
-        return currentWebsites;
-    });
-  }, [pollWebsite, toast]);
+        // Poll immediately, the regular schedule will resume after.
+        pollWebsite(website);
+    }
+  }, [websites, pollWebsite, toast]);
 
   const handleDiagnose = useCallback(async (id: string) => {
     const website = websites.find(site => site.id === id);
@@ -432,11 +441,10 @@ export default function MonitoringDashboard() {
   const handleIntervalChange = () => {
     if(tempPollingInterval > 0) {
         setPollingInterval(tempPollingInterval);
-        pollingIntervalRef.current = tempPollingInterval;
         
         toast({
             title: 'Settings Saved',
-            description: `Global monitoring interval updated to ${tempPollingInterval} seconds. Note: This will apply to each service on its next check.`,
+            description: `Global monitoring interval updated to ${tempPollingInterval} seconds. This will apply to each service on its next check.`,
         });
     } else {
         toast({
@@ -491,17 +499,27 @@ export default function MonitoringDashboard() {
     }));
   }, [pollWebsite]);
 
-  const sortedAndFilteredWebsites = useMemo(() => {
+  const groupedAndFilteredWebsites = useMemo(() => {
     const filtered = websites.filter(site => 
         site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         site.url.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    return filtered.sort((a, b) => {
+    const sorted = filtered.sort((a, b) => {
       if (a.isPaused && !b.isPaused) return 1;
       if (!a.isPaused && b.isPaused) return -1;
       return a.displayOrder - b.displayOrder;
     });
+
+    return sorted.reduce((acc, site) => {
+        const groupName = site.group || 'Ungrouped';
+        if (!acc[groupName]) {
+            acc[groupName] = [];
+        }
+        acc[groupName].push(site);
+        return acc;
+    }, {} as Record<string, Website[]>);
+
   }, [websites, searchTerm]);
 
   return (
@@ -566,7 +584,7 @@ export default function MonitoringDashboard() {
 
             {view === 'card' ? (
               <WebsiteCardView 
-                websites={sortedAndFilteredWebsites}
+                groupedWebsites={groupedAndFilteredWebsites}
                 onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
@@ -577,7 +595,7 @@ export default function MonitoringDashboard() {
               />
             ) : (
               <WebsiteListView
-                websites={sortedAndFilteredWebsites}
+                groupedWebsites={groupedAndFilteredWebsites}
                 onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}

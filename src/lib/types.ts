@@ -44,6 +44,7 @@ export interface Website {
   statusHistory?: StatusHistory[];
   lastDownTime?: string;
   displayOrder: number;
+  group?: string;
   // Options for specific monitor types
   port?: number;
   keyword?: string;

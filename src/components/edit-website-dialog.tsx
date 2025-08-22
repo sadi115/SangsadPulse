@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle, Folder } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import type { MonitorType, Website } from '@/lib/types';
 import { useEffect } from 'react';
@@ -30,6 +30,7 @@ const formSchema = z.object({
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
   pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
+  group: z.string().optional(),
 });
 
 type EditWebsiteDialogProps = {
@@ -56,6 +57,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
         port: website.port,
         keyword: website.keyword,
         pollingInterval: website.pollingInterval,
+        group: website.group,
       });
     }
   }, [website, form, isOpen]);
@@ -204,6 +206,27 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                       <Input
                         type="number"
                         placeholder={`Default (Global: ${globalPollingInterval}s)`}
+                        {...field}
+                        value={field.value ?? ''}
+                        className="pl-10"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="group"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Group</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        placeholder="Optional (e.g. Public Websites)"
                         {...field}
                         value={field.value ?? ''}
                         className="pl-10"

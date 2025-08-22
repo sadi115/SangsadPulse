@@ -6,9 +6,10 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { WebsiteListItem } from './website-list-item';
 import { Skeleton } from './ui/skeleton';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 
 type WebsiteListViewProps = {
-  websites: Website[];
+  groupedWebsites: Record<string, Website[]>;
   onDelete: (id: string) => void;
   onDiagnose: (id: string) => void;
   onEdit: (id: string) => void;
@@ -46,8 +47,8 @@ const ListSkeleton = () => (
     </div>
 )
 
-export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
-  if (websites.length === 0) {
+export function WebsiteListView({ groupedWebsites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
+  if (Object.keys(groupedWebsites).length === 0) {
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
         <div className="mx-auto h-24 w-24 relative">
@@ -61,52 +62,71 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
     );
   }
 
-  const nonPausedWebsites = websites.filter(w => !w.isPaused);
-  const nonPausedCount = nonPausedWebsites.length;
+  const groupOrder = Object.keys(groupedWebsites).sort((a, b) => {
+    if (a === 'Ungrouped') return 1;
+    if (b === 'Ungrouped') return -1;
+    return a.localeCompare(b);
+  });
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="hidden md:flex items-center p-4 gap-4 border-b text-xs font-semibold text-muted-foreground">
-            <div className="w-2 h-8"></div>
-            <div className="flex-1 grid grid-cols-12 items-center gap-4">
-                <div className="col-span-4">SERVICE</div>
-                <div className="col-span-4 text-center">UPTIME</div>
-                <div className="col-span-2 text-right">LATENCY</div>
-                <div className="col-span-1 text-right">LAST CHECK</div>
-                <div className="col-span-1 text-right">ACTIONS</div>
-            </div>
-        </div>
-        <div className="divide-y divide-border">
-            {websites.map((website) => {
-                 if (website.isLoading) {
-                    return <ListSkeleton key={website.id} />;
-                 }
-                const nonPausedIndex = !website.isPaused 
-                    ? nonPausedWebsites.findIndex(w => w.id === website.id) 
-                    : -1;
-                
-                const isFirst = nonPausedIndex === 0;
-                const isLast = nonPausedIndex === nonPausedCount - 1;
+    <div className="space-y-4">
+        {groupOrder.map(groupName => {
+            const websites = groupedWebsites[groupName];
+            const nonPausedWebsites = websites.filter(w => !w.isPaused);
+            const nonPausedCount = nonPausedWebsites.length;
 
-                return (
-                    <WebsiteListItem
-                        key={website.id}
-                        website={website}
-                        onDelete={onDelete}
-                        onDiagnose={onDiagnose}
-                        onEdit={onEdit}
-                        onMove={onMove}
-                        onTogglePause={onTogglePause}
-                        onShowHistory={onShowHistory}
-                        onManualCheck={onManualCheck}
-                        isFirst={isFirst}
-                        isLast={isLast}
-                    />
-                )
-            })}
-        </div>
-      </CardContent>
-    </Card>
+            return (
+                <Card key={groupName}>
+                    <CardContent className="p-0">
+                        <div className="p-4 border-b">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <span>{groupName}</span>
+                                <span className="text-sm font-normal text-muted-foreground">({websites.length})</span>
+                            </h3>
+                        </div>
+                        <div className="hidden md:flex items-center p-4 gap-4 border-b text-xs font-semibold text-muted-foreground">
+                            <div className="w-2 h-8"></div>
+                            <div className="flex-1 grid grid-cols-12 items-center gap-4">
+                                <div className="col-span-4">SERVICE</div>
+                                <div className="col-span-4 text-center">UPTIME</div>
+                                <div className="col-span-2 text-right">LATENCY</div>
+                                <div className="col-span-1 text-right">LAST CHECK</div>
+                                <div className="col-span-1 text-right">ACTIONS</div>
+                            </div>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {websites.map((website) => {
+                                if (website.isLoading) {
+                                    return <ListSkeleton key={website.id} />;
+                                }
+                                const nonPausedIndex = !website.isPaused 
+                                    ? nonPausedWebsites.findIndex(w => w.id === website.id) 
+                                    : -1;
+                                
+                                const isFirst = nonPausedIndex === 0;
+                                const isLast = nonPausedIndex === nonPausedCount - 1;
+
+                                return (
+                                    <WebsiteListItem
+                                        key={website.id}
+                                        website={website}
+                                        onDelete={onDelete}
+                                        onDiagnose={onDiagnose}
+                                        onEdit={onEdit}
+                                        onMove={onMove}
+                                        onTogglePause={onTogglePause}
+                                        onShowHistory={onShowHistory}
+                                        onManualCheck={onManualCheck}
+                                        isFirst={isFirst}
+                                        isLast={isLast}
+                                    />
+                                )
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
+            )
+        })}
+    </div>
   );
 }
