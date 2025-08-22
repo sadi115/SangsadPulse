@@ -233,6 +233,32 @@ export default function MonitoringDashboard() {
     );
   }, []);
   
+  const scheduleNextPoll = useCallback((website: Website) => {
+      if (timeoutsRef.current.has(website.id)) {
+          clearTimeout(timeoutsRef.current.get(website.id)!);
+      }
+
+      if (website.isPaused || website.monitorType === 'Downtime') {
+          return;
+      }
+      
+      const poll = async () => {
+          // Find the latest state of the website before polling
+          setWebsites(currentWebsites => {
+              const siteToPoll = currentWebsites.find(w => w.id === website.id);
+              if (siteToPoll) {
+                  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+                  pollWebsite(siteToPoll);
+              }
+              return currentWebsites;
+          });
+      };
+
+      const interval = (website.pollingInterval || pollingInterval) * 1000;
+      const timeoutId = setTimeout(poll, interval);
+      timeoutsRef.current.set(website.id, timeoutId);
+  }, [pollingInterval, setWebsites]); 
+
   const pollWebsite = useCallback(async (website: Website) => {
       if (website.isPaused || website.monitorType === 'Downtime') {
           if (website.monitorType === 'Downtime') {
@@ -270,31 +296,21 @@ export default function MonitoringDashboard() {
 
 
           updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
+          
+          // After the poll, schedule the next one
+          setWebsites(currentWebsites => {
+              const updatedSite = currentWebsites.find(w => w.id === website.id);
+              if(updatedSite) {
+                  scheduleNextPoll(updatedSite);
+              }
+              return currentWebsites;
+          })
+
       } catch (error) {
           console.error(`Failed to check status for ${website.url}`, error);
           updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
       }
-  }, [updateWebsite]);
-
-  
-  const scheduleNextPoll = useCallback((website: Website) => {
-      if (timeoutsRef.current.has(website.id)) {
-          clearTimeout(timeoutsRef.current.get(website.id)!);
-      }
-
-      if (website.isPaused || website.monitorType === 'Downtime') {
-          return;
-      }
-      
-      const poll = async () => {
-          await pollWebsite(website);
-          scheduleNextPoll(website);
-      };
-
-      const interval = (website.pollingInterval || pollingInterval) * 1000;
-      const timeoutId = setTimeout(poll, interval);
-      timeoutsRef.current.set(website.id, timeoutId);
-  }, [pollWebsite, pollingInterval]);
+  }, [updateWebsite, scheduleNextPoll]);
 
 
   useEffect(() => {
@@ -309,16 +325,15 @@ export default function MonitoringDashboard() {
           if (website.isPaused || website.monitorType === 'Downtime') {
               if (website.monitorType === 'Downtime') {
                   updateWebsite(website.id, { status: 'Down', httpResponse: 'In scheduled downtime.', isLoading: false });
+              } else if (website.isPaused) {
+                  updateWebsite(website.id, { status: 'Paused', isLoading: false });
               }
               return;
           }
           
           // Stagger initial checks to avoid overwhelming the browser/network
-          const initialDelay = website.isLoading ? Math.random() * 3000 : 0;
-          const timeoutId = setTimeout(async () => {
-              await pollWebsite(website);
-              scheduleNextPoll(website);
-          }, initialDelay);
+          const initialDelay = Math.random() * 3000;
+          const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
           timeoutsRef.current.set(website.id, timeoutId);
       });
   
@@ -326,7 +341,7 @@ export default function MonitoringDashboard() {
           timeoutsRef.current.forEach(clearTimeout);
           timeoutsRef.current.clear();
       };
-  }, [websites, isLoaded, pollingInterval, pollWebsite, scheduleNextPoll, updateWebsite]);
+  }, [isLoaded, websites.length, pollingInterval, pollWebsite, updateWebsite]);
 
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
@@ -350,9 +365,16 @@ export default function MonitoringDashboard() {
       isLoading: true,
     };
     
-    setWebsites(prev => [...prev, newWebsite]);
+    setWebsites(prev => {
+        const newWebsites = [...prev, newWebsite];
+        // Manually trigger the initial poll for the new website
+        const initialDelay = 100; // a small delay
+        const timeoutId = setTimeout(() => pollWebsite(newWebsite), initialDelay);
+        timeoutsRef.current.set(newWebsite.id, timeoutId);
+        return newWebsites;
+    });
 
-  }, [websites, toast]);
+  }, [websites, toast, pollWebsite]);
 
   const handleDeleteWebsite = useCallback((id: string) => {
     const siteToDelete = websites.find(site => site.id === id);
@@ -391,6 +413,13 @@ export default function MonitoringDashboard() {
     
     setWebsites(prev => prev.map(s => s.id === id ? updatedSite : s));
     
+    // Manually restart the polling for the edited website
+    if (timeoutsRef.current.has(id)) {
+      clearTimeout(timeoutsRef.current.get(id)!);
+    }
+    const timeoutId = setTimeout(() => pollWebsite(updatedSite), 100);
+    timeoutsRef.current.set(updatedSite.id, timeoutId);
+
     toast({
         title: "Service Updated",
         description: `${data.name} has been updated successfully.`
@@ -410,20 +439,9 @@ export default function MonitoringDashboard() {
           timeoutsRef.current.delete(id);
         }
 
-        const runCheck = async () => {
-          await pollWebsite(website);
-          // After manual check, reschedule the next poll based on its interval.
-          setWebsites(current => {
-              const postPollWebsite = current.find(w => w.id === id);
-              if (postPollWebsite) {
-                  scheduleNextPoll(postPollWebsite);
-              }
-              return current;
-          });
-        }
-        runCheck();
+        pollWebsite(website);
     }
-  }, [pollWebsite, websites, toast, scheduleNextPoll]);
+  }, [pollWebsite, websites, toast]);
 
   const handleDiagnose = useCallback(async (id: string) => {
     const website = websites.find(site => site.id === id);
@@ -496,12 +514,16 @@ export default function MonitoringDashboard() {
                 return { ...s, isPaused: true, status: 'Paused', isLoading: false };
             } else {
                 // When un-pausing, we set it back to idle and let the main useEffect pick it up
-                return { ...s, isPaused: false, status: 'Idle', isLoading: true };
+                const unpausedSite = { ...s, isPaused: false, status: 'Idle', isLoading: true };
+                // Immediately schedule a poll for the unpaused site
+                const timeoutId = setTimeout(() => pollWebsite(unpausedSite), 100);
+                timeoutsRef.current.set(id, timeoutId);
+                return unpausedSite;
             }
         }
         return s;
     }));
-  }, []);
+  }, [pollWebsite]);
 
   const sortedAndFilteredWebsites = useMemo(() => {
     const filtered = websites.filter(site => 
@@ -716,5 +738,9 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
+
+    
 
     
