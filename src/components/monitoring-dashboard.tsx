@@ -96,6 +96,8 @@ export default function MonitoringDashboard() {
   const { toast } = useToast();
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const previousWebsitesRef = useRef<Website[]>([]);
+  const pollingIntervalRef = useRef(pollingInterval);
+  pollingIntervalRef.current = pollingInterval;
 
    useEffect(() => {
     try {
@@ -231,84 +233,83 @@ export default function MonitoringDashboard() {
       })
     );
   }, []);
+  
+  const pollWebsite = useCallback(async (website: Website) => {
+      // Find the latest version of the site from state in case it was updated
+      setWebsites(currentWebsites => {
+        const currentSite = currentWebsites.find(w => w.id === website.id);
+        if(!currentSite) return currentWebsites; // Site was deleted
+
+        (async () => {
+            if (currentSite.isPaused || currentSite.monitorType === 'Downtime') {
+                updateWebsite(currentSite.id, { 
+                    status: currentSite.monitorType === 'Downtime' ? 'Down' : 'Paused', 
+                    httpResponse: currentSite.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
+                    isLoading: false
+                });
+                // No reschedule
+                return;
+            }
+
+            updateWebsite(currentSite.id, { status: 'Checking' });
+            
+            try {
+                const result = await checkStatus(currentSite);
+                let ttfbResult;
+                if (result.status === 'Up' && (currentSite.monitorType === 'HTTP(s)' || currentSite.monitorType === 'HTTP(s) - Keyword')) {
+                    ttfbResult = await getTtfb({ url: currentSite.url });
+                }
+
+                let newStatusHistoryEntry: StatusHistory | undefined;
+                setWebsites(currentWebsitesForHistory => {
+                    const siteForHistory = currentWebsitesForHistory.find(w => w.id === currentSite.id);
+                    if (siteForHistory) {
+                        const lastStatus = siteForHistory.statusHistory?.[siteForHistory.statusHistory.length - 1]?.status;
+                        const newStatus = result.status === 'Up' ? 'Up' : 'Down';
+                        if (newStatus !== lastStatus) {
+                            newStatusHistoryEntry = {
+                                time: result.lastChecked,
+                                status: newStatus,
+                                latency: result.latency,
+                                reason: result.httpResponse,
+                            };
+                        }
+                    }
+                    return currentWebsitesForHistory;
+                });
+
+                updateWebsite(currentSite.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
+                
+                // Reschedule the next poll for this specific website
+                scheduleNextPoll(currentSite);
+            } catch (error) {
+                console.error(`Failed to check status for ${currentSite.url}`, error);
+                const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+                updateWebsite(currentSite.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
+                
+                // Reschedule even on failure
+                scheduleNextPoll(currentSite);
+            }
+        })();
+        
+        return currentWebsites;
+      });
+  }, [updateWebsite]); // removed scheduleNextPoll from dependencies
 
   const scheduleNextPoll = useCallback((website: Website) => {
     if (timeoutsRef.current.has(website.id)) {
         clearTimeout(timeoutsRef.current.get(website.id)!);
+        timeoutsRef.current.delete(website.id);
     }
-    const interval = (website.pollingInterval || pollingInterval) * 1000;
+    const interval = (website.pollingInterval || pollingIntervalRef.current) * 1000;
     const timeoutId = setTimeout(() => pollWebsite(website), interval);
     timeoutsRef.current.set(website.id, timeoutId);
-  }, [pollingInterval]); // Removed pollWebsite from dependencies
-
-  const pollWebsite = useCallback(async (website: Website) => {
-      if (website.isPaused || website.monitorType === 'Downtime') {
-          updateWebsite(website.id, { 
-              status: website.monitorType === 'Downtime' ? 'Down' : 'Paused', 
-              httpResponse: website.monitorType === 'Downtime' ? 'In scheduled downtime.' : 'Monitoring is paused.',
-              isLoading: false
-          });
-          return;
-      }
-
-      updateWebsite(website.id, { status: 'Checking' });
-      
-      try {
-          const result = await checkStatus(website);
-          let ttfbResult;
-          if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
-              ttfbResult = await getTtfb({ url: website.url });
-          }
-
-          let newStatusHistoryEntry: StatusHistory | undefined;
-          setWebsites(currentWebsites => {
-              const currentSiteState = currentWebsites.find(w => w.id === website.id);
-              if (currentSiteState) {
-                  const lastStatus = currentSiteState.statusHistory?.[currentSiteState.statusHistory.length - 1]?.status;
-                  const newStatus = result.status === 'Up' ? 'Up' : 'Down';
-                  if (newStatus !== lastStatus) {
-                      newStatusHistoryEntry = {
-                          time: result.lastChecked,
-                          status: newStatus,
-                          latency: result.latency,
-                          reason: result.httpResponse,
-                      };
-                  }
-              }
-              return currentWebsites;
-          });
-
-          updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
-          
-          setWebsites(currentWebsites => {
-              const updatedSite = currentWebsites.find(w => w.id === website.id);
-              if (updatedSite) {
-                  scheduleNextPoll(updatedSite);
-              }
-              return currentWebsites;
-          });
-      } catch (error) {
-          console.error(`Failed to check status for ${website.url}`, error);
-          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-          updateWebsite(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
-          setWebsites(currentWebsites => {
-              const updatedSite = currentWebsites.find(w => w.id === website.id);
-              if (updatedSite) {
-                  scheduleNextPoll(updatedSite);
-              }
-              return currentWebsites;
-          });
-      }
-  }, [updateWebsite, scheduleNextPoll]);
+  }, [pollWebsite]);
 
   useEffect(() => {
     if (!isLoaded) return;
-
-    // This effect runs only once on load to start the initial polling.
+    
     websites.forEach(website => {
-        if (timeoutsRef.current.has(website.id)) {
-            clearTimeout(timeoutsRef.current.get(website.id)!);
-        }
         // Stagger initial checks
         const initialDelay = Math.random() * 5000;
         const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
@@ -316,11 +317,9 @@ export default function MonitoringDashboard() {
     });
 
     return () => {
-        // Cleanup all timers when the component unmounts
         timeoutsRef.current.forEach(clearTimeout);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded]); // Only run on initial load
+  }, [isLoaded, pollWebsite]); 
 
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
@@ -344,9 +343,9 @@ export default function MonitoringDashboard() {
           displayOrder: prev.length > 0 ? Math.max(...prev.map(w => w.displayOrder)) + 1 : 0,
           isLoading: true,
         };
-
-        const initialDelay = 1000; // Start check after 1s
-        const timeoutId = setTimeout(() => pollWebsite(newWebsite), initialDelay);
+        
+        // Immediately start polling for the new site
+        const timeoutId = setTimeout(() => pollWebsite(newWebsite), 1000);
         timeoutsRef.current.set(newWebsite.id, timeoutId);
         
         return [...prev, newWebsite];
@@ -449,15 +448,12 @@ export default function MonitoringDashboard() {
   const handleIntervalChange = () => {
     if(tempPollingInterval > 0) {
         setPollingInterval(tempPollingInterval);
+        pollingIntervalRef.current = tempPollingInterval;
         
         // Reschedule all non-paused polls with the new global interval
         websites.forEach(site => {
             if (!site.isPaused && !site.pollingInterval) { // only reschedule those using global interval
-                if (timeoutsRef.current.has(site.id)) {
-                    clearTimeout(timeoutsRef.current.get(site.id)!);
-                }
-                const timeoutId = setTimeout(() => pollWebsite(site), 1000); // start after 1s
-                timeoutsRef.current.set(site.id, timeoutId);
+                scheduleNextPoll(site);
             }
         });
         
@@ -731,5 +727,7 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
 
     
