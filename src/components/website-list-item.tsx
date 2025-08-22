@@ -9,7 +9,7 @@ import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, P
 import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './uptime-bar';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
@@ -60,8 +60,8 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
     }
   }, [website.status]);
   
-  const lastCheckedTimeAgo = website.lastChecked 
-    ? formatDistanceToNow(new Date(website.lastChecked), { addSuffix: true })
+  const lastCheckedTime = website.lastChecked 
+    ? format(new Date(website.lastChecked), 'HH:mm:ss')
     : 'N/A';
 
   return (
@@ -79,11 +79,11 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
                  <div className="hidden md:block col-span-4">
                     <UptimeBar history={website.latencyHistory} max-items={50} />
                 </div>
-                 <div className="hidden md:block col-span-2 text-sm text-muted-foreground font-medium">
+                 <div className="hidden md:block col-span-2 text-sm text-muted-foreground font-medium text-right">
                     {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
                  </div>
-                <div className="hidden md:block col-span-1 text-sm text-muted-foreground truncate" title={website.lastChecked}>
-                    {lastCheckedTimeAgo}
+                <div className="hidden md:block col-span-1 text-sm text-muted-foreground truncate text-right" title={website.lastChecked ? new Date(website.lastChecked).toLocaleString() : ''}>
+                    {lastCheckedTime}
                 </div>
                 <div className="flex items-center justify-end gap-1 col-span-12 md:col-span-1">
                     <DropdownMenu>
