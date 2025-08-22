@@ -15,7 +15,7 @@ import { EditWebsiteDialog } from '@/components/edit-website-dialog';
 import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, Bell } from 'lucide-react';
 import { WebsiteCardView } from '@/components/website-card-view';
 import { WebsiteListView } from '@/components/website-list-view';
 import Image from 'next/image';
@@ -23,6 +23,7 @@ import { LiveClock } from '@/components/live-clock';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { HistoryDialog } from './history-dialog';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
+import { Switch } from '@/components/ui/switch';
 
 
 const initialWebsites: Omit<Website, 'displayOrder' | 'uptimeData'>[] = [
@@ -91,6 +92,7 @@ export default function MonitoringDashboard() {
   const [historyWebsite, setHistoryWebsite] = useState<Website | null>(null);
   const [deletingWebsite, setDeletingWebsite] = useState<Website | null>(null);
   const [view, setView] = useState<'card' | 'list'>('card');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
 
   const { toast } = useToast();
@@ -117,6 +119,8 @@ export default function MonitoringDashboard() {
   }, [view]);
 
   useEffect(() => {
+    if (!notificationsEnabled) return;
+    
     websites.forEach((site) => {
         const prevSite = previousWebsitesRef.current.find(p => p.id === site.id);
         if (prevSite && prevSite.status !== 'Down' && site.status === 'Down') {
@@ -128,7 +132,7 @@ export default function MonitoringDashboard() {
         }
     });
     previousWebsitesRef.current = websites;
-  }, [websites, toast]);
+  }, [websites, toast, notificationsEnabled]);
 
   const updateWebsite = useCallback((id: string, updates: Partial<Website> & { newStatusHistoryEntry?: StatusHistory }) => {
     setWebsites(prev =>
@@ -256,7 +260,7 @@ export default function MonitoringDashboard() {
 
   useEffect(() => {
       websites.forEach(site => {
-        if (!site.isPaused) {
+        if (!site.isPaused && !timeoutsRef.current.has(site.id)) {
             schedulePoll(site);
         }
       });
@@ -264,8 +268,7 @@ export default function MonitoringDashboard() {
           timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
           timeoutsRef.current.clear();
       };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount to initialize all polls
+  }, [websites, schedulePoll]);
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
     if (websites.some(site => site.url === data.url && site.port === data.port)) {
@@ -530,20 +533,36 @@ export default function MonitoringDashboard() {
                             <CardTitle>Settings</CardTitle>
                             <CardDescription>Customize the monitoring settings.</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="flex flex-col sm:flex-row items-center gap-4">
-                                    <div className='w-full sm:w-auto'>
-                                        <Label htmlFor="polling-interval" className="mb-2 block">Global Monitoring Interval (seconds)</Label>
+                            <CardContent className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="polling-interval">Global Monitoring Interval (seconds)</Label>
+                                    <div className="flex items-center gap-2">
                                         <Input
-                                        id="polling-interval"
-                                        type="number"
-                                        value={tempPollingInterval}
-                                        onChange={(e) => setTempPollingInterval(Number(e.target.value))}
-                                        placeholder="e.g. 30"
-                                        className="w-full sm:w-48"
+                                            id="polling-interval"
+                                            type="number"
+                                            value={tempPollingInterval}
+                                            onChange={(e) => setTempPollingInterval(Number(e.target.value))}
+                                            placeholder="e.g. 30"
+                                            className="w-full"
                                         />
+                                        <Button onClick={handleIntervalChange}>Save</Button>
                                     </div>
-                                    <Button onClick={handleIntervalChange} className="w-full sm:w-auto self-end">Save Settings</Button>
+                                </div>
+                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                  <div className="space-y-0.5">
+                                    <Label htmlFor="notifications-switch" className="flex items-center gap-2">
+                                      <Bell className="h-4 w-4" />
+                                      Notifications
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                      Enable or disable service down notifications.
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    id="notifications-switch"
+                                    checked={notificationsEnabled}
+                                    onCheckedChange={setNotificationsEnabled}
+                                  />
                                 </div>
                             </CardContent>
                         </Card>
