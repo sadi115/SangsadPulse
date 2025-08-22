@@ -275,31 +275,41 @@ export default function MonitoringDashboard() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    websites.forEach(website => {
-        // If a site is not paused/downtime and has no scheduled poll, schedule one.
-        if (!website.isPaused && website.monitorType !== 'Downtime' && !timeoutsRef.current.has(website.id)) {
-           // Stagger initial polls to avoid a thundering herd
-           const initialDelay = Math.random() * 5000; 
-           const timeoutId = setTimeout(() => pollWebsite(website), initialDelay);
-           timeoutsRef.current.set(website.id, timeoutId);
-        } else if ((website.isPaused || website.monitorType === 'Downtime') && timeoutsRef.current.has(website.id)) {
-            // If a site becomes paused, clear its timeout
-            clearTimeout(timeoutsRef.current.get(website.id)!);
-            timeoutsRef.current.delete(website.id);
-        }
-    });
-
     // This is the dependency that makes rescheduling work correctly after an update.
-    // When `websites` changes, this effect re-evaluates scheduling for all sites.
     const previousSites = previousWebsitesRef.current;
+
     websites.forEach(site => {
         const prevSite = previousSites.find(p => p.id === site.id);
-        if (prevSite && prevSite.isLoading === false) { // Reschedule only after the check is done
-             scheduleNextPoll(site);
+        
+        // If it's a new site, poll immediately
+        if (!prevSite) {
+            const initialDelay = Math.random() * 5000; // Stagger initial polls
+            const timeoutId = setTimeout(() => pollWebsite(site), initialDelay);
+            timeoutsRef.current.set(site.id, timeoutId);
+            return;
+        }
+
+        // If the site is no longer loading (meaning a check was completed), schedule the next poll.
+        if (prevSite.isLoading && !site.isLoading && !site.isPaused && site.monitorType !== 'Downtime') {
+            scheduleNextPoll(site);
+        }
+
+        // If a site becomes un-paused or its interval changes, reschedule it
+        const intervalChanged = site.pollingInterval !== prevSite.pollingInterval;
+        const justResumed = prevSite.isPaused && !site.isPaused;
+        
+        if ((intervalChanged || justResumed) && !site.isLoading) {
+            scheduleNextPoll(site);
+        }
+
+        // If a site becomes paused, clear its timeout
+        if (site.isPaused && timeoutsRef.current.has(site.id)) {
+            clearTimeout(timeoutsRef.current.get(site.id)!);
+            timeoutsRef.current.delete(site.id);
         }
     });
-    previousWebsitesRef.current = websites;
 
+    previousWebsitesRef.current = websites;
 
     // Cleanup function to clear all timeouts when the component unmounts
     return () => {
@@ -761,9 +771,5 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
-
-    
-
-    
 
     
