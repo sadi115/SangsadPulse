@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Website, StatusHistory } from '@/lib/types';
@@ -47,7 +48,7 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span title={format(new Date(item.time), 'PPpp')}>
-                                                    {format(new Date(item.time), 'HH:mm:ss, dd:MMM:yy')}
+                                                    {format(new Date(item.time), 'HH:mm:ss, dd MMM yy')}
                                                 </span>
                                             </div>
                                         </TableCell>
