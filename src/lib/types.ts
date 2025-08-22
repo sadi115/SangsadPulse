@@ -45,6 +45,7 @@ export interface Website {
   // Options for specific monitor types
   port?: number;
   keyword?: string;
+  pollingInterval?: number; // Custom interval in seconds
 }
 
     

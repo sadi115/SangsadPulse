@@ -49,6 +49,7 @@ type WebsiteFormData = {
     monitorType: MonitorType;
     port?: number;
     keyword?: string;
+    pollingInterval?: number;
 }
 
 const calculateUptime = (history: { time: string; latency: number }[]): UptimeData => {
@@ -93,10 +94,7 @@ export default function MonitoringDashboard() {
 
 
   const { toast } = useToast();
-  const websitesRef = useRef(websites);
-  useEffect(() => {
-    websitesRef.current = websites;
-  }, [websites]);
+  const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
    useEffect(() => {
     try {
@@ -169,16 +167,13 @@ export default function MonitoringDashboard() {
     );
   }, []);
 
-  const pollWebsites = useCallback(async (sites: Website[]) => {
-    if (sites.length === 0) return;
-  
-    const checks = sites.map(async website => {
-      if (website.status === 'Checking' || website.isPaused) return;
-      
-      updateWebsite(website.id, { status: 'Checking' });
-      try {
+  const pollWebsite = useCallback(async (website: Website) => {
+    if (website.status === 'Checking' || website.isPaused) return;
+
+    updateWebsite(website.id, { status: 'Checking' });
+    try {
         const result = await checkStatus(website);
-        
+
         const lastStatus = website.statusHistory?.[website.statusHistory.length - 1]?.status;
         const newStatus = result.status === 'Up' ? 'Up' : 'Down';
         let newStatusHistoryEntry: StatusHistory | undefined;
@@ -191,26 +186,57 @@ export default function MonitoringDashboard() {
                 reason: result.httpResponse,
             };
         }
-
+        
         updateWebsite(website.id, { ...result, newStatusHistoryEntry });
 
-      } catch (error) {
+    } catch (error) {
         console.error(`Failed to check status for ${website.url}`, error);
         updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
-      }
-    });
-  
-    await Promise.all(checks);
+    }
   }, [updateWebsite]);
 
+
+  const schedulePoll = useCallback((website: Website) => {
+      if (timeoutsRef.current.has(website.id)) {
+          clearTimeout(timeoutsRef.current.get(website.id));
+          timeoutsRef.current.delete(website.id);
+      }
+
+      if (website.isPaused) return;
+
+      const interval = (website.pollingInterval || pollingInterval) * 1000;
+      
+      const run = async () => {
+          await pollWebsite(website);
+          const timeoutId = setTimeout(run, interval);
+          timeoutsRef.current.set(website.id, timeoutId);
+      };
+
+      run();
+
+  }, [pollWebsite, pollingInterval]);
+
   useEffect(() => {
-    pollWebsites(websitesRef.current.filter(w => w.status === 'Idle' && !w.isPaused));
-    
-    const intervalId = setInterval(() => pollWebsites(websitesRef.current.filter(w => !w.isPaused)), pollingInterval * 1000);
+      websites.forEach(site => {
+        if (!timeoutsRef.current.has(site.id)) { // Initial scheduling
+             // Stagger initial checks to avoid overwhelming the server
+            const initialDelay = Math.random() * 5000; // 0-5 seconds
+            const timeoutId = setTimeout(() => schedulePoll(site), initialDelay);
+            timeoutsRef.current.set(site.id, timeoutId);
+        }
+      });
+      return () => {
+          timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+          timeoutsRef.current.clear();
+      };
+  }, []); // Run only on mount
 
-    return () => clearInterval(intervalId);
-  }, [pollingInterval, pollWebsites]);
-
+  // Reschedule when pollingInterval changes or a site is edited/paused
+  useEffect(() => {
+    websites.forEach(site => {
+        schedulePoll(site);
+    });
+  }, [websites, pollingInterval, schedulePoll]);
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
     if (websites.some(site => site.url === data.url && site.port === data.port)) {
@@ -234,12 +260,16 @@ export default function MonitoringDashboard() {
     };
     const newWebsites = [...websites, newWebsite];
     setWebsites(newWebsites);
-    pollWebsites([newWebsite]);
-  }, [websites, toast, pollWebsites]);
+    pollWebsite(newWebsite); // Poll immediately then schedule
+  }, [websites, toast, pollWebsite]);
 
   const handleDeleteWebsite = useCallback((id: string) => {
     const siteToDelete = websites.find(site => site.id === id);
     if (siteToDelete) {
+        if (timeoutsRef.current.has(id)) {
+          clearTimeout(timeoutsRef.current.get(id));
+          timeoutsRef.current.delete(id);
+        }
         setWebsites(prev => prev.filter(site => site.id !== id));
         toast({
             title: "Service Removed",
@@ -288,7 +318,7 @@ export default function MonitoringDashboard() {
         setPollingInterval(tempPollingInterval);
         toast({
             title: 'Settings Saved',
-            description: `Monitoring interval updated to ${tempPollingInterval} seconds.`,
+            description: `Global monitoring interval updated to ${tempPollingInterval} seconds.`,
         });
     } else {
         toast({
@@ -428,7 +458,7 @@ export default function MonitoringDashboard() {
                                 <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <AddWebsiteForm onAddWebsite={handleAddWebsite} />
+                                <AddWebsiteForm onAddWebsite={handleAddWebsite} globalPollingInterval={pollingInterval} />
                             </CardContent>
                         </Card>
                     </AccordionContent>
@@ -447,7 +477,7 @@ export default function MonitoringDashboard() {
                             <CardContent>
                                 <div className="flex flex-col sm:flex-row items-center gap-4">
                                     <div className='w-full sm:w-auto'>
-                                        <Label htmlFor="polling-interval" className="mb-2 block">Monitoring Interval (seconds)</Label>
+                                        <Label htmlFor="polling-interval" className="mb-2 block">Global Monitoring Interval (seconds)</Label>
                                         <Input
                                         id="polling-interval"
                                         type="number"
@@ -488,6 +518,7 @@ export default function MonitoringDashboard() {
             onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
             website={editingWebsite}
             onEditWebsite={handleEditWebsite}
+            globalPollingInterval={pollingInterval}
           />
           <HistoryDialog
             isOpen={!!historyWebsite}

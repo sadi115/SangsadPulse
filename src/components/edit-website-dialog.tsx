@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Tag, Hash, Search } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import type { MonitorType, Website } from '@/lib/types';
 import { useEffect } from 'react';
@@ -23,6 +23,7 @@ const formSchema = z.object({
   monitorType: z.custom<MonitorType>(),
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
+  pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
 });
 
 type EditWebsiteDialogProps = {
@@ -30,9 +31,10 @@ type EditWebsiteDialogProps = {
   onOpenChange: (isOpen: boolean) => void;
   website: Website | null;
   onEditWebsite: (id: string, data: z.infer<typeof formSchema>) => void;
+  globalPollingInterval: number;
 };
 
-export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite }: EditWebsiteDialogProps) {
+export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite, globalPollingInterval }: EditWebsiteDialogProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -41,6 +43,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
       monitorType: 'HTTP(s)',
       port: undefined,
       keyword: '',
+      pollingInterval: undefined,
     },
   });
 
@@ -54,6 +57,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
         monitorType: website.monitorType,
         port: website.port,
         keyword: website.keyword,
+        pollingInterval: website.pollingInterval,
       });
     }
   }, [website, form, isOpen]);
@@ -172,6 +176,28 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                     )}
                  />
             )}
+             <FormField
+              control={form.control}
+              name="pollingInterval"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monitoring Interval (seconds)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Timer className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder={`Default (Global: ${globalPollingInterval}s)`}
+                        {...field}
+                        value={field.value ?? ''}
+                        className="pl-10"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter>
                 <Button type="submit">Save changes</Button>
             </DialogFooter>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Globe, Type, Tag, Hash, Search } from 'lucide-react';
+import { Globe, Type, Tag, Hash, Search, Timer } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import type { MonitorType } from '@/lib/types';
 
@@ -24,13 +24,15 @@ const formSchema = z.object({
   monitorType: z.custom<MonitorType>(),
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
+  pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
 });
 
 type AddWebsiteFormProps = {
   onAddWebsite: (data: z.infer<typeof formSchema>) => void;
+  globalPollingInterval: number;
 };
 
-export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
+export function AddWebsiteForm({ onAddWebsite, globalPollingInterval }: AddWebsiteFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -39,6 +41,7 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
       monitorType: 'HTTP(s)',
       port: undefined,
       keyword: '',
+      pollingInterval: undefined,
     },
   });
 
@@ -152,6 +155,29 @@ export function AddWebsiteForm({ onAddWebsite }: AddWebsiteFormProps) {
                     )}
                  />
             )}
+
+            <FormField
+              control={form.control}
+              name="pollingInterval"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monitoring Interval (seconds)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Timer className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder={`Optional (Global: ${globalPollingInterval}s)`}
+                        {...field}
+                        value={field.value ?? ''}
+                        className="pl-10"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <div className="flex justify-end">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
