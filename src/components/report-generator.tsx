@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format as formatDate } from 'date-fns';
+import { formatDate as formatDateFn } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -60,8 +60,10 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
 
   const generatePdf = async (data: any[], fileName: string, startDate: string, endDate: string, serviceName: string, reportType: 'summary' | 'detail') => {
     const doc = new jsPDF();
-    const generationTime = formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss');
+    const pageW = doc.internal.pageSize.getWidth();
+    const generationTime = formatDateFn(new Date(), 'yyyy-MM-dd HH:mm:ss');
     const logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png';
+    let yPos = 15;
 
     // Fetch and add logo
     try {
@@ -71,24 +73,28 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         reader.readAsDataURL(blob);
         await new Promise(resolve => {
             reader.onloadend = () => {
-                doc.addImage(reader.result as string, 'PNG', 14, 15, 20, 20);
+                doc.addImage(reader.result as string, 'PNG', (pageW / 2) - 10, yPos, 20, 20);
                 resolve(true);
             };
         });
+        yPos += 25;
     } catch (e) {
         console.error("Failed to load logo for PDF", e);
     }
-
-    doc.setFontSize(18);
-    doc.text('Bangladesh Parliament Web Services Monitoring Report', 40, 22);
-    doc.setFontSize(12);
-    doc.text(reportType === 'summary' ? 'Summary Report' : 'Detail Report', 40, 28);
     
-    doc.setFontSize(10);
-    doc.text(`Service(s): ${serviceName.replace(/_/g, ' ')}`, 14, 42);
-    doc.text(`Date Range: ${startDate} to ${endDate}`, 14, 48);
+    doc.setFontSize(18);
+    doc.text('Bangladesh Parliament Web Services Monitoring Report', pageW / 2, yPos, { align: 'center'});
+    yPos += 7;
+    doc.setFontSize(12);
+    doc.text(reportType === 'summary' ? 'Summary Report' : 'Detail Report', pageW / 2, yPos, { align: 'center' });
+    yPos += 15;
 
-    let yPos = 55;
+    doc.setFontSize(10);
+    doc.text(`Service(s): ${serviceName.replace(/_/g, ' ')}`, 14, yPos);
+    doc.text(`Date Range: ${startDate} to ${endDate}`, 14, yPos + 6);
+
+    yPos += 15;
+
 
     data.forEach(site => {
         if (yPos > 250) { 
@@ -136,8 +142,9 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(150);
-        doc.text(`System Generated Report. Generated on: ${generationTime}`, 14, 285);
-        doc.text(`Page ${i} of ${pageCount}`, 190, 285);
+        const footerText = `System Generated Report. Generated on: ${generationTime}`;
+        doc.text(footerText, pageW / 2, 285, { align: 'center' });
+        doc.text(`Page ${i} of ${pageCount}`, pageW - 14, 285, { align: 'right'});
     }
 
 
@@ -250,7 +257,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
                 url: site.url,
                 monitorType: site.monitorType,
                 history: historyInRange.map(h => ({
-                    time: formatDate(new Date(h.time), 'yyyy-MM-dd hh:mm:ss a'),
+                    time: formatDateFn(new Date(h.time), 'yyyy-MM-dd hh:mm:ss a'),
                     latency: h.latency > 0 ? h.latency : 'N/A',
                     status: h.latency > 0 ? 'Up' : 'Down',
                 })),
@@ -263,8 +270,8 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         }
     }
     
-    const startDate = formatDate(from, 'yyyy-MM-dd');
-    const endDate = formatDate(to, 'yyyy-MM-dd');
+    const startDate = formatDateFn(from, 'yyyy-MM-dd');
+    const endDate = formatDateFn(to, 'yyyy-MM-dd');
     const serviceName = serviceId === 'all' ? 'All_Services' : selectedWebsites[0]?.name.replace(/\s+/g, '_') || 'Service';
     const reportTypeName = reportType === 'summary' ? 'Summary' : 'Detail';
     const fileName = `Monitoring_Report_${reportTypeName}_${serviceName}_${startDate}_to_${endDate}`;
@@ -357,11 +364,11 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
                             {date?.from ? (
                             date.to ? (
                                 <>
-                                {formatDate(date.from, "LLL dd, y")} -{" "}
-                                {formatDate(date.to, "LLL dd, y")}
+                                {formatDateFn(date.from, "LLL dd, y")} -{" "}
+                                {formatDateFn(date.to, "LLL dd, y")}
                                 </>
                             ) : (
-                                formatDate(date.from, "LLL dd, y")
+                                formatDateFn(date.from, "LLL dd, y")
                             )
                             ) : (
                             <span>Pick a date range</span>
