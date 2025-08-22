@@ -61,9 +61,11 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
   const generatePdf = async (data: any[], fileName: string, startDate: string, endDate: string, serviceName: string, reportType: 'summary' | 'detail') => {
     const doc = new jsPDF();
     const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
     const generationTime = formatDateFn(new Date(), 'yyyy-MM-dd HH:mm:ss');
     const logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png';
     let yPos = 15;
+    let logoDataUri: string | ArrayBuffer | null = null;
 
     // Fetch and add logo
     try {
@@ -73,7 +75,8 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         reader.readAsDataURL(blob);
         await new Promise(resolve => {
             reader.onloadend = () => {
-                doc.addImage(reader.result as string, 'PNG', (pageW / 2) - 10, yPos, 20, 20);
+                logoDataUri = reader.result;
+                doc.addImage(logoDataUri as string, 'PNG', (pageW / 2) - 10, yPos, 20, 20);
                 resolve(true);
             };
         });
@@ -140,6 +143,15 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
+        
+        // Add watermark
+        if (logoDataUri) {
+            doc.saveGraphicsState();
+            doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
+            doc.addImage(logoDataUri as string, 'PNG', (pageW / 2) - 50, (pageH / 2) - 50, 100, 100);
+            doc.restoreGraphicsState();
+        }
+
         doc.setFontSize(8);
         doc.setTextColor(150);
         const footerText = `System Generated Report. Generated on: ${generationTime}`;
