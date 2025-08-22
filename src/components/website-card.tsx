@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { WebsiteCardDetails } from './website-card-details';
-import { Card, CardHeader, CardContent as CardBody } from './ui/card';
+import { Card } from './ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { UptimeBar } from './uptime-bar';
 import { cn } from '@/lib/utils';
