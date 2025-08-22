@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format as formatDate } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -56,7 +56,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const { serviceId, format } = values;
+    const { serviceId, format: reportFormat } = values;
     const { from, to } = date || {};
 
     if (!from || !to) {
@@ -88,7 +88,7 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
             url: site.url,
             monitorType: site.monitorType,
             history: historyInRange.map(h => ({
-                time: format(new Date(h.time), 'yyyy-MM-dd hh:mm:ss a'),
+                time: formatDate(new Date(h.time), 'yyyy-MM-dd hh:mm:ss a'),
                 latency: h.latency > 0 ? h.latency : 'N/A',
                 status: h.latency > 0 ? 'Up' : 'Down',
             })),
@@ -101,12 +101,12 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
     }
 
 
-    const startDate = format(from, 'yyyy-MM-dd');
-    const endDate = format(to, 'yyyy-MM-dd');
+    const startDate = formatDate(from, 'yyyy-MM-dd');
+    const endDate = formatDate(to, 'yyyy-MM-dd');
     const serviceName = serviceId === 'all' ? 'All_Services' : selectedWebsites[0]?.name.replace(/\s+/g, '_') || 'Service';
     const fileName = `WebWatch_Report_${serviceName}_${startDate}_to_${endDate}`;
 
-    if (format === 'pdf') {
+    if (reportFormat === 'pdf') {
       generatePdf(reportData, fileName, startDate, endDate, serviceName.replace(/_/g, ' '));
     } else {
       generateExcel(reportData, fileName);
@@ -229,11 +229,11 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
                             {date?.from ? (
                             date.to ? (
                                 <>
-                                {format(date.from, "LLL dd, y")} -{" "}
-                                {format(date.to, "LLL dd, y")}
+                                {formatDate(date.from, "LLL dd, y")} -{" "}
+                                {formatDate(date.to, "LLL dd, y")}
                                 </>
                             ) : (
-                                format(date.from, "LLL dd, y")
+                                formatDate(date.from, "LLL dd, y")
                             )
                             ) : (
                             <span>Pick a date range</span>
