@@ -96,6 +96,8 @@ export default function MonitoringDashboard() {
   const { toast } = useToast();
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const previousWebsitesRef = useRef<Website[]>([]);
+  const websitesRef = useRef(websites);
+  websitesRef.current = websites;
 
    useEffect(() => {
     try {
@@ -233,114 +235,101 @@ export default function MonitoringDashboard() {
     );
   }, []);
 
-  const pollWebsite = useCallback(async (website: Website, globalInterval: number) => {
-    if (website.status === 'Checking' || website.isPaused || website.monitorType === 'Downtime') {
-        if (website.monitorType === 'Downtime') {
-             updateWebsite(website.id, { status: 'Down', httpResponse: 'In scheduled downtime.' });
-        }
-        return;
+  const pollWebsite = useCallback(async (website: Website) => {
+    const currentWebsiteState = websitesRef.current.find(w => w.id === website.id);
+    if (!currentWebsiteState || currentWebsiteState.isPaused || currentWebsiteState.monitorType === 'Downtime') {
+      if (currentWebsiteState?.monitorType === 'Downtime') {
+        updateWebsite(website.id, { status: 'Down', httpResponse: 'In scheduled downtime.' });
+      }
+      return;
     }
-
+  
     updateWebsite(website.id, { status: 'Checking' });
+  
     try {
-        const result = await checkStatus(website);
-        let ttfbResult;
-        if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
-            ttfbResult = await getTtfb({ url: website.url });
-        }
-
-
-        const lastStatus = website.statusHistory?.[website.statusHistory.length - 1]?.status;
-        const newStatus = result.status === 'Up' ? 'Up' : 'Down';
-        let newStatusHistoryEntry: StatusHistory | undefined;
-
-        if (newStatus !== lastStatus) {
-            newStatusHistoryEntry = {
-                time: result.lastChecked,
-                status: newStatus,
-                latency: result.latency,
-                reason: result.httpResponse,
-            };
-        }
-        
-        updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
-
+      const result = await checkStatus(website);
+      let ttfbResult;
+      if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
+        ttfbResult = await getTtfb({ url: website.url });
+      }
+  
+      const lastStatus = currentWebsiteState.statusHistory?.[currentWebsiteState.statusHistory.length - 1]?.status;
+      const newStatus = result.status === 'Up' ? 'Up' : 'Down';
+      let newStatusHistoryEntry: StatusHistory | undefined;
+  
+      if (newStatus !== lastStatus) {
+        newStatusHistoryEntry = {
+          time: result.lastChecked,
+          status: newStatus,
+          latency: result.latency,
+          reason: result.httpResponse,
+        };
+      }
+      
+      updateWebsite(website.id, { ...result, ttfb: ttfbResult?.ttfb, newStatusHistoryEntry });
     } catch (error) {
-        console.error(`Failed to check status for ${website.url}`, error);
-        updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
+      console.error(`Failed to check status for ${website.url}`, error);
+      updateWebsite(website.id, { status: 'Down', httpResponse: 'Failed to check status.' });
     }
   }, [updateWebsite]);
 
-
-  const schedulePoll = useCallback((website: Website, globalInterval: number) => {
+  const schedulePoll = useCallback((website: Website) => {
     if (timeoutsRef.current.has(website.id)) {
-        clearTimeout(timeoutsRef.current.get(website.id)!);
+      clearTimeout(timeoutsRef.current.get(website.id)!);
     }
-    
-    if (website.isPaused || website.monitorType === 'Downtime') {
-        return;
-    }
-
-    const interval = (website.pollingInterval || globalInterval) * 1000;
-
+  
     const pollAndReschedule = async () => {
-        let currentWebsiteState: Website | undefined;
-        // Use a functional update to get the latest state without causing re-renders of the scheduler effect
-        setWebsites(currentWebsites => {
-            currentWebsiteState = currentWebsites.find(w => w.id === website.id);
-            return currentWebsites;
-        });
-
-        // Need a slight delay to ensure currentWebsiteState is set
-        await new Promise(resolve => setTimeout(resolve, 0));
-
-        if (currentWebsiteState) {
-            await pollWebsite(currentWebsiteState, globalInterval);
-        }
-        
+      const currentWebsite = websitesRef.current.find(w => w.id === website.id);
+      if (currentWebsite && !currentWebsite.isPaused && currentWebsite.monitorType !== 'Downtime') {
+        await pollWebsite(currentWebsite);
         // After the poll is done, schedule the next one.
-        if (timeoutsRef.current.get(website.id) !== null) { // Check if it hasn't been cleared (e.g., by delete)
-            const timeoutId = setTimeout(pollAndReschedule, interval);
-            timeoutsRef.current.set(website.id, timeoutId);
+        // Re-check the website state from the ref in case it was changed (e.g. paused, deleted) during the poll
+        const postPollWebsite = websitesRef.current.find(w => w.id === website.id);
+        if (postPollWebsite) {
+          schedulePoll(postPollWebsite);
         }
+      }
     };
-    
-    // Stagger initial checks to avoid overwhelming the server on app load
-    const initialDelay = Math.random() * 5000;
-    const initialTimeoutId = setTimeout(pollAndReschedule, initialDelay);
-    
-    timeoutsRef.current.set(website.id, initialTimeoutId);
-
-  }, [pollWebsite]);
-
+  
+    const interval = (website.pollingInterval || pollingInterval) * 1000;
+    const timeoutId = setTimeout(pollAndReschedule, interval);
+    timeoutsRef.current.set(website.id, timeoutId);
+  }, [pollWebsite, pollingInterval]);
+  
   useEffect(() => {
     if (!isLoaded) return;
-    
-    // This effect is now ONLY responsible for starting/stopping/updating timers
-    // when the list of websites or global interval changes.
-    // It does not run on every status update.
-    
-    const currentWebsiteIds = new Set(websites.map(w => w.id));
-
+  
+    const currentIds = new Set(websites.map(w => w.id));
     // Stop timers for removed websites
     timeoutsRef.current.forEach((timeoutId, websiteId) => {
-        if (!currentWebsiteIds.has(websiteId)) {
-            clearTimeout(timeoutId);
-            timeoutsRef.current.delete(websiteId);
-        }
+      if (!currentIds.has(websiteId)) {
+        clearTimeout(timeoutId);
+        timeoutsRef.current.delete(websiteId);
+      }
     });
-
+  
     // Start or update timers for all websites
     websites.forEach(site => {
-        schedulePoll(site, pollingInterval);
+      // Don't start a timer if one is already running and the interval hasn't changed.
+      // A simple way is to always reschedule, but `schedulePoll` clears the old timer first.
+      schedulePoll(site);
     });
-    
+  
+    // Initial poll for newly added websites
+    websites.forEach(site => {
+      if (site.isLoading && !timeoutsRef.current.has(site.id)) {
+        const initialTimeout = setTimeout(() => pollWebsite(site).then(() => schedulePoll(site)), Math.random() * 3000);
+        timeoutsRef.current.set(site.id, initialTimeout);
+      }
+    });
+  
     return () => {
-        timeoutsRef.current.forEach(clearTimeout);
-        timeoutsRef.current.clear();
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current.clear();
     };
-  }, [websites, pollingInterval, isLoaded, schedulePoll]);
-
+    // This effect should ONLY run when the websites list reference changes (add/delete), or the global interval changes.
+    // The scheduling of the *next* poll is handled inside `schedulePoll`.
+  }, [websites, pollingInterval, isLoaded, schedulePoll, pollWebsite]);
 
 
   const handleAddWebsite = useCallback((data: WebsiteFormData) => {
@@ -365,8 +354,6 @@ export default function MonitoringDashboard() {
     };
     
     setWebsites(prev => [...prev, newWebsite]);
-    // The main useEffect will pick up this new website and schedule its polling.
-    // No need to poll immediately here as that could cause race conditions.
 
   }, [websites, toast]);
 
@@ -414,16 +401,26 @@ export default function MonitoringDashboard() {
   };
 
   const handleManualCheck = useCallback((id: string) => {
-    const website = websites.find(site => site.id === id);
+    const website = websitesRef.current.find(site => site.id === id);
     if (website) {
         toast({
             title: 'Manual Check',
             description: `Requesting a manual status check for ${website.name}.`,
         });
-        // Run poll but don't reschedule, let the main loop handle that
-        pollWebsite(website, pollingInterval);
+        
+        if (timeoutsRef.current.has(id)) {
+          clearTimeout(timeoutsRef.current.get(id)!);
+          timeoutsRef.current.delete(id);
+        }
+
+        pollWebsite(website).then(() => {
+            const currentWebsite = websitesRef.current.find(w => w.id === id);
+            if (currentWebsite) {
+                schedulePoll(currentWebsite);
+            }
+        });
     }
-  }, [websites, pollWebsite, toast, pollingInterval]);
+  }, [pollWebsite, schedulePoll, toast]);
 
   const handleDiagnose = useCallback(async (id: string) => {
     const website = websites.find(site => site.id === id);
@@ -495,9 +492,8 @@ export default function MonitoringDashboard() {
                 }
                 return { ...s, isPaused: true, status: 'Paused' };
             } else {
-                const unpausedSite = { ...s, isPaused: false, status: 'Idle', isLoading: true };
-                // The main schedulePoll effect will pick this up and start polling.
-                return unpausedSite;
+                // When un-pausing, we set it back to idle and let the main useEffect pick it up
+                return { ...s, isPaused: false, status: 'Idle', isLoading: true };
             }
         }
         return s;
@@ -717,5 +713,7 @@ export default function MonitoringDashboard() {
     </div>
   );
 }
+
+    
 
     
