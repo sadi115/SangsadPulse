@@ -1,12 +1,14 @@
 
 'use client';
 import type { Website } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, Label } from 'recharts';
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { AlertCircle, Clock } from 'lucide-react';
+import { AlertCircle, Clock, ServerOff } from 'lucide-react';
+import { ScrollArea } from './ui/scroll-area';
+import { Separator } from './ui/separator';
 
 type SummaryOverviewProps = {
     websites: Website[];
@@ -37,8 +39,8 @@ const CHART_CONFIG = {
 
 
 export function SummaryOverview({ websites }: SummaryOverviewProps) {
-  const summary = useMemo(() => {
-    return websites.reduce(
+  const { summary, chartData, lastDownService, currentlyDownServices } = useMemo(() => {
+    const summaryData = websites.reduce(
       (acc, site) => {
         if (site.isPaused) {
             acc['Paused']++;
@@ -49,31 +51,36 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
       },
       { Up: 0, Down: 0, Checking: 0, Idle: 0, Paused: 0, Total: websites.length }
     );
-  }, [websites]);
 
-  const chartData = [
-    { name: 'Up', value: summary.Up, fill: CHART_CONFIG.up.color },
-    { name: 'Down', value: summary.Down, fill: CHART_CONFIG.down.color },
-    { name: 'Checking', value: summary.Checking, fill: CHART_CONFIG.checking.color },
-    { name: 'Idle', value: summary.Idle, fill: CHART_CONFIG.idle.color },
-    { name: 'Paused', value: summary.Paused, fill: CHART_CONFIG.paused.color },
-  ].filter(d => d.value > 0);
+    const chartData = [
+        { name: 'Up', value: summaryData.Up, fill: CHART_CONFIG.up.color },
+        { name: 'Down', value: summaryData.Down, fill: CHART_CONFIG.down.color },
+        { name: 'Checking', value: summaryData.Checking, fill: CHART_CONFIG.checking.color },
+        { name: 'Idle', value: summaryData.Idle, fill: CHART_CONFIG.idle.color },
+        { name: 'Paused', value: summaryData.Paused, fill: CHART_CONFIG.paused.color },
+    ].filter(d => d.value > 0);
 
-  const lastDownService = useMemo(() => {
-    return websites
-      .filter(site => site.status === 'Down' && site.lastDownTime)
-      .sort((a, b) => new Date(b.lastDownTime!).getTime() - new Date(a.lastDownTime!).getTime())[0];
+    const downSites = websites.filter(site => site.status === 'Down' && site.lastDownTime);
+
+    const lastDown = downSites.sort((a, b) => new Date(b.lastDownTime!).getTime() - new Date(a.lastDownTime!).getTime())[0];
+    
+    return {
+        summary: summaryData,
+        chartData,
+        lastDownService: lastDown,
+        currentlyDownServices: downSites
+    };
   }, [websites]);
   
   const totalMonitors = websites.length;
 
   return (
     <Card>
-      <CardHeader className="text-center">
-        <CardTitle>Overall Summary</CardTitle>
+      <CardHeader>
+        <CardTitle className="text-center">Overall Summary</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+      <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
             <div className="h-48 md:h-56 flex items-center justify-center">
                 {websites.length > 0 ? (
                     <ChartContainer config={CHART_CONFIG} className="w-full h-full">
@@ -87,52 +94,34 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 dataKey="value"
                                 nameKey="name"
                                 outerRadius={80}
+                                innerRadius={50}
                                 strokeWidth={2}
                                 stroke="hsl(var(--background))"
-                                labelLine={false}
-                                label={({
-                                    cx,
-                                    cy,
-                                    midAngle,
-                                    innerRadius,
-                                    outerRadius,
-                                    value,
-                                    index,
-                                    name,
-                                    fill,
-                                }) => {
-                                    const RADIAN = Math.PI / 180
-                                    const radius = 25 + innerRadius + (outerRadius - innerRadius)
-                                    const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                                    const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
-                                    return (
-                                    <text
-                                        x={x}
-                                        y={y}
-                                        className="text-xs"
-                                        fill={fill}
-                                        textAnchor={x > cx ? 'start' : 'end'}
-                                        dominantBaseline="central"
-                                    >
-                                        {name} ({value})
-                                    </text>
-                                    )
-                                }}
                             >
                                 <Label
                                   content={({ viewBox }) => {
                                     if (viewBox && "cx" in viewBox && "cy" in viewBox) {
                                       return (
-                                        <text
-                                          x={viewBox.cx}
-                                          y={viewBox.cy}
-                                          textAnchor="middle"
-                                          dominantBaseline="middle"
-                                          className="fill-foreground text-3xl font-bold"
-                                        >
-                                          {totalMonitors}
-                                        </text>
+                                        <>
+                                            <text
+                                            x={viewBox.cx}
+                                            y={viewBox.cy}
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                            className="fill-foreground text-3xl font-bold"
+                                            >
+                                            {totalMonitors}
+                                            </text>
+                                            <text
+                                                x={viewBox.cx}
+                                                y={(viewBox.cy || 0) + 20}
+                                                textAnchor="middle"
+                                                dominantBaseline="middle"
+                                                className="fill-muted-foreground text-sm"
+                                            >
+                                                Total
+                                            </text>
+                                        </>
                                       )
                                     }
                                   }}
@@ -147,52 +136,80 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                     <p className="text-muted-foreground">No data to display.</p>
                 )}
             </div>
-            <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
-                <div className="p-4 bg-secondary rounded-lg border">
-                    <p className="text-sm text-muted-foreground">Total</p>
-                    <p className="text-3xl font-bold">{summary.Total}</p>
+            <div className="lg:col-span-2 space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div className="p-4 bg-secondary rounded-lg border">
+                        <p className="text-sm text-muted-foreground">Up</p>
+                        <p className="text-3xl font-bold text-green-500">{summary.Up}</p>
+                    </div>
+                    <div className="p-4 bg-secondary rounded-lg border">
+                        <p className="text-sm text-muted-foreground">Down</p>
+                        <p className="text-3xl font-bold text-red-500">{summary.Down}</p>
+                    </div>
+                    <div className="p-4 bg-secondary rounded-lg border">
+                        <p className="text-sm text-muted-foreground">Paused</p>
+                        <p className="text-3xl font-bold text-gray-500">{summary.Paused}</p>
+                    </div>
+                     <div className="p-4 bg-secondary rounded-lg border">
+                        <p className="text-sm text-muted-foreground">Checking</p>
+                        <p className="text-3xl font-bold text-yellow-500">{summary.Checking + summary.Idle}</p>
+                    </div>
                 </div>
-                <div className="p-4 bg-secondary rounded-lg border">
-                    <p className="text-sm text-muted-foreground">Up</p>
-                    <p className="text-3xl font-bold text-green-500">{summary.Up}</p>
-                </div>
-                 <div className="p-4 bg-secondary rounded-lg border">
-                    <p className="text-sm text-muted-foreground">Down</p>
-                    <p className="text-3xl font-bold text-red-500">{summary.Down}</p>
-                </div>
-                <div className="p-4 bg-secondary rounded-lg border">
-                    <p className="text-sm text-muted-foreground">Paused</p>
-                    <p className="text-3xl font-bold text-gray-500">{summary.Paused}</p>
-                </div>
-                <div className="p-4 bg-secondary rounded-lg border col-span-2 sm:col-span-2">
-                     <p className="text-sm text-muted-foreground">Last Down Service</p>
-                    {lastDownService ? (
-                         <div className="flex flex-col items-center justify-center h-full pt-2">
-                             <p className="text-lg font-semibold text-foreground truncate" title={lastDownService.name}>
-                                 {lastDownService.name}
-                             </p>
-                            <div className="text-xs text-muted-foreground space-y-1 mt-1">
-                                <div className='flex items-center gap-1.5'>
-                                    <Clock className="h-3 w-3" />
-                                    <span>{formatDistanceToNow(new Date(lastDownService.lastDownTime!), { addSuffix: true })}</span>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-base font-medium">Last Down Event</CardTitle>
+                             <Clock className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                             {lastDownService ? (
+                                <div className="space-y-1 text-sm">
+                                    <p className="font-semibold text-foreground truncate" title={lastDownService.name}>
+                                        {lastDownService.name}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                        {formatDistanceToNow(new Date(lastDownService.lastDownTime!), { addSuffix: true })}
+                                    </p>
+                                    <p className="text-muted-foreground truncate" title={lastDownService.httpResponse}>
+                                        {lastDownService.httpResponse}
+                                    </p>
                                 </div>
-                                <div className='flex items-center gap-1.5' title={lastDownService.httpResponse}>
-                                     <AlertCircle className="h-3 w-3 text-red-500" />
-                                     <span className='truncate'>{lastDownService.httpResponse}</span>
-                                </div>
-                            </div>
-                         </div>
-                    ) : (
-                        <p className="text-lg font-semibold text-foreground truncate h-full flex items-center justify-center">
-                          N/A
-                        </p>
-                    )}
+                            ) : (
+                                <p className="text-sm text-muted-foreground pt-2">All services are up.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-base font-medium">Currently Down</CardTitle>
+                            <ServerOff className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            {currentlyDownServices.length > 0 ? (
+                                <ScrollArea className="h-24">
+                                    <div className="space-y-2">
+                                    {currentlyDownServices.map((service, index) => (
+                                        <>
+                                            <div key={service.id} className="text-sm">
+                                                <p className="font-semibold text-foreground truncate" title={service.name}>{service.name}</p>
+                                                <p className="text-xs text-muted-foreground truncate" title={service.httpResponse}>{service.httpResponse}</p>
+                                            </div>
+                                            {index < currentlyDownServices.length - 1 && <Separator />}
+                                        </>
+                                    ))}
+                                    </div>
+                                </ScrollArea>
+                            ) : (
+                                <p className="text-sm text-muted-foreground pt-2">No services are currently down.</p>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
+
             </div>
         </div>
       </CardContent>
     </Card>
   );
 }
-
-    
