@@ -68,9 +68,6 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
                     <UptimeBar history={website.latencyHistory} max-items={50} />
                 </div>
                 <div className="flex items-center justify-end gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">
-                        {website.latency !== undefined ? `${website.latency} ms` : ''}
-                    </span>
                     <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
