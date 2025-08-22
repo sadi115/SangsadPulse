@@ -21,17 +21,23 @@ const ListSkeleton = () => (
     <div className="p-4">
         <div className="flex items-center gap-4">
             <Skeleton className="w-2 h-8 rounded-full" />
-            <div className="flex-1 grid grid-cols-3 items-center gap-4">
-                <div className="flex items-center gap-3">
+            <div className="flex-1 grid grid-cols-12 items-center gap-4">
+                <div className="col-span-4 flex items-center gap-3">
                     <Skeleton className="w-24 h-6 rounded-full" />
                     <Skeleton className="h-4 w-32" />
                 </div>
-                <div className="col-span-1 flex items-center justify-end h-6 gap-px">
+                <div className="col-span-4 flex items-center justify-end h-6 gap-px">
                      {Array.from({ length: 50 }).map((_, index) => (
                          <Skeleton key={index} className="w-1.5 h-full rounded-sm" />
                      ))}
                 </div>
-                 <div className="flex items-center justify-end gap-2">
+                 <div className="col-span-2 text-right">
+                    <Skeleton className="h-4 w-12" />
+                </div>
+                <div className="col-span-1 text-right">
+                    <Skeleton className="h-4 w-16" />
+                </div>
+                 <div className="col-span-1 flex items-center justify-end gap-2">
                      <Skeleton className="h-8 w-8 rounded-md" />
                  </div>
             </div>
@@ -59,6 +65,16 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
   return (
     <Card>
       <CardContent className="p-0">
+        <div className="hidden md:flex items-center p-4 gap-4 border-b text-xs font-semibold text-muted-foreground">
+            <div className="w-2 h-8"></div>
+            <div className="flex-1 grid grid-cols-12 items-center gap-4">
+                <div className="col-span-4">SERVICE</div>
+                <div className="col-span-4 text-right pr-4">UPTIME (LAST 24H)</div>
+                <div className="col-span-2 text-right">LATENCY</div>
+                <div className="col-span-1 text-right">LAST CHECK</div>
+                <div className="col-span-1 text-right">ACTIONS</div>
+            </div>
+        </div>
         <div className="divide-y divide-border">
             {websites.map((website, index) => {
                  if (website.isLoading) {
@@ -88,5 +104,3 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
     </Card>
   );
 }
-
-    
