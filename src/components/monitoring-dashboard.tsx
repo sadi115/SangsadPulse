@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Website, MonitorType, StatusHistory } from '@/lib/types';
+import type { Website, MonitorType, StatusHistory, UptimeData } from '@/lib/types';
 import { AddWebsiteForm } from '@/components/add-website-form';
 import { checkStatus, getAIDiagnosis } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +25,7 @@ import { HistoryDialog } from './history-dialog';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
 
 
-const initialWebsites: Omit<Website, 'displayOrder'>[] = [
+const initialWebsites: Omit<Website, 'displayOrder' | 'uptimeData'>[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
   { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
   { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
@@ -51,9 +51,38 @@ type WebsiteFormData = {
     keyword?: string;
 }
 
+const calculateUptime = (history: { time: string; latency: number }[]): UptimeData => {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const calculatePercentage = (data: { time: string; latency: number }[]) => {
+        if (data.length === 0) return null;
+        const upCount = data.filter(h => h.latency > 0).length;
+        return (upCount / data.length) * 100;
+    };
+    
+    const last1h = history.filter(h => new Date(h.time) >= oneHourAgo);
+    const last24h = history.filter(h => new Date(h.time) >= twentyFourHoursAgo);
+    const last30d = history.filter(h => new Date(h.time) >= thirtyDaysAgo);
+
+    return {
+        '1h': calculatePercentage(last1h),
+        '24h': calculatePercentage(last24h),
+        '30d': calculatePercentage(last30d),
+        'total': calculatePercentage(history),
+    };
+};
+
 export default function MonitoringDashboard() {
   const [websites, setWebsites] = useState<Website[]>(() => 
-    initialWebsites.map((site, index) => ({ ...site, displayOrder: index, isLoading: true }))
+    initialWebsites.map((site, index) => ({ 
+        ...site, 
+        displayOrder: index, 
+        isLoading: true,
+        uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+    }))
   );
   const [pollingInterval, setPollingInterval] = useState(30);
   const [tempPollingInterval, setTempPollingInterval] = useState(30);
@@ -105,15 +134,15 @@ export default function MonitoringDashboard() {
           ].slice(-MAX_STATUS_HISTORY);
 
           let averageLatency;
-          let uptimePercentage;
           if (newLatencyHistory.length > 0) {
             const upHistory = newLatencyHistory.filter(h => h.latency > 0);
             if(upHistory.length > 0) {
               const totalLatency = upHistory.reduce((acc, curr) => acc + curr.latency, 0);
               averageLatency = Math.round(totalLatency / upHistory.length);
             }
-            uptimePercentage = (upHistory.length / newLatencyHistory.length) * 100;
           }
+
+          const uptimeData = calculateUptime(newLatencyHistory);
 
           const newSite = { 
             ...site, 
@@ -121,7 +150,7 @@ export default function MonitoringDashboard() {
             latencyHistory: newLatencyHistory,
             statusHistory: newStatusHistory, 
             averageLatency, 
-            uptimePercentage,
+            uptimeData,
             isLoading: false,
           };
           
@@ -195,6 +224,7 @@ export default function MonitoringDashboard() {
       status: 'Idle',
       latencyHistory: [],
       statusHistory: [],
+      uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
       displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder)) + 1 : 0,
       isLoading: true,
     };
@@ -218,7 +248,7 @@ export default function MonitoringDashboard() {
     setWebsites(prev =>
       prev.map(site =>
         site.id === id
-          ? { ...site, ...data }
+          ? { ...site, ...data, status: 'Idle' } // Reset status to trigger re-check
           : site
       )
     );

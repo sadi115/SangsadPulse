@@ -1,4 +1,5 @@
 
+
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
 export type MonitorType =
@@ -14,6 +15,13 @@ export type StatusHistory = {
     reason:string;
 };
 
+export type UptimeData = {
+    '1h': number | null;
+    '24h': number | null;
+    '30d': number | null;
+    'total': number | null;
+}
+
 export interface Website {
   id: string;
   name: string;
@@ -27,7 +35,7 @@ export interface Website {
   diagnosis?: string;
   latency?: number;
   averageLatency?: number;
-  uptimePercentage?: number;
+  uptimeData: UptimeData;
   latencyHistory?: { time: string; latency: number }[];
   statusHistory?: StatusHistory[];
   lastDownTime?: string;

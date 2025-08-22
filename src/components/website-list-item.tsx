@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
-  uptimePercentage?: number;
+  uptimePercentage?: number | null;
 };
 
 const StatusBadge = ({ status, uptimePercentage }: StatusDisplayProps) => {
@@ -28,7 +28,9 @@ const StatusBadge = ({ status, uptimePercentage }: StatusDisplayProps) => {
 
   return (
     <Badge variant={current.variant} className="w-24 justify-center text-sm font-semibold">
-      {status === 'Up' || status === 'Down' ? `${uptimePercentage?.toFixed(0) ?? 100}%` : current.text}
+      {(status === 'Up' || status === 'Down') && uptimePercentage !== null && uptimePercentage !== undefined 
+        ? `${uptimePercentage?.toFixed(0)}%` 
+        : current.text}
     </Badge>
   );
 };
@@ -66,7 +68,7 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
               <div className="flex-1 grid grid-cols-3 items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <StatusBadge status={website.status} uptimePercentage={website.uptimePercentage} />
+                    <StatusBadge status={website.status} uptimePercentage={website.uptimeData?.['24h']} />
                     <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
                 </div>
                  <div className="col-span-1">

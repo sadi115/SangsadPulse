@@ -3,12 +3,21 @@
 
 import type { Website } from '@/lib/types';
 import { LatencyChart } from './latency-chart';
-import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search } from 'lucide-react';
+import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 
 type WebsiteCardDetailsProps = {
     website: Website;
 };
+
+const UptimeStat = ({ label, value }: { label: string, value: number | null }) => (
+    <div className="flex justify-between items-center text-muted-foreground">
+        <span>{label}</span>
+        <span className="font-medium text-foreground">
+            {value !== null ? `${value.toFixed(2)}%` : 'N/A'}
+        </span>
+    </div>
+);
 
 export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
     const lastCheckedTime = website.lastChecked ? format(new Date(website.lastChecked), 'pp') : '';
@@ -61,15 +70,28 @@ export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
                         )}
                      </div>
                  </div>
+                 
+                 <div className="space-y-2">
+                    <h4 className="font-semibold text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" />Uptime</h4>
+                    <div className="space-y-1">
+                        <UptimeStat label="Last 1 Hour" value={website.uptimeData['1h']} />
+                        <UptimeStat label="Last 24 Hours" value={website.uptimeData['24h']} />
+                        <UptimeStat label="Last 30 Days" value={website.uptimeData['30d']} />
+                        <UptimeStat label="Total" value={website.uptimeData['total']} />
+                    </div>
+                 </div>
 
                 {(website.latency !== undefined || website.averageLatency !== undefined) && (
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-base">Performance</h4>
-                    <div className="flex items-center gap-2 text-muted-foreground" title="Current and average latency">
-                        <BarChart2 className="h-4 w-4" />
-                        <div className="flex items-center gap-4">
-                            {website.latency !== undefined && <span>Latency: {website.latency} ms</span>}
-                            {website.averageLatency !== undefined && <span>Avg: {website.averageLatency} ms</span>}
+                    <h4 className="font-semibold text-base flex items-center gap-2"><BarChart2 className="h-4 w-4" />Performance</h4>
+                    <div className="space-y-1 text-muted-foreground">
+                        <div className="flex justify-between">
+                            <span>Latency:</span>
+                            <span className="font-medium text-foreground">{website.latency} ms</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Average Latency:</span>
+                            <span className="font-medium text-foreground">{website.averageLatency} ms</span>
                         </div>
                     </div>
                   </div>
