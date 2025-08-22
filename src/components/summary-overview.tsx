@@ -1,5 +1,5 @@
-
 'use client';
+import * as React from 'react';
 import type { Website } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
