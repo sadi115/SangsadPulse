@@ -5,13 +5,14 @@ import { diagnoseWebsiteOutage } from '@/ai/flows/diagnose-website-outage';
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
 import type { Website } from '@/lib/types';
 import net from 'net';
-import tls from 'tls';
 import dns from 'dns';
 import { promisify } from 'util';
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
 
 const dnsResolve = promisify(dns.resolve);
+const dnsReverse = promisify(dns.reverse);
+
 
 async function checkTcpPort(host: string, port: number): Promise<CheckStatusResult> {
   return new Promise((resolve) => {
@@ -145,25 +146,48 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
 }
 
 async function checkDns(host: string): Promise<CheckStatusResult> {
+    const isIpAddress = net.isIP(host) !== 0;
+    const startTime = performance.now();
     try {
-        const startTime = performance.now();
-        const records = await dnsResolve(host);
-        const endTime = performance.now();
-
-        if (records && records.length > 0) {
-            return {
-                status: 'Up',
-                httpResponse: `DNS resolved successfully.`,
-                lastChecked: new Date().toISOString(),
-                latency: Math.round(endTime - startTime),
-            };
+        if (isIpAddress) {
+            // It's an IP, do a reverse lookup to check if the DNS server responds
+            const hostnames = await dnsReverse(host);
+            const endTime = performance.now();
+            if (hostnames && hostnames.length > 0) {
+                 return {
+                    status: 'Up',
+                    httpResponse: `Reverse DNS resolved successfully.`,
+                    lastChecked: new Date().toISOString(),
+                    latency: Math.round(endTime - startTime),
+                };
+            } else {
+                 return {
+                    status: 'Down',
+                    httpResponse: 'Reverse DNS lookup failed.',
+                    lastChecked: new Date().toISOString(),
+                    latency: 0,
+                };
+            }
         } else {
-            return {
-                status: 'Down',
-                httpResponse: 'No DNS records found.',
-                lastChecked: new Date().toISOString(),
-                latency: 0,
-            };
+            // It's a hostname, resolve it
+            const records = await dnsResolve(host);
+            const endTime = performance.now();
+
+            if (records && records.length > 0) {
+                return {
+                    status: 'Up',
+                    httpResponse: `DNS resolved successfully.`,
+                    lastChecked: new Date().toISOString(),
+                    latency: Math.round(endTime - startTime),
+                };
+            } else {
+                return {
+                    status: 'Down',
+                    httpResponse: 'No DNS records found.',
+                    lastChecked: new Date().toISOString(),
+                    latency: 0,
+                };
+            }
         }
     } catch (error: any) {
         return {
