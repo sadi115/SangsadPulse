@@ -27,20 +27,20 @@ import { Switch } from '@/components/ui/switch';
 
 
 const initialWebsites: Omit<Website, 'displayOrder' | 'uptimeData'>[] = [
-  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], group: 'Bangladesh Parliament' },
-  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', port: 443, latencyHistory: [], statusHistory: [], group: 'External Services' },
-  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [], group: 'External Services' },
-  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [], group: 'External Services' },
+  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', port: 443, latencyHistory: [], statusHistory: [] },
+  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [] },
+  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [] },
 ];
 
 const MAX_LATENCY_HISTORY = 50;
@@ -54,7 +54,6 @@ type WebsiteFormData = {
     port?: number;
     keyword?: string;
     pollingInterval?: number;
-    group?: string;
 }
 
 const calculateUptime = (history: { time: string; latency: number }[]): UptimeData => {
@@ -499,26 +498,17 @@ export default function MonitoringDashboard() {
     }));
   }, [pollWebsite]);
 
-  const groupedAndFilteredWebsites = useMemo(() => {
+  const filteredWebsites = useMemo(() => {
     const filtered = websites.filter(site => 
         site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         site.url.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const sorted = filtered.sort((a, b) => {
+    return filtered.sort((a, b) => {
       if (a.isPaused && !b.isPaused) return 1;
       if (!a.isPaused && b.isPaused) return -1;
       return a.displayOrder - b.displayOrder;
     });
-
-    return sorted.reduce((acc, site) => {
-        const groupName = site.group || 'Ungrouped';
-        if (!acc[groupName]) {
-            acc[groupName] = [];
-        }
-        acc[groupName].push(site);
-        return acc;
-    }, {} as Record<string, Website[]>);
 
   }, [websites, searchTerm]);
 
@@ -584,7 +574,7 @@ export default function MonitoringDashboard() {
 
             {view === 'card' ? (
               <WebsiteCardView 
-                groupedWebsites={groupedAndFilteredWebsites}
+                websites={filteredWebsites}
                 onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
@@ -595,7 +585,7 @@ export default function MonitoringDashboard() {
               />
             ) : (
               <WebsiteListView
-                groupedWebsites={groupedAndFilteredWebsites}
+                websites={filteredWebsites}
                 onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
                 onDiagnose={handleDiagnose}
                 onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
