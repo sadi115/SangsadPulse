@@ -121,8 +121,9 @@ export default function MonitoringDashboard() {
   useEffect(() => {
     if (!notificationsEnabled) return;
     
+    const prevWebsites = previousWebsitesRef.current;
     websites.forEach((site) => {
-        const prevSite = previousWebsitesRef.current.find(p => p.id === site.id);
+        const prevSite = prevWebsites.find(p => p.id === site.id);
         if (prevSite && prevSite.status !== 'Down' && site.status === 'Down') {
             toast({
                 title: 'Service Down',
@@ -225,7 +226,7 @@ export default function MonitoringDashboard() {
   }, [updateWebsite]);
 
 
-  const schedulePoll = useCallback((website: Website, globalIntervalOverride?: number) => {
+  const schedulePoll = useCallback((website: Website, newInterval?: number) => {
       if (timeoutsRef.current.has(website.id)) {
           clearTimeout(timeoutsRef.current.get(website.id));
       }
@@ -235,7 +236,7 @@ export default function MonitoringDashboard() {
           return;
       }
 
-      const interval = (website.pollingInterval || globalIntervalOverride || pollingInterval) * 1000;
+      const interval = (newInterval || website.pollingInterval || pollingInterval) * 1000;
       
       const run = async () => {
           let currentWebsite: Website | undefined;
@@ -369,7 +370,7 @@ export default function MonitoringDashboard() {
             return prev;
         });
         if (currentSite) {
-            schedulePoll(currentSite);
+            schedulePoll(currentSite, data.pollingInterval);
         }
     });
     
