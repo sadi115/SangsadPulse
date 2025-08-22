@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { WebsiteCardDetails } from './website-card-details';
-import { Card } from './ui/card';
+import { Card, CardHeader, CardContent as CardBody } from './ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { UptimeBar } from './uptime-bar';
 import { cn } from '@/lib/utils';
@@ -61,11 +61,11 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
   }, [website.status]);
 
   return (
-    <Collapsible asChild>
-      <Card className={cn(
-          "group transition-all flex flex-col",
-          website.isPaused && "opacity-60 hover:opacity-100"
-      )}>
+    <Card className={cn(
+        "group transition-all flex flex-col",
+        website.isPaused && "opacity-60 hover:opacity-100"
+    )}>
+      <Collapsible>
         <div className="flex items-center p-4 gap-4">
             <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
             <div className="flex-1 grid grid-cols-[1fr_auto] md:grid-cols-4 items-center gap-4">
@@ -146,7 +146,7 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
         <CollapsibleContent>
             <WebsiteCardDetails website={website} />
         </CollapsibleContent>
-      </Card>
-    </Collapsible>
+      </Collapsible>
+    </Card>
   );
 }

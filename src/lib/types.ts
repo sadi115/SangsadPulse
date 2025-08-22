@@ -7,7 +7,6 @@ export type MonitorType =
   | 'Ping'
   | 'HTTP(s) - Keyword'
   | 'Downtime'
-  | 'SSL Certificate'
   | 'DNS Records';
 
 export type StatusHistory = {

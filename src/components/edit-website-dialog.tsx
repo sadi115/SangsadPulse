@@ -20,7 +20,6 @@ const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] 
 ];
 
 const advancedMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
-     { label: "SSL Certificate", value: "SSL Certificate" },
      { label: "DNS Records", value: "DNS Records" },
 ]
 
@@ -112,7 +111,6 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                                      {advancedMonitorTypes.map(type => (
                                         <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
                                             <div className="flex items-center gap-2">
-                                                {type.value === 'SSL Certificate' && <Lock className="h-4 w-4" />}
                                                 {type.value === 'DNS Records' && <Book className="h-4 w-4" />}
                                                 {type.label}
                                             </div>
@@ -146,7 +144,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
               name="url"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{monitorType === 'TCP Port' || monitorType === 'Ping' || monitorType === 'SSL Certificate' || monitorType === 'DNS Records' ? 'Hostname or IP' : 'URL'}</FormLabel>
+                  <FormLabel>{monitorType === 'TCP Port' || monitorType === 'Ping' || monitorType === 'DNS Records' ? 'Hostname or IP' : 'URL'}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
