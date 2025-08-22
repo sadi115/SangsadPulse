@@ -101,7 +101,14 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                 labelLine={false}
                                 label={({
                                   payload,
-                                  ...props
+                                  x,
+                                  y,
+                                  cx,
+                                  cy,
+                                  midAngle,
+                                  innerRadius,
+                                  outerRadius,
+                                  percent,
                                 }) => {
                                   const { name, value } = payload;
                                   let className = 'fill-muted-foreground text-xs';
@@ -111,14 +118,12 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
                                      className = 'fill-red-500 text-xs font-medium';
                                   }
 
-                                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                  const { cornerRadius, ...restProps } = props;
-
                                   return (
                                     <text
-                                      {...restProps}
+                                      x={x}
+                                      y={y}
                                       className={className}
-                                      textAnchor="middle"
+                                      textAnchor={x > cx ? "start" : "end"}
                                       dominantBaseline="central"
                                     >
                                       {name} ({value})
