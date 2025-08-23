@@ -25,8 +25,16 @@ const websitesCollection = collection(db, 'websites');
 
 // Add a new website
 export const addWebsite = async (websiteData: WebsiteFormData) => {
+  // Firestore does not allow `undefined` values. We need to clean the object.
+  const cleanedData = { ...websiteData };
+  Object.keys(cleanedData).forEach(key => {
+    if (cleanedData[key as keyof typeof cleanedData] === undefined) {
+      delete cleanedData[key as keyof typeof cleanedData];
+    }
+  });
+
   const newWebsite: Omit<Website, 'id'> = {
-    ...websiteData,
+    ...cleanedData,
     status: 'Idle',
     latencyHistory: [],
     statusHistory: [],
@@ -49,6 +57,12 @@ export const updateWebsite = async (id: string, updates: Partial<Website>) => {
   if (updates.lastDownTime) {
     updateData.lastDownTime = Timestamp.fromDate(new Date(updates.lastDownTime));
   }
+   // Firestore does not allow `undefined` values. We need to clean the object.
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key] === undefined) {
+      delete updateData[key];
+    }
+  });
 
   return await updateDoc(websiteDoc, { ...updateData, updatedAt: serverTimestamp() });
 };
@@ -95,16 +109,29 @@ export const moveWebsite = async (id: string, allWebsites: Website[], direction:
 
 
 // Seed initial data if the collection is empty
-export const seedInitialData = async (initialWebsites: Omit<Website, 'id'>[]) => {
+export const seedInitialData = async (initialWebsites: Omit<Website, 'id' | 'createdAt'>[]) => {
     try {
         const q = query(websitesCollection);
         const querySnapshot = await getDocs(q);
         if (querySnapshot.empty) {
             console.log("Database is empty, seeding initial data...");
             const batch = writeBatch(db);
+            let order = 0;
             initialWebsites.forEach(site => {
                 const docRef = doc(websitesCollection); // Automatically generate unique ID
-                batch.set(docRef, { ...site, createdAt: serverTimestamp(), isPaused: false });
+                
+                const newWebsite: Omit<Website, 'id'> = {
+                  ...site,
+                  status: 'Idle',
+                  latencyHistory: [],
+                  statusHistory: [],
+                  uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+                  createdAt: Timestamp.fromMillis(Date.now() + order),
+                  isPaused: false,
+                };
+                
+                batch.set(docRef, newWebsite);
+                order++;
             });
             await batch.commit();
             console.log("Initial data seeded.");
@@ -113,5 +140,3 @@ export const seedInitialData = async (initialWebsites: Omit<Website, 'id'>[]) =>
         console.error("Error seeding data:", error);
     }
 }
-
-    
