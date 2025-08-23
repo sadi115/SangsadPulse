@@ -23,9 +23,6 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useWebsiteMonitoring } from '@/hooks/use-website-monitoring';
 
-type SortKey = 'name' | 'latency' | 'lastChecked' | 'displayOrder';
-type SortDirection = 'asc' | 'desc';
-
 export default function MonitoringDashboard() {
   const {
     websites,
@@ -47,7 +44,6 @@ export default function MonitoringDashboard() {
   const [deletingWebsite, setDeletingWebsite] = useState<Website | null>(null);
   const [view, setView] = useState<'card' | 'list'>('card');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'displayOrder', direction: 'asc' });
   const { toast } = useToast();
 
   const handleEditWebsite = async (id: string, data: WebsiteFormData) => {
@@ -74,18 +70,6 @@ export default function MonitoringDashboard() {
       toast({ title: 'Invalid Interval', description: 'Interval must be > 0.', variant: 'destructive' });
     }
   };
-
-  const handleSort = (key: SortKey) => {
-    let direction: SortDirection = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
-       // Reset to default sort by displayOrder
-      setSortConfig({ key: 'displayOrder', direction: 'asc' });
-      return;
-    }
-    setSortConfig({ key, direction });
-  };
   
   const sortedAndFilteredWebsites = useMemo(() => {
     let sortableItems = [...websites].filter(site =>
@@ -94,21 +78,11 @@ export default function MonitoringDashboard() {
     );
 
     sortableItems.sort((a, b) => {
-        const key = sortConfig.key;
-        const aValue = a[key as keyof Website] ?? (key === 'displayOrder' ? 0 : (key === 'latency' ? Infinity : ''));
-        const bValue = b[key as keyof Website] ?? (key === 'displayOrder' ? 0 : (key === 'latency' ? Infinity : ''));
-        
-        if (aValue < bValue) {
-            return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-            return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
+      return (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
     });
 
     return sortableItems;
-  }, [websites, searchTerm, sortConfig]);
+  }, [websites, searchTerm]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -163,8 +137,6 @@ export default function MonitoringDashboard() {
         onTogglePause={togglePause}
         onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
         onManualCheck={manualCheck}
-        sortConfig={sortConfig}
-        onSort={handleSort}
       />
     );
   };
