@@ -30,7 +30,7 @@ const MAX_STATUS_HISTORY = 100;
 export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [pollingInterval, setPollingInterval] = useState(30);
+  const [pollingInterval, setPollingInterval] = useState(30); // Kept for display/settings purposes
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
 
@@ -39,8 +39,8 @@ export function useWebsiteMonitoring() {
     try {
       let sitesFromDB = await getWebsites();
       if (sitesFromDB.length === 0) {
-          await seedInitialData(initialWebsites);
-          sitesFromDB = await getWebsites();
+        await seedInitialData(initialWebsites);
+        sitesFromDB = await getWebsites(); // Re-fetch after seeding
       }
       setWebsites(sitesFromDB);
     } catch (error) {

@@ -17,8 +17,6 @@ import { LayoutGrid, List, Bell, Search } from 'lucide-react';
 import { WebsiteCardView, CardSkeleton } from '@/components/website-card-view';
 import { WebsiteListView, ListSkeleton } from '@/components/website-list-view';
 import Image from 'next/image';
-import { LiveClock } from '@/components/live-clock';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { HistoryDialog } from './history-dialog';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { Switch } from '@/components/ui/switch';

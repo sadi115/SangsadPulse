@@ -1,3 +1,4 @@
+
 import { db } from './firebase';
 import { collection, getDocs, doc, setDoc, deleteDoc, orderBy, query, writeBatch, getDoc, updateDoc } from 'firebase/firestore';
 import type { Website, WebsiteFormData } from './types';
@@ -39,23 +40,20 @@ export async function deleteWebsiteFS(id: string): Promise<void> {
 }
 
 export async function seedInitialData(initialWebsites: Omit<Website, 'id' | 'statusHistory' | 'latencyHistory' | 'uptimeData'>[]) {
-    const querySnapshot = await getDocs(websitesCollection);
-    if (querySnapshot.empty) {
-        const batch = writeBatch(db);
-        initialWebsites.forEach((siteData, index) => {
-            const id = `${Date.now()}-${index}`;
-            const newSite: Website = {
-                ...siteData,
-                id, // Ensure the id is part of the object
-                latencyHistory: [],
-                statusHistory: [],
-                uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
-            };
-            const docRef = doc(db, "websites", id);
-            const cleanedSite = removeUndefinedProps(newSite);
-            batch.set(docRef, cleanedSite);
-        });
-        await batch.commit();
-        console.log("Initial data seeded to Firestore.");
-    }
+    const batch = writeBatch(db);
+    initialWebsites.forEach((siteData, index) => {
+        const id = `${Date.now()}-${index}`;
+        const newSite: Website = {
+            ...siteData,
+            id,
+            statusHistory: [],
+            latencyHistory: [],
+            uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+        };
+        const docRef = doc(db, "websites", id);
+        const cleanedSite = removeUndefinedProps(newSite);
+        batch.set(docRef, cleanedSite);
+    });
+    await batch.commit();
+    console.log("Initial data seeded to Firestore.");
 }
