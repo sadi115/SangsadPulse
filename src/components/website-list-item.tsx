@@ -84,7 +84,7 @@ export function WebsiteListItem({ website, onDelete, onEdit, onMove, onTogglePau
                  <div className="hidden md:block col-span-2 text-sm text-muted-foreground font-medium text-right">
                     {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
                  </div>
-                <div className="hidden md:block col-span-1 text-sm text-muted-foreground truncate text-right" title={website.lastChecked ? new Date(website.lastChecked).toLocaleString() : ''}>
+                <div className="hidden md:block col-span-1 text-sm text-muted-foreground truncate text-right pr-4" title={website.lastChecked ? new Date(website.lastChecked).toLocaleString() : ''}>
                     {lastCheckedTime}
                 </div>
                 <div className="flex items-center justify-end gap-1 col-span-4 md:col-span-1">

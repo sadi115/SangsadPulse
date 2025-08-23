@@ -90,7 +90,7 @@ export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePa
             <div className="col-span-2 text-right">
               <SortableHeader label="LATENCY" sortKey="latency" sortConfig={sortConfig} onSort={onSort} className="w-full justify-end -mr-4" />
             </div>
-            <div className="col-span-1 text-right">
+            <div className="col-span-1 text-right pr-4">
               <SortableHeader label="LAST CHECK" sortKey="lastChecked" sortConfig={sortConfig} onSort={onSort} className="w-full justify-end -mr-4" />
             </div>
             <div className="col-span-1 text-right">ACTIONS</div>
