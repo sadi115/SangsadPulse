@@ -28,7 +28,7 @@ const MAX_STATUS_HISTORY = 100;
 
 export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
-  const [isLoading, setIsLoading] = useState(false); // No longer loading from DB, so default to false
+  const [isLoading, setIsLoading] = useState(false); 
   const [pollingInterval, setPollingInterval] = useState(30);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
@@ -48,6 +48,115 @@ export function useWebsiteMonitoring() {
     }
   }, [notificationsEnabled, toast]);
 
+  const updateWebsiteState = useCallback((id: string, updates: Partial<Website>) => {
+    setWebsites(current => {
+        const siteToUpdate = current.find(s => s.id === id);
+        if (!siteToUpdate) return current;
+
+        const newLatencyHistory = updates.latency !== undefined 
+            ? [...(siteToUpdate.latencyHistory || []), { time: new Date().toISOString(), latency: updates.latency }].slice(-MAX_LATENCY_HISTORY)
+            : siteToUpdate.latencyHistory;
+        
+        let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
+        const lastStatus = newStatusHistory.length > 0 ? newStatusHistory[newStatusHistory.length - 1].status : null;
+        
+        if (updates.status && updates.status !== 'Checking' && updates.status !== 'Idle' && updates.status !== lastStatus) {
+            newStatusHistory.push({
+                time: new Date().toISOString(),
+                status: updates.status === 'Up' ? 'Up' : 'Down',
+                latency: updates.latency ?? 0,
+                reason: updates.httpResponse ?? '',
+            });
+            newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
+        }
+
+        const calculateUptime = (history: StatusHistory[]) => {
+            if (!history || history.length === 0) return { '1h': null, '24h': null, '30d': null, 'total': null };
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+            const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            
+            const calculatePercentage = (data: StatusHistory[]) => {
+                if (data.length === 0) return null;
+                const upCount = data.filter(h => h.status === 'Up').length;
+                return (upCount / data.length) * 100;
+            };
+    
+            return {
+                '1h': calculatePercentage(history.filter(h => new Date(h.time) >= oneHourAgo)),
+                '24h': calculatePercentage(history.filter(h => new Date(h.time) >= twentyFourHoursAgo)),
+                '30d': calculatePercentage(history.filter(h => new Date(h.time) >= thirtyDaysAgo)),
+                'total': calculatePercentage(history),
+            };
+        };
+
+        const upHistory = (newLatencyHistory || []).filter(h => h.latency > 0);
+        const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
+        const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
+        const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
+        
+        if (updates.status === 'Down' && siteToUpdate.status !== 'Down') {
+            showNotification(siteToUpdate);
+        }
+
+        const updatedSite: Website = {
+            ...siteToUpdate,
+            ...updates,
+            latencyHistory: newLatencyHistory,
+            statusHistory: newStatusHistory,
+            averageLatency,
+            lowestLatency,
+            highestLatency,
+            uptimeData: calculateUptime(newStatusHistory),
+            lastDownTime: updates.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
+        };
+        
+        return current.map(s => s.id === id ? updatedSite : s);
+    });
+  }, [showNotification]);
+
+  const manualCheck = useCallback(async (id: string) => {
+    const siteToCheck = websites.find(s => s.id === id);
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+        return;
+    }
+    
+    updateWebsiteState(id, { status: 'Checking' });
+    
+    try {
+        const result = await checkStatus(siteToCheck);
+        let ttfbResult;
+        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+            ttfbResult = await getTtfb({ url: siteToCheck.url });
+        }
+        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+    }
+  }, [websites, updateWebsiteState]);
+
+
+  useEffect(() => {
+    const pollAllWebsites = () => {
+        websites.forEach(site => {
+            if (!site.isPaused) {
+                const interval = site.pollingInterval || pollingInterval;
+                manualCheck(site.id);
+            }
+        });
+    };
+
+    // Initial check on load
+    setTimeout(pollAllWebsites, 1000); 
+
+    const intervalId = setInterval(pollAllWebsites, pollingInterval * 1000);
+    return () => clearInterval(intervalId);
+  }, [websites, pollingInterval, manualCheck]);
+
+
   const addWebsite = useCallback((data: WebsiteFormData) => {
     setWebsites(currentWebsites => {
         if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
@@ -64,9 +173,11 @@ export function useWebsiteMonitoring() {
             uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
             displayOrder: currentWebsites.length > 0 ? Math.max(...currentWebsites.map(w => w.displayOrder || 0)) + 1 : 0,
         };
+        // Immediately check the new website
+        manualCheck(newWebsite.id);
         return [...currentWebsites, newWebsite];
     });
-  }, [toast]);
+  }, [toast, manualCheck]);
   
   const editWebsite = useCallback((id: string, data: WebsiteFormData) => {
       setWebsites(currentWebsites => {
@@ -115,110 +226,20 @@ export function useWebsiteMonitoring() {
     }));
   }, []);
   
-  const manualCheck = useCallback(async (id: string) => {
-    const siteToCheck = websites.find(s => s.id === id);
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
-        return;
-    }
-    
-    setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === id ? { ...s, status: 'Checking' } : s)
-    );
-    toast({ title: 'Manual Check', description: `Requesting a status check for ${siteToCheck.name}.` });
-    
-    try {
-        const result = await checkStatus(siteToCheck);
-        let ttfbResult;
-        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-            ttfbResult = await getTtfb({ url: siteToCheck.url });
-        }
-        
-        setWebsites(current => {
-            const siteToUpdate = current.find(s => s.id === id);
-            if (!siteToUpdate) return current;
-
-            const newLatencyHistory = [...(siteToUpdate.latencyHistory || []), { time: new Date().toISOString(), latency: result.latency ?? 0 }].slice(-MAX_LATENCY_HISTORY);
-            
-            let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
-            const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
-            const newStatusEntry: StatusHistory = {
-                time: new Date().toISOString(),
-                status: result.status === 'Up' ? 'Up' : 'Down',
-                latency: result.latency ?? 0,
-                reason: result.httpResponse ?? '',
-            };
-
-            if (newStatusHistory.length === 0 || newStatusEntry.status !== lastStatus) {
-                newStatusHistory.push(newStatusEntry);
-            }
-            newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
-
-            const calculateUptime = (history: StatusHistory[]) => {
-                if (!history || history.length === 0) return { '1h': null, '24h': null, '30d': null, 'total': null };
-                const now = new Date();
-                const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
-                const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-                const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                
-                const calculatePercentage = (data: StatusHistory[]) => {
-                    if (data.length === 0) return null;
-                    const upCount = data.filter(h => h.status === 'Up').length;
-                    return (upCount / data.length) * 100;
-                };
-        
-                return {
-                    '1h': calculatePercentage(history.filter(h => new Date(h.time) >= oneHourAgo)),
-                    '24h': calculatePercentage(history.filter(h => new Date(h.time) >= twentyFourHoursAgo)),
-                    '30d': calculatePercentage(history.filter(h => new Date(h.time) >= thirtyDaysAgo)),
-                    'total': calculatePercentage(history),
-                };
-            };
-            
-            const upHistory = newLatencyHistory.filter(h => h.latency > 0);
-            const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
-            const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
-            const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
-
-            if (result.status === 'Down' && siteToUpdate.status !== 'Down') {
-                showNotification(siteToUpdate);
-            }
-
-            const updatedSite: Website = {
-                ...siteToUpdate,
-                ...result,
-                ttfb: ttfbResult?.ttfb,
-                latencyHistory: newLatencyHistory,
-                statusHistory: newStatusHistory,
-                averageLatency,
-                lowestLatency,
-                highestLatency,
-                uptimeData: calculateUptime(newStatusHistory),
-                lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
-            };
-
-            return current.map(s => s.id === id ? updatedSite : s);
-        });
-
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Down', httpResponse: `Check failed: ${errorMessage}` } : s));
-    }
-  }, [websites, toast, showNotification]);
-  
   const diagnose = useCallback(async (id: string) => {
     const website = websites.find(s => s.id === id);
     if (!website || !website.httpResponse) return;
 
-    setWebsites(current => current.map(s => s.id === id ? { ...s, diagnosis: 'AI is analyzing...' } : s));
+    updateWebsiteState(id, { diagnosis: 'AI is analyzing...' });
 
     try {
         const { diagnosis } = await getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse });
-        setWebsites(current => current.map(s => s.id === id ? { ...s, diagnosis } : s));
+        updateWebsiteState(id, { diagnosis });
     } catch (error) {
         toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
-        setWebsites(current => current.map(s => s.id === id ? { ...s, diagnosis: 'AI analysis failed.' } : s));
+        updateWebsiteState(id, { diagnosis: 'AI analysis failed.' });
     }
-  }, [websites, toast]);
+  }, [websites, toast, updateWebsiteState]);
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -250,3 +271,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
