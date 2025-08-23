@@ -24,10 +24,12 @@ const advancedMonitorTypes: { label: string, value: MonitorType, disabled?: bool
      { label: "DNS Records", value: "DNS Records" },
 ]
 
+const allMonitorTypes = [...monitorTypes, ...advancedMonitorTypes].map(m => m.value);
+
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
   url: z.string().min(1, { message: 'URL/Host is required.' }),
-  monitorType: z.custom<MonitorType>(),
+  monitorType: z.enum(allMonitorTypes as [string, ...string[]]),
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
   pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
