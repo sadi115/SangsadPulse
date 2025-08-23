@@ -1,3 +1,4 @@
+import type { FieldValue } from "firebase/firestore";
 
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
@@ -29,6 +30,8 @@ export interface Website {
   url: string;
   monitorType: MonitorType;
   status: WebsiteStatus;
+  createdAt: FieldValue;
+  updatedAt?: FieldValue;
   isPaused?: boolean;
   isLoading?: boolean;
   httpResponse?: string;
@@ -43,7 +46,6 @@ export interface Website {
   latencyHistory?: { time: string; latency: number }[];
   statusHistory?: StatusHistory[];
   lastDownTime?: string;
-  displayOrder: number;
   // Options for specific monitor types
   port?: number;
   keyword?: string;

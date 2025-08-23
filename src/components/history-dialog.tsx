@@ -21,15 +21,16 @@ const StatusBadge = ({ status }: { status: 'Up' | 'Down' }) => {
 export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogProps) {
     if (!website) return null;
     
-    const reversedHistory = website.statusHistory ? [...website.statusHistory].reverse() : [];
-
+    const reversedHistory = useMemo(() => {
+        return website.statusHistory ? [...website.statusHistory].reverse() : [];
+    }, [website.statusHistory]);
+    
     const summaryStats = useMemo(() => {
         if (!website.statusHistory || website.statusHistory.length === 0) {
             return { uptime: null, downEvents: 0 };
         }
         const upCount = website.statusHistory.filter(h => h.status === 'Up').length;
-        const downEvents = website.statusHistory.filter(h => h.status === 'Up' && h.reason.startsWith('Keyword')).length + 
-                           website.statusHistory.filter(h => h.status === 'Down').length;
+        const downEvents = website.statusHistory.filter(h => h.status === 'Down').length;
 
         const uptime = (upCount / website.statusHistory.length) * 100;
         return { uptime, downEvents };

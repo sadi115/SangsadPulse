@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle, Folder } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
-import type { MonitorType, Website } from '@/lib/types';
+import type { MonitorType, Website, WebsiteFormData } from '@/lib/types';
 import { useEffect } from 'react';
 
 const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
@@ -36,7 +36,7 @@ type EditWebsiteDialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   website: Website | null;
-  onEditWebsite: (id: string, data: z.infer<typeof formSchema>) => void;
+  onEditWebsite: (id: string, data: WebsiteFormData) => void;
   globalPollingInterval: number;
 };
 

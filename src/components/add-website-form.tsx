@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle, Folder } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
-import type { MonitorType } from '@/lib/types';
+import type { MonitorType, WebsiteFormData } from '@/lib/types';
 
 const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
@@ -34,7 +34,7 @@ const formSchema = z.object({
 });
 
 type AddWebsiteFormProps = {
-  onAddWebsite: (data: z.infer<typeof formSchema>) => void;
+  onAddWebsite: (data: WebsiteFormData) => void;
   globalPollingInterval: number;
 };
 

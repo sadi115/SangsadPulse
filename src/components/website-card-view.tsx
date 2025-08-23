@@ -36,7 +36,7 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
         <div className="mx-auto h-24 w-24 relative">
-             <Image src="https://placehold.co/128x128.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
+             <Image src="/emblem.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
         </div>
         <h2 className="mt-6 text-xl font-medium text-foreground">No websites yet</h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -51,17 +51,13 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-      {websites.map((website) => {
+      {websites.map((website, index) => {
         if (website.isLoading) {
           return <CardSkeleton key={website.id} />;
         }
         
-        const nonPausedIndex = !website.isPaused 
-            ? nonPausedWebsites.findIndex(w => w.id === website.id) 
-            : -1;
-            
-        const isFirst = nonPausedIndex === 0;
-        const isLast = nonPausedIndex === nonPausedCount - 1;
+        const isFirst = index === 0;
+        const isLast = index === websites.length - 1;
 
         return (
           <WebsiteCard
