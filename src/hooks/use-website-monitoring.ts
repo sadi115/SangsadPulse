@@ -183,25 +183,33 @@ export function useWebsiteMonitoring() {
     // This effect manages the polling timers for all websites.
     Object.values(timeoutsRef.current).forEach(clearTimeout);
     timeoutsRef.current = {};
+    
+    // Use a timeout to ensure this runs after the initial render cycle is complete.
+    const timer = setTimeout(() => {
+        websites.forEach(site => {
+            const pollAndReschedule = () => {
+                // Find the most up-to-date version of the site from state before polling
+                setWebsites(currentWebsites => {
+                    const currentSite = currentWebsites.find(s => s.id === site.id);
+                    if (currentSite) {
+                        pollWebsite(currentSite);
+                    }
+                    return currentWebsites;
+                });
+                
+                // Schedule the next poll
+                const interval = (site.pollingInterval || pollingInterval) * 1000;
+                timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
+            };
 
-    websites.forEach(site => {
-      const pollAndReschedule = () => {
-        // Find the most up-to-date version of the site from state before polling
-        const currentSite = websites.find(s => s.id === site.id);
-        if (currentSite) {
-            pollWebsite(currentSite);
-        }
-        
-        // Schedule the next poll
-        const interval = (site.pollingInterval || pollingInterval) * 1000;
-        timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
-      };
+            pollAndReschedule();
+        });
+    }, 0);
 
-      pollAndReschedule();
-    });
 
     // Cleanup function to clear all timeouts when the component unmounts or dependencies change
     return () => {
+      clearTimeout(timer);
       Object.values(timeoutsRef.current).forEach(clearTimeout);
     };
   }, [websites.map(w => w.id).join(','), pollingInterval, pollWebsite]);
