@@ -81,7 +81,7 @@ export function WebsiteListItem({ website, onDelete, onEdit, onMove, onTogglePau
                  <div className="hidden md:block md:col-span-4">
                     <UptimeBar history={website.latencyHistory} max-items={50} />
                 </div>
-                 <div className="hidden md:block col-span-2 text-sm text-muted-foreground font-medium text-left">
+                 <div className="hidden md:block col-span-2 text-sm text-muted-foreground font-medium text-center">
                     {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
                  </div>
                 <div className="hidden md:block col-span-1 text-sm text-muted-foreground truncate text-left" title={website.lastChecked ? new Date(website.lastChecked).toLocaleString() : ''}>
