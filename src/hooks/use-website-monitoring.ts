@@ -137,114 +137,83 @@ export function useWebsiteMonitoring() {
         return currentWebsites.map(s => s.id === id ? updatedSite : s);
     });
   }, [showNotification]);
-
-  const scheduleCheck = useCallback((site: Website) => {
-    // Clear any existing timeout for this site to prevent duplicates
-    if (timeoutsRef.current.has(site.id)) {
-        clearTimeout(timeoutsRef.current.get(site.id));
-    }
-    
-    // Don't schedule if paused or a downtime monitor
+  
+  const runCheck = useCallback(async (site: Website) => {
     if (site.isPaused || site.monitorType === 'Downtime') {
         return;
     }
     
-    const runCheck = async () => {
-        // Find the latest version of the site from state
-        let siteToCheck: Website | undefined;
-        setWebsites(current => {
-            siteToCheck = current.find(s => s.id === site.id);
-            return current;
-        });
-
-        // If site is gone or paused, stop the loop.
-        if (!siteToCheck || siteToCheck.isPaused) {
-            return;
+    updateWebsiteState(site.id, { status: 'Checking' });
+    try {
+        const result = await checkStatus(site);
+        let ttfbResult;
+        if (result.status === 'Up' && (site.monitorType === 'HTTP(s)' || site.monitorType === 'HTTP(s) - Keyword')) {
+            ttfbResult = await getTtfb({ url: site.url });
         }
-        
-        updateWebsiteState(siteToCheck.id, { status: 'Checking' });
-        try {
-            const result = await checkStatus(siteToCheck);
-            let ttfbResult;
-            if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-                ttfbResult = await getTtfb({ url: siteToCheck.url });
-            }
-            updateWebsiteState(siteToCheck.id, { ...result, ttfb: ttfbResult?.ttfb });
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-            updateWebsiteState(siteToCheck.id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
-        } finally {
-            // Find the site again to get the latest interval setting
-            let siteForNextSchedule: Website | undefined;
-             setWebsites(current => {
-                siteForNextSchedule = current.find(s => s.id === site.id);
-                return current;
-            });
-            if (siteForNextSchedule) {
-                scheduleCheck(siteForNextSchedule); // Reschedule the next check
-            }
-        }
-    };
-    
-    const interval = (site.pollingInterval ?? pollingInterval) * 1000;
-    const timerId = setTimeout(runCheck, interval);
-    timeoutsRef.current.set(site.id, timerId);
+        updateWebsiteState(site.id, { ...result, ttfb: ttfbResult?.ttfb });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        updateWebsiteState(site.id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+    }
+  }, [updateWebsiteState]);
 
-  }, [pollingInterval, updateWebsiteState]);
-  
-  const manualCheck = useCallback(async (id: string) => {
-    let siteToCheck: Website | undefined;
-    setWebsites(current => {
-        siteToCheck = current.find(s => s.id === id);
-        return current;
-    });
+  const scheduleCheck = useCallback((site: Website) => {
+    if (timeoutsRef.current.has(site.id)) {
+        clearTimeout(timeoutsRef.current.get(site.id));
+    }
     
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+    if (site.isPaused || site.monitorType === 'Downtime') {
         return;
     }
 
-    // Cancel the scheduled check to avoid a double-run
+    const interval = (site.pollingInterval ?? pollingInterval) * 1000;
+
+    const timerId = setTimeout(async () => {
+        await runCheck(site);
+        // Reschedule the next check
+        setWebsites(currentWebsites => {
+            const nextSite = currentWebsites.find(s => s.id === site.id);
+            if (nextSite) {
+                scheduleCheck(nextSite);
+            }
+            return currentWebsites;
+        });
+    }, interval);
+
+    timeoutsRef.current.set(site.id, timerId);
+
+  }, [pollingInterval, runCheck]);
+  
+  const manualCheck = useCallback(async (id: string) => {
+    const siteToCheck = websites.find(s => s.id === id);
+    if (!siteToCheck) return;
+
     if (timeoutsRef.current.has(id)) {
         clearTimeout(timeoutsRef.current.get(id));
     }
 
-    updateWebsiteState(id, { status: 'Checking' });
+    await runCheck(siteToCheck);
 
-    try {
-        const result = await checkStatus(siteToCheck);
-        let ttfbResult;
-        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-            ttfbResult = await getTtfb({ url: siteToCheck.url });
+    setWebsites(currentWebsites => {
+        const siteToReschedule = currentWebsites.find(s => s.id === id);
+        if(siteToReschedule) {
+            scheduleCheck(siteToReschedule);
         }
-        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
-    } finally {
-        // Reschedule the next check immediately after the manual one
-        let siteForNextSchedule: Website | undefined;
-        setWebsites(current => {
-            siteForNextSchedule = current.find(s => s.id === id);
-            return current;
-        });
-        if (siteForNextSchedule) {
-            scheduleCheck(siteForNextSchedule);
-        }
-    }
-  }, [updateWebsiteState, scheduleCheck]);
+        return currentWebsites;
+    });
+
+  }, [websites, runCheck, scheduleCheck]);
 
 
   // Effect to initialize and manage polling timers
   useEffect(() => {
     setIsLoading(false);
     websites.forEach(site => {
-        // Initial check is staggered slightly
-        const initialDelay = Math.random() * 5000; // 0-5 seconds
-        const timerId = setTimeout(() => manualCheck(site.id), initialDelay);
-        timeoutsRef.current.set(site.id, timerId);
+        // Stagger initial checks
+        const initialDelay = Math.random() * 5000;
+        setTimeout(() => manualCheck(site.id), initialDelay);
     });
 
-    // Cleanup function to clear all timeouts when the component unmounts
     return () => {
         timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
@@ -252,12 +221,13 @@ export function useWebsiteMonitoring() {
   }, []); // Run only once on mount
 
   const addWebsite = useCallback((data: WebsiteFormData) => {
+    let newWebsite: Website | null = null;
     setWebsites(currentWebsites => {
         if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
             toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
             return currentWebsites;
         }
-        const newWebsite: Website = {
+        newWebsite = {
             ...data,
             id: `${Date.now()}`,
             status: 'Idle',
@@ -267,10 +237,11 @@ export function useWebsiteMonitoring() {
             uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
             displayOrder: currentWebsites.length > 0 ? Math.max(...currentWebsites.map(w => w.displayOrder || 0)) + 1 : 0,
         };
-        // Immediately check the new website
-        manualCheck(newWebsite.id);
         return [...currentWebsites, newWebsite];
     });
+    if (newWebsite) {
+        manualCheck(newWebsite.id);
+    }
   }, [toast, manualCheck]);
   
   const editWebsite = useCallback((id: string, data: WebsiteFormData) => {
@@ -280,22 +251,18 @@ export function useWebsiteMonitoring() {
           if (siteIndex === -1) return currentWebsites;
 
           const originalSite = currentWebsites[siteIndex];
-          const wasPaused = originalSite.isPaused;
-
-          const updatedSite = {
+          
+          siteToUpdate = {
               ...originalSite,
               ...data,
-              status: wasPaused ? 'Paused' as const : 'Idle' as const,
           };
           
-          siteToUpdate = updatedSite;
-
           const newWebsites = [...currentWebsites];
-          newWebsites[siteIndex] = updatedSite;
+          newWebsites[siteIndex] = siteToUpdate;
           return newWebsites;
       });
 
-      if (siteToUpdate && !siteToUpdate.isPaused) {
+      if (siteToUpdate) {
         manualCheck(siteToUpdate.id);
       }
   }, [manualCheck]);
@@ -327,32 +294,31 @@ export function useWebsiteMonitoring() {
   }, []);
   
   const togglePause = useCallback((id: string) => {
-    setWebsites(current => current.map(s => {
-        if (s.id === id) {
-            const isNowPaused = !s.isPaused;
-            const updatedSite = { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' as const : 'Idle' as const };
-            if (isNowPaused) {
-                // Clear timeout when pausing
-                if (timeoutsRef.current.has(id)) {
-                    clearTimeout(timeoutsRef.current.get(id));
-                }
-            } else {
-                // Restart checks when resuming
-                manualCheck(updatedSite.id);
+    let siteToUpdate: Website | undefined;
+    setWebsites(current => {
+        const newWebsites = current.map(s => {
+            if (s.id === id) {
+                const isNowPaused = !s.isPaused;
+                siteToUpdate = { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' as const : 'Idle' as const };
+                return siteToUpdate;
             }
-            return updatedSite;
+            return s;
+        });
+        return newWebsites;
+    });
+    if (siteToUpdate) {
+        if (siteToUpdate.isPaused) {
+            if (timeoutsRef.current.has(id)) {
+                clearTimeout(timeoutsRef.current.get(id));
+            }
+        } else {
+            manualCheck(id);
         }
-        return s;
-    }));
+    }
   }, [manualCheck]);
   
   const diagnose = useCallback(async (id: string) => {
-    let website: Website | undefined;
-    setWebsites(current => {
-      website = current.find(s => s.id === id);
-      return current;
-    });
-    
+    const website = websites.find(s => s.id === id);
     if (!website || !website.httpResponse) return;
 
     updateWebsiteState(id, { diagnosis: 'AI is analyzing...' });
@@ -364,7 +330,7 @@ export function useWebsiteMonitoring() {
         toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
         updateWebsiteState(id, { diagnosis: 'AI analysis failed.' });
     }
-  }, [toast, updateWebsiteState]);
+  }, [websites, toast, updateWebsiteState]);
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -379,6 +345,18 @@ export function useWebsiteMonitoring() {
       });
     }
   }, [toast]);
+  
+  // Effect to re-schedule checks when the global polling interval changes
+  useEffect(() => {
+    websites.forEach(site => {
+        // Only re-schedule if the site doesn't have a custom interval
+        if (!site.pollingInterval) {
+            scheduleCheck(site);
+        }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollingInterval]);
+
 
   return {
     websites,
@@ -396,5 +374,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
