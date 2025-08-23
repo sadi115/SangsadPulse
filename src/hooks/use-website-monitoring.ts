@@ -33,7 +33,6 @@ export function useWebsiteMonitoring() {
   const { toast } = useToast();
   const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-  // Load from localStorage on initial client-side render
   useEffect(() => {
     try {
       const storedWebsites = localStorage.getItem('websites');
@@ -43,7 +42,6 @@ export function useWebsiteMonitoring() {
       if (storedWebsites) {
         setWebsites(JSON.parse(storedWebsites));
       } else {
-        // Seed with initial data if nothing is in localStorage
         const sitesWithIds = initialWebsites.map((site, index) => ({
             ...site,
             id: `${Date.now()}-${index}`,
@@ -62,13 +60,10 @@ export function useWebsiteMonitoring() {
       }
     } catch (error) {
       console.error("Could not load data from localStorage", error);
-      toast({ title: "Error", description: "Could not load saved data.", variant: "destructive" });
     }
-  }, [toast]);
+  }, []);
 
-  // Save to localStorage whenever state changes
   useEffect(() => {
-    // Don't save the initial empty array
     if (websites.length === 0) return;
     try {
       localStorage.setItem('websites', JSON.stringify(websites));
@@ -76,9 +71,8 @@ export function useWebsiteMonitoring() {
       localStorage.setItem('notificationsEnabled', JSON.stringify(notificationsEnabled));
     } catch (error) {
        console.error("Could not save data to localStorage", error);
-       toast({ title: "Error", description: "Could not save settings.", variant: "destructive" });
     }
-  }, [websites, pollingInterval, notificationsEnabled, toast]);
+  }, [websites, pollingInterval, notificationsEnabled]);
   
   const showNotification = useCallback((site: Website) => {
     if (!notificationsEnabled) return;
@@ -189,21 +183,27 @@ export function useWebsiteMonitoring() {
     timeoutsRef.current = {};
 
     websites.forEach(site => {
-      if (site.isPaused) return;
+      // Don't poll if the site is paused or if there are no websites
+      if (site.isPaused || websites.length === 0) {
+        return;
+      }
 
       const pollAndReschedule = () => {
         pollWebsite(site);
         const interval = (site.pollingInterval || pollingInterval) * 1000;
         timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
       };
-      pollAndReschedule();
+
+      // Start the first poll for this site after a short delay
+      timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, 1000);
     });
 
     // Cleanup function to clear all timeouts when the component unmounts or dependencies change
     return () => {
       Object.values(timeoutsRef.current).forEach(clearTimeout);
     };
-  }, [websites, pollingInterval, pollWebsite]);
+    // This effect should only re-run if the websites array identity changes (add/delete) or polling interval changes.
+  }, [websites.map(w => w.id).join(','), pollingInterval, pollWebsite]);
 
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
@@ -310,18 +310,21 @@ export function useWebsiteMonitoring() {
   }, []);
   
   const manualCheck = useCallback((id: string) => {
-    setWebsites(currentWebsites => {
-      const site = currentWebsites.find(s => s.id === id);
+      const site = websites.find(s => s.id === id);
       if (site) {
         if (timeoutsRef.current[id]) {
           clearTimeout(timeoutsRef.current[id]);
         }
         toast({ title: 'Manual Check', description: `Requesting a manual status check for ${site.name}.` });
-        pollWebsite(site);
+        
+        const pollAndReschedule = () => {
+            pollWebsite(site);
+            const interval = (site.pollingInterval || pollingInterval) * 1000;
+            timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
+        };
+        pollAndReschedule();
       }
-      return currentWebsites;
-    });
-  }, [pollWebsite, toast]);
+  }, [websites, pollWebsite, toast, pollingInterval]);
   
   const diagnose = useCallback((id: string) => {
     setWebsites(currentWebsites => {
