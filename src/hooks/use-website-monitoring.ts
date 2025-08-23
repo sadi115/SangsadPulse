@@ -136,8 +136,9 @@ export function useWebsiteMonitoring() {
   }, [scheduleCheck, toast]);
 
   const manualCheck = useCallback(async (id: string) => {
+    let siteToCheck: Website | undefined;
     setWebsites(current => {
-      const siteToCheck = current.find(s => s.id === id);
+      siteToCheck = current.find(s => s.id === id);
       if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
         return current;
       }
@@ -145,26 +146,24 @@ export function useWebsiteMonitoring() {
       if (timeoutsRef.current.has(id)) {
         clearTimeout(timeoutsRef.current.get(id));
       }
-      
-      const performCheck = async () => {
-        try {
-          const result = await checkStatus(siteToCheck);
-          let ttfbResult;
-          if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-            ttfbResult = await getTtfb({ url: siteToCheck.url });
-          }
-          updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-          updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
-        }
-      }
-
-      performCheck();
-
       return current.map(s => s.id === id ? { ...s, status: 'Checking' } : s);
     });
+  
+    if (siteToCheck) {
+      try {
+        const result = await checkStatus(siteToCheck);
+        let ttfbResult;
+        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+          ttfbResult = await getTtfb({ url: siteToCheck.url });
+        }
+        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+      }
+    }
   }, [updateWebsiteState]);
+
 
   useEffect(() => {
     setIsLoading(false);
@@ -182,12 +181,13 @@ export function useWebsiteMonitoring() {
   }, []);
 
   const addWebsite = (data: WebsiteFormData) => {
+    let newWebsite: Website | null = null;
     setWebsites(currentWebsites => {
         if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
             toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
             return currentWebsites;
         }
-        const newWebsite: Website = {
+        newWebsite = {
             ...data,
             id: `${Date.now()}`,
             status: 'Idle',
@@ -197,9 +197,14 @@ export function useWebsiteMonitoring() {
             uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
             displayOrder: currentWebsites.length > 0 ? Math.max(...currentWebsites.map(w => w.displayOrder || 0)) + 1 : 0,
         };
-        setTimeout(() => manualCheck(newWebsite.id), 0);
+        
         return [...currentWebsites, newWebsite];
     });
+
+    if (newWebsite) {
+      const id = newWebsite.id;
+      setTimeout(() => manualCheck(id), 0);
+    }
   };
   
   const editWebsite = (id: string, data: WebsiteFormData) => {
@@ -212,12 +217,11 @@ export function useWebsiteMonitoring() {
             ...data,
         };
         
-        setTimeout(() => manualCheck(updatedSite.id), 0);
-        
         const newWebsites = [...currentWebsites];
         newWebsites[siteIndex] = updatedSite;
         return newWebsites;
     });
+     setTimeout(() => manualCheck(id), 0);
   };
 
   const deleteWebsite = (id: string) => {
@@ -247,10 +251,14 @@ export function useWebsiteMonitoring() {
   };
   
   const togglePause = (id: string) => {
+    let shouldCheck = false;
     setWebsites(current => {
-        return current.map(s => {
+        const newWebsites = current.map(s => {
             if (s.id === id) {
                 const isNowPaused = !s.isPaused;
+                if (!isNowPaused) {
+                    shouldCheck = true;
+                }
                 const updatedSite = { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' as const : 'Idle' as const };
                 
                 if (isNowPaused) {
@@ -258,15 +266,18 @@ export function useWebsiteMonitoring() {
                         clearTimeout(timeoutsRef.current.get(id));
                         timeoutsRef.current.delete(id);
                     }
-                } else {
-                    setTimeout(() => manualCheck(id), 0);
                 }
 
                 return updatedSite;
             }
             return s;
         });
+        return newWebsites;
     });
+
+     if (shouldCheck) {
+        setTimeout(() => manualCheck(id), 0);
+    }
   };
 
   const handleNotificationToggle = (enabled: boolean) => {
