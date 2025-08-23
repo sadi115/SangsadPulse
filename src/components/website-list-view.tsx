@@ -6,6 +6,12 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { WebsiteListItem } from './website-list-item';
 import { Skeleton } from './ui/skeleton';
+import { Button } from './ui/button';
+import { ArrowUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type SortKey = 'name' | 'latency' | 'lastChecked' | 'displayOrder';
+type SortDirection = 'asc' | 'desc';
 
 type WebsiteListViewProps = {
   websites: Website[];
@@ -15,7 +21,32 @@ type WebsiteListViewProps = {
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
   onManualCheck: (id: string) => void;
+  sortConfig: { key: SortKey; direction: SortDirection };
+  onSort: (key: SortKey) => void;
 };
+
+const SortableHeader = ({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  className
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortConfig: { key: SortKey; direction: SortDirection };
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) => {
+  const isSorting = sortConfig.key === sortKey;
+  
+  return (
+    <Button variant="ghost" onClick={() => onSort(sortKey)} className={cn("-ml-4 hover:bg-muted/50", className)}>
+      {label}
+      <ArrowUpDown className={cn("ml-2 h-4 w-4", isSorting ? "text-foreground" : "text-muted-foreground/50")} />
+    </Button>
+  )
+}
 
 export const ListSkeleton = () => (
     <div className="p-4">
@@ -45,17 +76,23 @@ export const ListSkeleton = () => (
     </div>
 )
 
-export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
+export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, sortConfig, onSort }: WebsiteListViewProps) {
   return (
     <Card>
       <CardContent className="p-0">
         <div className="hidden md:flex items-center p-4 gap-4 border-b text-xs font-semibold text-muted-foreground">
           <div className="w-2 h-8"></div>
           <div className="flex-1 grid grid-cols-12 items-center gap-4">
-            <div className="col-span-4">SERVICE</div>
+            <div className="col-span-4">
+              <SortableHeader label="SERVICE" sortKey="name" sortConfig={sortConfig} onSort={onSort} />
+            </div>
             <div className="col-span-4 text-center">UPTIME</div>
-            <div className="col-span-2 text-right">LATENCY</div>
-            <div className="col-span-1 text-right">LAST CHECK</div>
+            <div className="col-span-2 text-right">
+              <SortableHeader label="LATENCY" sortKey="latency" sortConfig={sortConfig} onSort={onSort} className="w-full justify-end -mr-4" />
+            </div>
+            <div className="col-span-1 text-right">
+              <SortableHeader label="LAST CHECK" sortKey="lastChecked" sortConfig={sortConfig} onSort={onSort} className="w-full justify-end -mr-4" />
+            </div>
             <div className="col-span-1 text-right">ACTIONS</div>
           </div>
         </div>

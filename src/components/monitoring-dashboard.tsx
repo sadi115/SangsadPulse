@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Website, WebsiteFormData } from '@/lib/types';
 import { AddWebsiteForm } from '@/components/add-website-form';
 import { SummaryOverview } from '@/components/summary-overview';
@@ -22,6 +22,9 @@ import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useWebsiteMonitoring } from '@/hooks/use-website-monitoring';
+
+type SortKey = 'name' | 'latency' | 'lastChecked' | 'displayOrder';
+type SortDirection = 'asc' | 'desc';
 
 export default function MonitoringDashboard() {
   const {
@@ -44,6 +47,7 @@ export default function MonitoringDashboard() {
   const [deletingWebsite, setDeletingWebsite] = useState<Website | null>(null);
   const [view, setView] = useState<'card' | 'list'>('card');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'displayOrder', direction: 'asc' });
   const { toast } = useToast();
 
   const handleEditWebsite = async (id: string, data: WebsiteFormData) => {
@@ -71,12 +75,40 @@ export default function MonitoringDashboard() {
     }
   };
 
-  const sortedWebsites = websites.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  const handleSort = (key: SortKey) => {
+    let direction: SortDirection = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+       // Reset to default sort by displayOrder
+      setSortConfig({ key: 'displayOrder', direction: 'asc' });
+      return;
+    }
+    setSortConfig({ key, direction });
+  };
+  
+  const sortedAndFilteredWebsites = useMemo(() => {
+    let sortableItems = [...websites].filter(site =>
+        site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        site.url.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  const filteredWebsites = sortedWebsites.filter(site =>
-    site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    site.url.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    sortableItems.sort((a, b) => {
+        const key = sortConfig.key;
+        const aValue = a[key as keyof Website] ?? (key === 'displayOrder' ? 0 : (key === 'latency' ? Infinity : ''));
+        const bValue = b[key as keyof Website] ?? (key === 'displayOrder' ? 0 : (key === 'latency' ? Infinity : ''));
+        
+        if (aValue < bValue) {
+            return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+            return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
+
+    return sortableItems;
+  }, [websites, searchTerm, sortConfig]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -96,7 +128,7 @@ export default function MonitoringDashboard() {
       );
     }
 
-    if (filteredWebsites.length === 0) {
+    if (sortedAndFilteredWebsites.length === 0) {
       return (
         <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
           <div className="mx-auto h-24 w-24 relative">
@@ -114,7 +146,7 @@ export default function MonitoringDashboard() {
 
     return view === 'card' ? (
       <WebsiteCardView
-        websites={filteredWebsites}
+        websites={sortedAndFilteredWebsites}
         onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
         onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
         onMove={moveWebsite}
@@ -124,13 +156,15 @@ export default function MonitoringDashboard() {
       />
     ) : (
       <WebsiteListView
-        websites={filteredWebsites}
+        websites={sortedAndFilteredWebsites}
         onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
         onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
         onMove={moveWebsite}
         onTogglePause={togglePause}
         onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
         onManualCheck={manualCheck}
+        sortConfig={sortConfig}
+        onSort={handleSort}
       />
     );
   };
