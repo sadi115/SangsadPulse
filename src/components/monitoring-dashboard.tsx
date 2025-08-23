@@ -81,202 +81,172 @@ export default function MonitoringDashboard() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-secondary/50 dark:bg-background">
-      <header className="bg-card border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+    <>
+      <div className="container mx-auto p-4 md:p-8 space-y-8">
+        <SummaryOverview websites={websites} />
+        
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
             <div className="flex items-center gap-4">
-               <Image 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png"
-                alt="Parliament Logo"
-                width={40}
-                height={40}
-                className="h-10 w-10"
-                data-ai-hint="emblem"
-              />
-              <h1 className="text-xl font-bold text-foreground hidden md:block">
-                Bangladesh Parliament Web Service Monitor System
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-                <LiveClock />
-                <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </header>
-      <main className="flex-1">
-        <div className="container mx-auto p-4 md:p-8 space-y-8">
-          <SummaryOverview websites={websites} />
-          
-          <div className="space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <h2 className="text-2xl font-bold text-foreground">Monitored Services</h2>
-              <div className="flex items-center gap-4">
-                <div className="w-full md:w-64">
-                    <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search services..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                    />
-                    </div>
-                </div>
-                <ToggleGroup
-                    type="single"
-                    value={view}
-                    onValueChange={(value) => value && setView(value as 'card' | 'list')}
-                    aria-label="View mode"
-                >
-                    <ToggleGroupItem value="card" aria-label="Card view">
-                    <LayoutGrid className="h-4 w-4" />
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="list" aria-label="List view">
-                    <List className="h-4 w-4" />
-                    </ToggleGroupItem>
-                </ToggleGroup>
+              <div className="w-full md:w-64">
+                  <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input 
+                      placeholder="Search services..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                  />
+                  </div>
               </div>
+              <ToggleGroup
+                  type="single"
+                  value={view}
+                  onValueChange={(value) => value && setView(value as 'card' | 'list')}
+                  aria-label="View mode"
+              >
+                  <ToggleGroupItem value="card" aria-label="Card view">
+                  <LayoutGrid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="list" aria-label="List view">
+                  <List className="h-4 w-4" />
+                  </ToggleGroupItem>
+              </ToggleGroup>
             </div>
-
-            {view === 'card' ? (
-              <WebsiteCardView 
-                websites={filteredWebsites}
-                onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
-                onDiagnose={diagnose}
-                onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-                onMove={moveWebsite}
-                onTogglePause={togglePause}
-                onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
-                onManualCheck={manualCheck}
-              />
-            ) : (
-              <WebsiteListView
-                websites={filteredWebsites}
-                onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
-                onDiagnose={diagnose}
-                onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-                onMove={moveWebsite}
-                onTogglePause={togglePause}
-                onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
-                onManualCheck={manualCheck}
-              />
-            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
-            <Accordion type="single" collapsible className="w-full md:col-span-1">
-                <AccordionItem value="add-service">
-                    <AccordionTrigger>Add a New Service</AccordionTrigger>
-                    <AccordionContent>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Add a New Service</CardTitle>
-                                <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <AddWebsiteForm onAddWebsite={handleAddWebsite} globalPollingInterval={pollingInterval} />
-                            </CardContent>
-                        </Card>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+          {view === 'card' ? (
+            <WebsiteCardView 
+              websites={filteredWebsites}
+              onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
+              onDiagnose={diagnose}
+              onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+              onMove={moveWebsite}
+              onTogglePause={togglePause}
+              onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+              onManualCheck={manualCheck}
+            />
+          ) : (
+            <WebsiteListView
+              websites={filteredWebsites}
+              onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
+              onDiagnose={diagnose}
+              onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+              onMove={moveWebsite}
+              onTogglePause={togglePause}
+              onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+              onManualCheck={manualCheck}
+            />
+          )}
+        </div>
 
-            <Accordion type="single" collapsible className="w-full md:col-span-1">
-                <AccordionItem value="settings">
-                    <AccordionTrigger>Monitoring Settings</AccordionTrigger>
-                    <AccordionContent>
-                        <Card>
-                            <CardHeader>
-                            <CardTitle>Settings</CardTitle>
-                            <CardDescription>Customize the monitoring settings.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="polling-interval">Global Monitoring Interval (seconds)</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input
-                                            id="polling-interval"
-                                            type="number"
-                                            value={pollingInterval}
-                                            onChange={(e) => setPollingInterval(Number(e.target.value))}
-                                            placeholder="e.g. 30"
-                                            className="w-full"
-                                        />
-                                        <Button onClick={handleIntervalChange}>Save</Button>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                                  <div className="space-y-0.5">
-                                    <Label htmlFor="notifications-switch" className="flex items-center gap-2">
-                                      <Bell className="h-4 w-4" />
-                                      Notifications
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                      Enable or disable service down notifications.
-                                    </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
+          <Accordion type="single" collapsible className="w-full md:col-span-1">
+              <AccordionItem value="add-service">
+                  <AccordionTrigger>Add a New Service</AccordionTrigger>
+                  <AccordionContent>
+                      <Card>
+                          <CardHeader>
+                              <CardTitle>Add a New Service</CardTitle>
+                              <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <AddWebsiteForm onAddWebsite={handleAddWebsite} globalPollingInterval={pollingInterval} />
+                          </CardContent>
+                      </Card>
+                  </AccordionContent>
+              </AccordionItem>
+          </Accordion>
+
+          <Accordion type="single" collapsible className="w-full md:col-span-1">
+              <AccordionItem value="settings">
+                  <AccordionTrigger>Monitoring Settings</AccordionTrigger>
+                  <AccordionContent>
+                      <Card>
+                          <CardHeader>
+                          <CardTitle>Settings</CardTitle>
+                          <CardDescription>Customize the monitoring settings.</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                              <div className="space-y-2">
+                                  <Label htmlFor="polling-interval">Global Monitoring Interval (seconds)</Label>
+                                  <div className="flex items-center gap-2">
+                                      <Input
+                                          id="polling-interval"
+                                          type="number"
+                                          value={pollingInterval}
+                                          onChange={(e) => setPollingInterval(Number(e.target.value))}
+                                          placeholder="e.g. 30"
+                                          className="w-full"
+                                      />
+                                      <Button onClick={handleIntervalChange}>Save</Button>
                                   </div>
-                                  <Switch
-                                    id="notifications-switch"
-                                    checked={notificationsEnabled}
-                                    onCheckedChange={handleNotificationToggle}
-                                  />
+                              </div>
+                              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                  <Label htmlFor="notifications-switch" className="flex items-center gap-2">
+                                    <Bell className="h-4 w-4" />
+                                    Notifications
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Enable or disable service down notifications.
+                                  </p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+                                <Switch
+                                  id="notifications-switch"
+                                  checked={notificationsEnabled}
+                                  onCheckedChange={handleNotificationToggle}
+                                />
+                              </div>
+                          </CardContent>
+                      </Card>
+                  </AccordionContent>
+              </AccordionItem>
+          </Accordion>
 
-            <Accordion type="single" collapsible className="w-full md:col-span-1">
-                <AccordionItem value="report-generator">
-                    <AccordionTrigger>Generate Reports</AccordionTrigger>
-                    <AccordionContent>
-                        <Card>
-                             <CardHeader>
-                                <CardTitle>Generate Report</CardTitle>
-                                 <CardDescription>Download a monitoring report for your services.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ReportGenerator websites={websites} />
-                            </CardContent>
-                        </Card>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-          </div>
-          
-          <EditWebsiteDialog 
-            isOpen={!!editingWebsite}
-            onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
-            website={editingWebsite}
-            onEditWebsite={handleEditWebsite}
-            globalPollingInterval={pollingInterval}
-          />
-          <HistoryDialog
-            isOpen={!!historyWebsite}
-            onOpenChange={(isOpen) => !isOpen && setHistoryWebsite(null)}
-            website={historyWebsite}
-          />
-          <DeleteConfirmDialog
-            isOpen={!!deletingWebsite}
-            onOpenChange={(isOpen) => !isOpen && setDeletingWebsite(null)}
-            website={deletingWebsite}
-            onConfirmDelete={() => {
-                if (deletingWebsite) {
-                    handleDeleteWebsite(deletingWebsite.id);
-                }
-                setDeletingWebsite(null);
-            }}
-          />
+          <Accordion type="single" collapsible className="w-full md:col-span-1">
+              <AccordionItem value="report-generator">
+                  <AccordionTrigger>Generate Reports</AccordionTrigger>
+                  <AccordionContent>
+                      <Card>
+                           <CardHeader>
+                              <CardTitle>Generate Report</CardTitle>
+                               <CardDescription>Download a monitoring report for your services.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <ReportGenerator websites={websites} />
+                          </CardContent>
+                      </Card>
+                  </AccordionContent>
+              </AccordionItem>
+          </Accordion>
         </div>
-      </main>
-      <footer className="bg-card border-t py-4">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          <p>Developed by Network &amp; Operation Section, Bangladesh Parliament Secretariat</p>
-        </div>
-      </footer>
-    </div>
+        
+        <EditWebsiteDialog 
+          isOpen={!!editingWebsite}
+          onOpenChange={(isOpen) => !isOpen && setEditingWebsite(null)}
+          website={editingWebsite}
+          onEditWebsite={handleEditWebsite}
+          globalPollingInterval={pollingInterval}
+        />
+        <HistoryDialog
+          isOpen={!!historyWebsite}
+          onOpenChange={(isOpen) => !isOpen && setHistoryWebsite(null)}
+          website={historyWebsite}
+        />
+        <DeleteConfirmDialog
+          isOpen={!!deletingWebsite}
+          onOpenChange={(isOpen) => !isOpen && setDeletingWebsite(null)}
+          website={deletingWebsite}
+          onConfirmDelete={() => {
+              if (deletingWebsite) {
+                  handleDeleteWebsite(deletingWebsite.id);
+              }
+              setDeletingWebsite(null);
+          }}
+        />
+      </div>
+    </>
   );
 }
