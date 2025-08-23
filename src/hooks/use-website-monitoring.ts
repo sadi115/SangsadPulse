@@ -26,27 +26,48 @@ const initialWebsites: Website[] = [
 const MAX_LATENCY_HISTORY = 50;
 const MAX_STATUS_HISTORY = 100;
 
+type NotificationInfo = {
+  title: string;
+  description: string;
+  variant: 'destructive';
+};
+
+
 export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
   const [isLoading, setIsLoading] = useState(false); 
   const [pollingInterval, setPollingInterval] = useState(30);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationQueue, setNotificationQueue] = useState<NotificationInfo[]>([]);
+
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (notificationQueue.length > 0) {
+      const [notification, ...rest] = notificationQueue;
+      toast(notification);
+      setNotificationQueue(rest);
+    }
+  }, [notificationQueue, toast]);
+
 
   const showNotification = useCallback((site: Website) => {
     if (!notificationsEnabled) return;
-    toast({
+    
+    const newNotification: NotificationInfo = {
       title: 'Service Down',
       description: `${site.name} is currently down.`,
       variant: 'destructive',
-    });
+    };
+    setNotificationQueue(q => [...q, newNotification]);
+
     if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
       new Notification('Service Alert', {
         body: `${site.name} is currently down.`,
         icon: '/favicon.ico',
       });
     }
-  }, [notificationsEnabled, toast]);
+  }, [notificationsEnabled]);
 
   const updateWebsiteState = useCallback((id: string, updates: Partial<Website>) => {
     setWebsites(current => {
@@ -143,7 +164,6 @@ export function useWebsiteMonitoring() {
     const pollAllWebsites = () => {
         websites.forEach(site => {
             if (!site.isPaused) {
-                const interval = site.pollingInterval || pollingInterval;
                 manualCheck(site.id);
             }
         });
@@ -154,7 +174,7 @@ export function useWebsiteMonitoring() {
 
     const intervalId = setInterval(pollAllWebsites, pollingInterval * 1000);
     return () => clearInterval(intervalId);
-  }, [websites, pollingInterval, manualCheck]);
+  }, [pollingInterval, manualCheck]);
 
 
   const addWebsite = useCallback((data: WebsiteFormData) => {
@@ -190,9 +210,13 @@ export function useWebsiteMonitoring() {
               ...data,
               status: wasPaused ? 'Paused' as const : 'Idle' as const,
           };
-          return currentWebsites.map(s => s.id === id ? updatedSite : s);
+          const finalSites = currentWebsites.map(s => s.id === id ? updatedSite : s);
+          if (!wasPaused) {
+            manualCheck(id);
+          }
+          return finalSites;
       });
-  }, []);
+  }, [manualCheck]);
 
   const deleteWebsite = useCallback((id: string) => {
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
@@ -271,5 +295,7 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
 
     
