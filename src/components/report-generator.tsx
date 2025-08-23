@@ -89,9 +89,14 @@ export function ReportGenerator({ websites }: ReportGeneratorProps) {
         console.error("Failed to load logo for PDF", e);
     }
     
-    doc.setFontSize(18);
-    doc.text('Bangladesh Parliament Web Services Monitoring Report', pageW / 2, yPos, { align: 'center'});
-    yPos += 7;
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SangsadPulse', pageW / 2, yPos, { align: 'center'});
+    yPos += 8;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Bangladesh Parliament Uptime Monitor', pageW / 2, yPos, { align: 'center' });
+    yPos += 10;
     doc.setFontSize(12);
     doc.text(reportType === 'summary' ? 'Summary Report' : 'Detail Report', pageW / 2, yPos, { align: 'center' });
     yPos += 15;
