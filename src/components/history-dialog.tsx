@@ -24,9 +24,9 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
     if (!website) return null;
     
     const displayedHistory = useMemo(() => {
-        const history = website.statusHistory ? [...website.statusHistory].reverse() : [];
+        const history = website.latencyHistory ? [...website.latencyHistory].reverse() : [];
         return history.slice(0, MAX_HISTORY_ITEMS);
-    }, [website.statusHistory]);
+    }, [website.latencyHistory]);
     
     const summaryStats = useMemo(() => {
         if (!website.statusHistory || website.statusHistory.length === 0) {
@@ -45,7 +45,7 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                 <DialogHeader>
                     <DialogTitle>History: {website.name}</DialogTitle>
                     <DialogDescription>
-                        Showing the last {displayedHistory.length} status changes for this service.
+                        Showing the last {displayedHistory.length} status checks for this service.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -53,13 +53,13 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                     <CardContent className="p-4">
                         <div className="grid grid-cols-2 gap-4 text-center">
                             <div>
-                                <p className="text-sm text-muted-foreground">Uptime</p>
+                                <p className="text-sm text-muted-foreground">Uptime (Total)</p>
                                 <p className="text-2xl font-bold">
                                     {summaryStats.uptime !== null ? `${summaryStats.uptime.toFixed(2)}%` : 'N/A'}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-sm text-muted-foreground">Down Events</p>
+                                <p className="text-sm text-muted-foreground">Down Events (Total)</p>
                                 <p className="text-2xl font-bold">{summaryStats.downEvents}</p>
                             </div>
                         </div>
@@ -72,7 +72,6 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                             <TableRow>
                                 <TableHead className="w-[100px]">Status</TableHead>
                                 <TableHead className="w-[180px]">Time</TableHead>
-                                <TableHead>Reason</TableHead>
                                 <TableHead className="text-right w-[100px]">Latency</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -80,7 +79,7 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                             {displayedHistory.length > 0 ? (
                                 displayedHistory.map((item, index) => (
                                     <TableRow key={index}>
-                                        <TableCell><StatusBadge status={item.status} /></TableCell>
+                                        <TableCell><StatusBadge status={item.latency > 0 ? 'Up' : 'Down'} /></TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span title={format(new Date(item.time), 'PPpp')}>
@@ -88,13 +87,12 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                                                 </span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="break-all">{item.reason}</TableCell>
-                                        <TableCell className="text-right">{item.latency} ms</TableCell>
+                                        <TableCell className="text-right">{item.latency > 0 ? `${item.latency} ms` : 'N/A'}</TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center h-24">
+                                    <TableCell colSpan={3} className="text-center h-24">
                                         No history data available yet.
                                     </TableCell>
                                 </TableRow>
