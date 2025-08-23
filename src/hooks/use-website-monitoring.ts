@@ -180,19 +180,26 @@ export function useWebsiteMonitoring() {
 
   // Effect to manage polling timeouts
   useEffect(() => {
+    // Clear existing timeouts
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current.clear();
 
     websites.forEach(website => {
-      if (!website.isPaused) {
-        const interval = (website.pollingInterval || pollingInterval) * 1000;
-        const timeoutId = setTimeout(() => pollWebsite(website), interval);
-        timeoutsRef.current.set(website.id, timeoutId);
-      }
+        if (!website.isPaused) {
+            // Run an initial check immediately if the site is idle
+            if (website.status === 'Idle') {
+                pollWebsite(website);
+            }
+            
+            // Schedule the next poll
+            const interval = (website.pollingInterval || pollingInterval) * 1000;
+            const timeoutId = setTimeout(() => pollWebsite(website), interval);
+            timeoutsRef.current.set(website.id, timeoutId);
+        }
     });
 
     return () => {
-      timeoutsRef.current.forEach(clearTimeout);
+        timeoutsRef.current.forEach(clearTimeout);
     };
   }, [websites, pollingInterval, pollWebsite]);
 
@@ -233,14 +240,13 @@ export function useWebsiteMonitoring() {
     };
     
     setWebsites(currentWebsites => [...currentWebsites, newWebsite]);
-    pollWebsite(newWebsite);
   };
   
   const editWebsite = async (id: string, data: WebsiteFormData) => {
       setWebsites(currentWebsites => 
           currentWebsites.map(s => {
               if (s.id === id) {
-                  const updatedSite = {
+                  return {
                     ...s,
                     ...data,
                     status: 'Idle',
@@ -250,8 +256,6 @@ export function useWebsiteMonitoring() {
                     lastDownTime: undefined,
                     diagnosis: undefined,
                   };
-                  pollWebsite(updatedSite);
-                  return updatedSite;
               }
               return s;
           })
@@ -289,9 +293,7 @@ export function useWebsiteMonitoring() {
                 if (isNowPaused) {
                     return { ...s, isPaused: true, status: 'Paused' };
                 } else {
-                    const resumedSite = { ...s, isPaused: false, status: 'Idle' };
-                    pollWebsite(resumedSite);
-                    return resumedSite;
+                    return { ...s, isPaused: false, status: 'Idle' };
                 }
             }
             return s;
