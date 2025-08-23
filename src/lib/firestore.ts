@@ -20,20 +20,17 @@ type WebsiteFormData = Omit<Website, 'id' | 'createdAt' | 'status' | 'latencyHis
 
 const websitesCollection = collection(db, 'websites');
 
-// Get all websites in real-time
-// A snapshot listener will be used in the component for real-time updates
-
 // Add a new website
 export const addWebsite = async (websiteData: WebsiteFormData) => {
   // Firestore does not allow `undefined` values. We need to clean the object.
-  const cleanedData = { ...websiteData };
+  const cleanedData: Partial<WebsiteFormData> = { ...websiteData };
   Object.keys(cleanedData).forEach(key => {
     if (cleanedData[key as keyof typeof cleanedData] === undefined) {
       delete cleanedData[key as keyof typeof cleanedData];
     }
   });
 
-  const newWebsite: Omit<Website, 'id'> = {
+  const newWebsite = {
     ...cleanedData,
     status: 'Idle',
     latencyHistory: [],
@@ -56,7 +53,11 @@ export const updateWebsite = async (id: string, updates: Partial<Website>) => {
   }
   if (updates.lastDownTime) {
     updateData.lastDownTime = Timestamp.fromDate(new Date(updates.lastDownTime));
+  } else if (updates.lastDownTime === undefined) {
+    // Explicitly handle removal of lastDownTime
+    updateData.lastDownTime = null;
   }
+  
    // Firestore does not allow `undefined` values. We need to clean the object.
   Object.keys(updateData).forEach(key => {
     if (updateData[key] === undefined) {
@@ -76,8 +77,8 @@ export const deleteWebsite = async (id: string) => {
 // Move website order
 export const moveWebsite = async (id: string, allWebsites: Website[], direction: 'up' | 'down') => {
   const sites = [...allWebsites].sort((a,b) => {
-      const timeA = a.createdAt ? new Date(a.createdAt as string).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt as string).getTime() : 0;
+      const timeA = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
+      const timeB = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
       return timeA - timeB;
   });
   const index = sites.findIndex(site => site.id === id);
@@ -92,24 +93,24 @@ export const moveWebsite = async (id: string, allWebsites: Website[], direction:
   const item = sites[index];
   const otherItem = sites[newIndex];
   
-  if (!item.createdAt || !otherItem.createdAt) {
-      console.error("Cannot move items without a createdAt timestamp.");
+  if (!(item.createdAt instanceof Timestamp) || !(otherItem.createdAt instanceof Timestamp)) {
+      console.error("Cannot move items without a valid createdAt timestamp.");
       return;
   }
 
   // Swap createdAt timestamps
   const itemRef = doc(db, 'websites', item.id);
-  batch.update(itemRef, { createdAt: Timestamp.fromDate(new Date(otherItem.createdAt as string)) });
+  batch.update(itemRef, { createdAt: otherItem.createdAt });
   
   const otherItemRef = doc(db, 'websites', otherItem.id);
-  batch.update(otherItemRef, { createdAt: Timestamp.fromDate(new Date(item.createdAt as string)) });
+  batch.update(otherItemRef, { createdAt: item.createdAt });
 
   await batch.commit();
 }
 
 
 // Seed initial data if the collection is empty
-export const seedInitialData = async (initialWebsites: Omit<Website, 'id' | 'createdAt'>[]) => {
+export const seedInitialData = async (initialWebsites: Omit<Website, 'id' | 'createdAt' | 'updatedAt'>[]) => {
     try {
         const q = query(websitesCollection);
         const querySnapshot = await getDocs(q);
@@ -120,7 +121,7 @@ export const seedInitialData = async (initialWebsites: Omit<Website, 'id' | 'cre
             initialWebsites.forEach(site => {
                 const docRef = doc(websitesCollection); // Automatically generate unique ID
                 
-                const newWebsite: Omit<Website, 'id'> = {
+                const newWebsite = {
                   ...site,
                   status: 'Idle',
                   latencyHistory: [],
@@ -140,3 +141,5 @@ export const seedInitialData = async (initialWebsites: Omit<Website, 'id' | 'cre
         console.error("Error seeding data:", error);
     }
 }
+
+    

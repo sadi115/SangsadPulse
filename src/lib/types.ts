@@ -1,4 +1,5 @@
-import type { FieldValue } from "firebase/firestore";
+
+import type { FieldValue, Timestamp } from "firebase/firestore";
 
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
@@ -30,8 +31,8 @@ export interface Website {
   url: string;
   monitorType: MonitorType;
   status: WebsiteStatus;
-  createdAt: FieldValue;
-  updatedAt?: FieldValue;
+  createdAt: Timestamp | FieldValue;
+  updatedAt?: string;
   isPaused?: boolean;
   isLoading?: boolean;
   httpResponse?: string;
@@ -51,3 +52,5 @@ export interface Website {
   keyword?: string;
   pollingInterval?: number; // Custom interval in seconds
 }
+
+    

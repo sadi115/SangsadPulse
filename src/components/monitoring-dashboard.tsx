@@ -58,12 +58,18 @@ export default function MonitoringDashboard() {
   const [view, setView] = useState<'card' | 'list'>('card');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isDataSeeded, setIsDataSeeded] = useState(false);
 
   const { toast } = useToast();
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  
+  useEffect(() => {
+    seedInitialData(initialWebsites).then(() => {
+      setIsDataSeeded(true);
+    });
+  }, []);
 
-  // Load view preference from localStorage
+  // View preference from localStorage
   useEffect(() => {
     try {
       const savedView = localStorage.getItem('monitoring-view') as 'card' | 'list';
@@ -73,7 +79,6 @@ export default function MonitoringDashboard() {
     }
   }, []);
 
-  // Save view preference to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('monitoring-view', view);
@@ -81,204 +86,180 @@ export default function MonitoringDashboard() {
       console.warn("Could not save view to localStorage", error);
     }
   }, [view]);
-
-  const scheduleNextPoll = useCallback((website: Website) => {
-    if (timeoutsRef.current.has(website.id)) {
-      clearTimeout(timeoutsRef.current.get(website.id)!);
-    }
-    const interval = (website.pollingInterval || pollingInterval) * 1000;
-    const timeoutId = setTimeout(() => pollWebsite(website), interval);
-    timeoutsRef.current.set(website.id, timeoutId);
-  }, [pollingInterval]); // pollWebsite is not a dependency here
-
-  const pollWebsite = useCallback(async (website: Website) => {
-    if (!website || website.isPaused || website.monitorType === 'Downtime') {
-      scheduleNextPoll(website);
-      return;
-    };
   
-    setWebsites(currentWebsites => 
-      currentWebsites.map(w => w.id === website.id ? { ...w, status: 'Checking' } : w)
-    );
   
-    try {
-      const result = await checkStatus(website);
-      let ttfbResult;
-      if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
-        ttfbResult = await getTtfb({ url: website.url });
-      }
-
-      setWebsites(currentWebsites => {
-          const siteIndex = currentWebsites.findIndex(s => s.id === website.id);
-          if (siteIndex === -1) return currentWebsites;
-    
-          const siteToUpdate = currentWebsites[siteIndex];
-          
-          const calculateUptime = (history: StatusHistory[]) => {
-            if (!history || history.length === 0) return { '1h': null, '24h': null, '30d': null, 'total': null };
-            const now = new Date();
-            const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
-            const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            const calculatePercentage = (data: StatusHistory[]) => {
-                if (data.length === 0) return null;
-                const upCount = data.filter(h => h.status === 'Up').length;
-                return (upCount / data.length) * 100;
-            };
-            const last1h = history.filter(h => new Date(h.time) >= oneHourAgo);
-            const last24h = history.filter(h => new Date(h.time) >= twentyFourHoursAgo);
-            const last30d = history.filter(h => new Date(h.time) >= thirtyDaysAgo);
-            return {
-                '1h': calculatePercentage(last1h),
-                '24h': calculatePercentage(last24h),
-                '30d': calculatePercentage(last30d),
-                'total': calculatePercentage(history),
-            };
-          };
-
-          const updates: Partial<Website> = { ...result, ttfb: ttfbResult?.ttfb };
-          
-          const newLatencyHistory = [
-            ...(siteToUpdate.latencyHistory || []),
-            { time: new Date().toISOString(), latency: updates.latency ?? 0 },
-          ].slice(-MAX_LATENCY_HISTORY);
-    
-          let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
-          const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
-          const newStatusEntry: StatusHistory = {
-            time: new Date().toISOString(),
-            status: updates.status === 'Up' ? 'Up' : 'Down',
-            latency: updates.latency ?? 0,
-            reason: updates.httpResponse ?? '',
-          };
-    
-          if (newStatusHistory.length === 0 || newStatusEntry.status !== lastStatus) {
-            newStatusHistory.push(newStatusEntry);
-          }
-          newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
-    
-          let averageLatency, lowestLatency, highestLatency;
-          if (newLatencyHistory.length > 0) {
-            const upHistory = newLatencyHistory.filter(h => h.latency > 0);
-            if (upHistory.length > 0) {
-              averageLatency = Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length);
-              lowestLatency = Math.min(...upHistory.map(h => h.latency));
-              highestLatency = Math.max(...upHistory.map(h => h.latency));
-            }
-          }
-    
-          const uptimeData = calculateUptime(newStatusHistory);
-    
-          const finalUpdates: Partial<Website> = {
-            ...updates,
-            latencyHistory: newLatencyHistory,
-            statusHistory: newStatusHistory,
-            averageLatency,
-            lowestLatency,
-            highestLatency,
-            uptimeData,
-          };
-    
-          if (updates.status === 'Down' && siteToUpdate.status !== 'Down') {
-            finalUpdates.lastDownTime = new Date().toISOString();
-            showNotification(siteToUpdate);
-          }
-    
-          updateWebsiteInDb(website.id, finalUpdates);
-    
-          // Schedule next poll for this specific website
-          scheduleNextPoll({ ...siteToUpdate, ...finalUpdates });
-    
-          // Return the updated list of websites for the state
-          const newWebsites = [...currentWebsites];
-          newWebsites[siteIndex] = { ...siteToUpdate, ...finalUpdates };
-          return newWebsites;
-        });
-
-    } catch (error) {
-      console.error(`Failed to check status for ${website.url}`, error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      updateWebsiteInDb(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
-      scheduleNextPoll(website);
-    }
-  }, [scheduleNextPoll, pollingInterval]); // Removed toast from dependencies
-
-
   // Subscribe to Firestore data
   useEffect(() => {
-    const initializeData = async () => {
-      // We only seed data once. The listener will handle updates.
-      if (!isLoaded) {
-        await seedInitialData(initialWebsites);
-      }
-      
-      const q = query(collection(db, 'websites'), orderBy('createdAt', 'asc'));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const sites: Website[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          
-          const convertTimestamp = (field: any): string | undefined => {
-            if (field instanceof Timestamp) {
-                return field.toDate().toISOString();
-            }
-            // It might already be a string if it's coming from a local state update
-            return typeof field === 'string' ? field : undefined;
-          };
-          
-          const site: Website = {
-            id: doc.id,
-            name: data.name,
-            url: data.url,
-            monitorType: data.monitorType,
-            status: data.status,
-            createdAt: convertTimestamp(data.createdAt)!, // Should always exist
-            updatedAt: convertTimestamp(data.updatedAt),
-            isPaused: data.isPaused,
-            isLoading: false, 
-            httpResponse: data.httpResponse,
-            lastChecked: convertTimestamp(data.lastChecked),
-            diagnosis: data.diagnosis,
-            latency: data.latency,
-            ttfb: data.ttfb,
-            averageLatency: data.averageLatency,
-            lowestLatency: data.lowestLatency,
-            highestLatency: data.highestLatency,
-            uptimeData: data.uptimeData || { '1h': null, '24h': null, '30d': null, 'total': null },
-            latencyHistory: data.latencyHistory || [],
-            statusHistory: data.statusHistory || [],
-            lastDownTime: convertTimestamp(data.lastDownTime),
-            port: data.port,
-            keyword: data.keyword,
-            pollingInterval: data.pollingInterval,
-          };
-          sites.push(site);
-        });
+    if (!isDataSeeded) return;
+
+    const q = query(collection(db, 'websites'), orderBy('createdAt', 'asc'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const sites: Website[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
         
-        setWebsites(sites);
+        const convertTimestamp = (field: any): string | undefined => {
+          if (field instanceof Timestamp) {
+              return field.toDate().toISOString();
+          }
+          return typeof field === 'string' ? field : undefined;
+        };
         
-        if (!isLoaded) {
-            setIsLoaded(true);
-            sites.forEach(site => {
-                if (!timeoutsRef.current.has(site.id)) {
-                    pollWebsite(site);
-                }
-            });
-        }
-      }, (error) => {
-          console.error("Error fetching websites:", error);
-          toast({ title: "Error", description: "Could not connect to the database.", variant: "destructive"});
+        const site: Website = {
+          id: doc.id,
+          name: data.name,
+          url: data.url,
+          monitorType: data.monitorType,
+          status: data.status,
+          createdAt: data.createdAt, // Keep as is for ordering
+          updatedAt: convertTimestamp(data.updatedAt),
+          isPaused: data.isPaused,
+          isLoading: false, 
+          httpResponse: data.httpResponse,
+          lastChecked: convertTimestamp(data.lastChecked),
+          diagnosis: data.diagnosis,
+          latency: data.latency,
+          ttfb: data.ttfb,
+          averageLatency: data.averageLatency,
+          lowestLatency: data.lowestLatency,
+          highestLatency: data.highestLatency,
+          uptimeData: data.uptimeData || { '1h': null, '24h': null, '30d': null, 'total': null },
+          latencyHistory: data.latencyHistory || [],
+          statusHistory: data.statusHistory || [],
+          lastDownTime: convertTimestamp(data.lastDownTime),
+          port: data.port,
+          keyword: data.keyword,
+          pollingInterval: data.pollingInterval,
+        };
+        sites.push(site);
       });
+      setWebsites(sites);
+    }, (error) => {
+        console.error("Error fetching websites:", error);
+        toast({ title: "Error", description: "Could not connect to the database.", variant: "destructive"});
+    });
 
-      return () => unsubscribe();
-    }
+    return () => unsubscribe();
+  }, [isDataSeeded, toast]);
+
+
+  const pollWebsite = useCallback(async (website: Website) => {
+      if (website.isPaused || website.monitorType === 'Downtime') {
+        return;
+      };
     
-    initializeData();
+      await updateWebsiteInDb(website.id, { status: 'Checking' });
+    
+      try {
+        const result = await checkStatus(website);
+        let ttfbResult;
+        if (result.status === 'Up' && (website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword')) {
+          ttfbResult = await getTtfb({ url: website.url });
+        }
 
-    return () => {
-      timeoutsRef.current.forEach(clearTimeout);
-    }
-  }, [isLoaded, toast, pollWebsite]); // Only run on load
+        const siteToUpdate = websites.find(s => s.id === website.id);
+        if (!siteToUpdate) return;
+        
+        const calculateUptime = (history: StatusHistory[]) => {
+          if (!history || history.length === 0) return { '1h': null, '24h': null, '30d': null, 'total': null };
+          const now = new Date();
+          const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+          const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          const calculatePercentage = (data: StatusHistory[]) => {
+              if (data.length === 0) return null;
+              const upCount = data.filter(h => h.status === 'Up').length;
+              return (upCount / data.length) * 100;
+          };
+          const last1h = history.filter(h => new Date(h.time) >= oneHourAgo);
+          const last24h = history.filter(h => new Date(h.time) >= twentyFourHoursAgo);
+          const last30d = history.filter(h => new Date(h.time) >= thirtyDaysAgo);
+          return {
+              '1h': calculatePercentage(last1h),
+              '24h': calculatePercentage(last24h),
+              '30d': calculatePercentage(last30d),
+              'total': calculatePercentage(history),
+          };
+        };
+
+        const updates: Partial<Website> = { ...result, ttfb: ttfbResult?.ttfb };
+        
+        const newLatencyHistory = [
+          ...(siteToUpdate.latencyHistory || []),
+          { time: new Date().toISOString(), latency: updates.latency ?? 0 },
+        ].slice(-MAX_LATENCY_HISTORY);
+  
+        let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
+        const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
+        const newStatusEntry: StatusHistory = {
+          time: new Date().toISOString(),
+          status: updates.status === 'Up' ? 'Up' : 'Down',
+          latency: updates.latency ?? 0,
+          reason: updates.httpResponse ?? '',
+        };
+  
+        if (newStatusHistory.length === 0 || newStatusEntry.status !== lastStatus) {
+          newStatusHistory.push(newStatusEntry);
+        }
+        newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
+  
+        let averageLatency, lowestLatency, highestLatency;
+        if (newLatencyHistory.length > 0) {
+          const upHistory = newLatencyHistory.filter(h => h.latency > 0);
+          if (upHistory.length > 0) {
+            averageLatency = Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length);
+            lowestLatency = Math.min(...upHistory.map(h => h.latency));
+            highestLatency = Math.max(...upHistory.map(h => h.latency));
+          }
+        }
+  
+        const uptimeData = calculateUptime(newStatusHistory);
+  
+        const finalUpdates: Partial<Website> = {
+          ...updates,
+          latencyHistory: newLatencyHistory,
+          statusHistory: newStatusHistory,
+          averageLatency,
+          lowestLatency,
+          highestLatency,
+          uptimeData,
+        };
+  
+        if (updates.status === 'Down' && siteToUpdate.status !== 'Down') {
+          finalUpdates.lastDownTime = new Date().toISOString();
+          showNotification(siteToUpdate);
+        }
+  
+        await updateWebsiteInDb(website.id, finalUpdates);
+
+      } catch (error) {
+        console.error(`Failed to check status for ${website.url}`, error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        await updateWebsiteInDb(website.id, { status: 'Down', httpResponse: `Failed to check status: ${errorMessage}` });
+      }
+    }, [websites]); // pollWebsite needs the latest websites state
+
+
+    // Effect to manage polling timeouts
+    useEffect(() => {
+        // Clear all existing timeouts
+        timeoutsRef.current.forEach(clearTimeout);
+        timeoutsRef.current.clear();
+
+        // Create new timeouts for all websites
+        websites.forEach(website => {
+            if (!website.isPaused) {
+                const interval = (website.pollingInterval || pollingInterval) * 1000;
+                const timeoutId = setTimeout(() => pollWebsite(website), interval);
+                timeoutsRef.current.set(website.id, timeoutId);
+            }
+        });
+
+        // Cleanup function
+        return () => {
+            timeoutsRef.current.forEach(clearTimeout);
+        };
+    }, [websites, pollingInterval, pollWebsite]);
   
   const showNotification = useCallback((site: Website) => {
     if (!notificationsEnabled) return;
@@ -314,27 +295,22 @@ export default function MonitoringDashboard() {
       toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
       return;
     }
-    await addWebsite(data);
+    const newSite = await addWebsite(data);
+    const newWebsiteData = { ...data, id: newSite.id, status: 'Idle', isPaused: false, createdAt: Timestamp.now() } as Website;
+    // Manually trigger a poll for the new website.
+    pollWebsite(newWebsiteData);
     toast({ title: "Service Added", description: `${data.name} has been added.` });
-  }, [websites, toast]);
+  }, [websites, toast, pollWebsite]);
 
   const handleDeleteWebsite = useCallback(async (id: string) => {
     const siteToDelete = websites.find(site => site.id === id);
     if (siteToDelete) {
-      if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id)!);
-        timeoutsRef.current.delete(id);
-      }
       await deleteWebsiteInDb(id);
       toast({ title: "Service Removed", description: `"${siteToDelete.name}" has been removed.` });
     }
   }, [websites, toast]);
 
   const handleEditWebsite = async (id: string, data: WebsiteFormData) => {
-    if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id)!);
-        timeoutsRef.current.delete(id);
-    }
     const updates = {
       ...data,
       status: 'Idle',
@@ -345,6 +321,9 @@ export default function MonitoringDashboard() {
       diagnosis: undefined,
     };
     await updateWebsiteInDb(id, updates);
+    const updatedSite = { ...websites.find(w => w.id === id)!, ...updates } as Website;
+    // Manually trigger a poll for the edited website.
+    pollWebsite(updatedSite);
     toast({ title: "Service Updated", description: `${data.name} has been updated.` });
   };
 
@@ -352,9 +331,6 @@ export default function MonitoringDashboard() {
     const website = websites.find(site => site.id === id);
     if (website) {
       toast({ title: 'Manual Check', description: `Requesting a manual status check for ${website.name}.` });
-      if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id)!);
-      }
       pollWebsite(website);
     }
   }, [websites, pollWebsite, toast]);
@@ -387,16 +363,13 @@ export default function MonitoringDashboard() {
     if (!site) return;
     const isNowPaused = !site.isPaused;
     if (isNowPaused) {
-      if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id)!);
-        timeoutsRef.current.delete(id);
-      }
       await updateWebsiteInDb(id, { isPaused: true, status: 'Paused' });
     } else {
       await updateWebsiteInDb(id, { isPaused: false, status: 'Idle' });
       // The main listener will pick up the change and start polling.
+      pollWebsite({ ...site, isPaused: false, status: 'Idle' });
     }
-  }, [websites]);
+  }, [websites, pollWebsite]);
 
   const filteredWebsites = websites.filter(site =>
     site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
