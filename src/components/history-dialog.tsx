@@ -13,6 +13,8 @@ type HistoryDialogProps = {
     website: Website | null;
 };
 
+const MAX_HISTORY_ITEMS = 50;
+
 const StatusBadge = ({ status }: { status: 'Up' | 'Down' }) => {
     const variant = status === 'Up' ? 'success' : 'destructive';
     return <Badge variant={variant}>{status}</Badge>
@@ -21,8 +23,9 @@ const StatusBadge = ({ status }: { status: 'Up' | 'Down' }) => {
 export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogProps) {
     if (!website) return null;
     
-    const reversedHistory = useMemo(() => {
-        return website.statusHistory ? [...website.statusHistory].reverse() : [];
+    const displayedHistory = useMemo(() => {
+        const history = website.statusHistory ? [...website.statusHistory].reverse() : [];
+        return history.slice(0, MAX_HISTORY_ITEMS);
     }, [website.statusHistory]);
     
     const summaryStats = useMemo(() => {
@@ -42,7 +45,7 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                 <DialogHeader>
                     <DialogTitle>History: {website.name}</DialogTitle>
                     <DialogDescription>
-                        Showing the last {reversedHistory.length} status changes for this service.
+                        Showing the last {displayedHistory.length} status changes for this service.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -74,8 +77,8 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {reversedHistory.length > 0 ? (
-                                reversedHistory.map((item, index) => (
+                            {displayedHistory.length > 0 ? (
+                                displayedHistory.map((item, index) => (
                                     <TableRow key={index}>
                                         <TableCell><StatusBadge status={item.status} /></TableCell>
                                         <TableCell>
