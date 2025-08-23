@@ -92,12 +92,11 @@ export function useWebsiteMonitoring() {
     }
   }, [notificationsEnabled, toast]);
 
-  const pollWebsite = useCallback(async (siteId: string) => {
-    const siteToCheck = websites.find(s => s.id === siteId);
+  const pollWebsite = useCallback(async (siteToCheck: Website) => {
     if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
     
     setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Checking' } : s)
+        currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Checking' } : s)
     );
     
     try {
@@ -108,7 +107,7 @@ export function useWebsiteMonitoring() {
         }
 
         setWebsites(currentWebsites => {
-            const siteToUpdate = currentWebsites.find(s => s.id === siteId);
+            const siteToUpdate = currentWebsites.find(s => s.id === siteToCheck.id);
             if (!siteToUpdate) return currentWebsites;
 
             const calculateUptime = (history: StatusHistory[]) => {
@@ -170,42 +169,51 @@ export function useWebsiteMonitoring() {
                 lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
             };
             
-            return currentWebsites.map(s => s.id === siteId ? updatedSite : s);
+            return currentWebsites.map(s => s.id === siteToCheck.id ? updatedSite : s);
         });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         setWebsites(currentWebsites => 
-            currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
+            currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
         );
     }
-  }, [websites, showNotification]);
+  }, [showNotification]);
 
   useEffect(() => {
-    // Clear all existing timeouts when component unmounts or dependencies change
-    const cleanup = () => {
-      Object.values(timeoutsRef.current).forEach(clearTimeout);
-      timeoutsRef.current = {};
-    };
+    // This effect manages the polling timers for all websites.
+    Object.values(timeoutsRef.current).forEach(clearTimeout);
+    timeoutsRef.current = {};
 
-    const pollAndReschedule = async (site: Website) => {
-        if (site.isPaused || site.monitorType === 'Downtime') {
-          return;
+    websites.forEach(site => {
+      const pollAndReschedule = async () => {
+        if (!site.isPaused && site.monitorType !== 'Downtime') {
+          // Find the most up-to-date version of the site from state before polling
+          setWebsites(currentWebsites => {
+            const currentSite = currentWebsites.find(s => s.id === site.id);
+            if (currentSite) {
+               pollWebsite(currentSite);
+            }
+            return currentWebsites;
+          });
         }
-        await pollWebsite(site.id);
         
+        // Schedule the next poll
         const interval = (site.pollingInterval || pollingInterval) * 1000;
-        timeoutsRef.current[site.id] = setTimeout(() => pollAndReschedule(site), interval);
+        timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
+      };
+
+      pollAndReschedule();
+    });
+
+    // Cleanup function to clear all timeouts when the component unmounts or dependencies change
+    return () => {
+      Object.values(timeoutsRef.current).forEach(clearTimeout);
     };
-
-    cleanup();
-    websites.forEach(site => pollAndReschedule(site));
-
-    return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [websites, pollingInterval]);
+  }, [websites.map(w => w.id).join(','), pollingInterval]);
 
 
-  const handleNotificationToggle = (enabled: boolean) => {
+  const handleNotificationToggle = useCallback((enabled: boolean) => {
     setNotificationsEnabled(enabled);
     if (enabled && 'Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission().then(permission => {
@@ -217,34 +225,35 @@ export function useWebsiteMonitoring() {
         }
       });
     }
-  };
+  }, [toast]);
 
-  const addWebsite = async (data: WebsiteFormData) => {
-    if (websites.some(site => site.url === data.url && site.port === data.port)) {
-        toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
-        return;
-    }
+  const addWebsite = useCallback((data: WebsiteFormData) => {
+    setWebsites(currentWebsites => {
+        if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
+            toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
+            return currentWebsites;
+        }
 
-    const newWebsite: Website = {
-        id: `${Date.now()}`,
-        name: data.name,
-        url: data.url,
-        monitorType: data.monitorType,
-        port: data.port,
-        keyword: data.keyword,
-        pollingInterval: data.pollingInterval,
-        status: 'Idle',
-        isPaused: false,
-        latencyHistory: [],
-        statusHistory: [],
-        uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
-        displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder || 0)) + 1 : 0,
-    };
-    
-    setWebsites(currentWebsites => [...currentWebsites, newWebsite]);
-  };
+        const newWebsite: Website = {
+            id: `${Date.now()}`,
+            name: data.name,
+            url: data.url,
+            monitorType: data.monitorType,
+            port: data.port,
+            keyword: data.keyword,
+            pollingInterval: data.pollingInterval,
+            status: 'Idle',
+            isPaused: false,
+            latencyHistory: [],
+            statusHistory: [],
+            uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+            displayOrder: currentWebsites.length > 0 ? Math.max(...currentWebsites.map(w => w.displayOrder || 0)) + 1 : 0,
+        };
+        return [...currentWebsites, newWebsite];
+    });
+  }, [toast]);
   
-  const editWebsite = async (id: string, data: WebsiteFormData) => {
+  const editWebsite = useCallback((id: string, data: WebsiteFormData) => {
       setWebsites(currentWebsites => 
           currentWebsites.map(s => {
               if (s.id === id) {
@@ -258,17 +267,17 @@ export function useWebsiteMonitoring() {
               return s;
           })
       );
-  };
+  }, []);
 
-  const deleteWebsite = async (id: string) => {
+  const deleteWebsite = useCallback((id: string) => {
     if (timeoutsRef.current[id]) {
       clearTimeout(timeoutsRef.current[id]);
       delete timeoutsRef.current[id];
     }
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
-  };
+  }, []);
 
-  const moveWebsite = async (id: string, direction: 'up' | 'down') => {
+  const moveWebsite = useCallback((id: string, direction: 'up' | 'down') => {
       setWebsites(currentWebsites => {
           const sites = [...currentWebsites].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0));
           const index = sites.findIndex(site => site.id === id);
@@ -285,9 +294,9 @@ export function useWebsiteMonitoring() {
           // Re-assign displayOrder
           return sites.map((site, idx) => ({ ...site, displayOrder: idx }));
       });
-  };
+  }, []);
   
-  const togglePause = async (id: string) => {
+  const togglePause = useCallback((id: string) => {
     setWebsites(currentWebsites => 
         currentWebsites.map(s => {
             if (s.id === id) {
@@ -304,46 +313,44 @@ export function useWebsiteMonitoring() {
             return s;
         })
     );
-  };
+  }, []);
   
-  const manualCheck = (id: string) => {
-    const website = websites.find(site => site.id === id);
-    if (website) {
+  const manualCheck = useCallback((id: string) => {
+    const site = websites.find(site => site.id === id);
+    if (site) {
       if (timeoutsRef.current[id]) {
         clearTimeout(timeoutsRef.current[id]);
       }
-      toast({ title: 'Manual Check', description: `Requesting a manual status check for ${website.name}.` });
+      toast({ title: 'Manual Check', description: `Requesting a manual status check for ${site.name}.` });
       
-      const pollAndReschedule = async () => {
-        await pollWebsite(id);
-        const site = websites.find(s => s.id === id);
-        if(site) {
-            const interval = (site.pollingInterval || pollingInterval) * 1000;
-            timeoutsRef.current[id] = setTimeout(() => pollAndReschedule(), interval);
-        }
+      const pollAndReschedule = () => {
+        pollWebsite(site);
+        const interval = (site.pollingInterval || pollingInterval) * 1000;
+        timeoutsRef.current[id] = setTimeout(pollAndReschedule, interval);
       };
       pollAndReschedule();
     }
-  };
+  }, [websites, pollWebsite, toast, pollingInterval]);
   
-  const diagnose = async (id: string) => {
+  const diagnose = useCallback((id: string) => {
     const website = websites.find(site => site.id === id);
     if (!website || !website.httpResponse) return;
     try {
       setWebsites(currentWebsites => 
         currentWebsites.map(s => s.id === id ? { ...s, diagnosis: 'AI is analyzing...' } : s)
       );
-      const { diagnosis } = await getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse });
-      setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === id ? { ...s, diagnosis } : s)
-      );
+      getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse }).then(({ diagnosis }) => {
+        setWebsites(currentWebsites => 
+            currentWebsites.map(s => s.id === id ? { ...s, diagnosis } : s)
+        );
+      });
     } catch (error) {
        setWebsites(currentWebsites => 
         currentWebsites.map(s => s.id === id ? { ...s, diagnosis: 'AI analysis failed.' } : s)
       );
       toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
     }
-  };
+  }, [websites, toast]);
 
   return {
     websites,
