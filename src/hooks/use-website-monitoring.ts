@@ -185,16 +185,11 @@ export function useWebsiteMonitoring() {
     timeoutsRef.current = {};
 
     websites.forEach(site => {
-      const pollAndReschedule = async () => {
-        if (!site.isPaused && site.monitorType !== 'Downtime') {
-          // Find the most up-to-date version of the site from state before polling
-          setWebsites(currentWebsites => {
-            const currentSite = currentWebsites.find(s => s.id === site.id);
-            if (currentSite) {
-               pollWebsite(currentSite);
-            }
-            return currentWebsites;
-          });
+      const pollAndReschedule = () => {
+        // Find the most up-to-date version of the site from state before polling
+        const currentSite = websites.find(s => s.id === site.id);
+        if (currentSite) {
+            pollWebsite(currentSite);
         }
         
         // Schedule the next poll
@@ -209,8 +204,7 @@ export function useWebsiteMonitoring() {
     return () => {
       Object.values(timeoutsRef.current).forEach(clearTimeout);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [websites.map(w => w.id).join(','), pollingInterval]);
+  }, [websites.map(w => w.id).join(','), pollingInterval, pollWebsite]);
 
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
@@ -257,11 +251,12 @@ export function useWebsiteMonitoring() {
       setWebsites(currentWebsites => 
           currentWebsites.map(s => {
               if (s.id === id) {
+                  const wasPaused = s.isPaused;
                   return {
                     ...s,
                     ...data,
-                    status: 'Idle', // Reset status to trigger a new poll cycle
-                    lastChecked: undefined, // Force immediate re-poll
+                    status: wasPaused ? 'Paused' : 'Idle', // Reset status to trigger a new poll cycle if not paused
+                    lastChecked: undefined,
                   };
               }
               return s;
@@ -367,5 +362,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
