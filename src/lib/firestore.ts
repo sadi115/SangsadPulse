@@ -1,3 +1,4 @@
+
 // src/lib/firestore.ts
 import { db } from './firebase';
 import {
@@ -11,6 +12,7 @@ import {
   orderBy,
   writeBatch,
   getDocs,
+  Timestamp,
 } from 'firebase/firestore';
 import type { Website } from './types';
 
@@ -38,7 +40,17 @@ export const addWebsite = async (websiteData: WebsiteFormData) => {
 // Update a website
 export const updateWebsite = async (id: string, updates: Partial<Website>) => {
   const websiteDoc = doc(db, 'websites', id);
-  return await updateDoc(websiteDoc, { ...updates, updatedAt: serverTimestamp() });
+  const updateData: Record<string, any> = { ...updates };
+
+  // Convert ISO string dates back to Timestamps if they exist
+  if (updates.lastChecked) {
+    updateData.lastChecked = Timestamp.fromDate(new Date(updates.lastChecked));
+  }
+  if (updates.lastDownTime) {
+    updateData.lastDownTime = Timestamp.fromDate(new Date(updates.lastDownTime));
+  }
+
+  return await updateDoc(websiteDoc, { ...updateData, updatedAt: serverTimestamp() });
 };
 
 // Delete a website
@@ -49,7 +61,11 @@ export const deleteWebsite = async (id: string) => {
 
 // Move website order
 export const moveWebsite = async (id: string, allWebsites: Website[], direction: 'up' | 'down') => {
-  const sites = [...allWebsites].sort((a,b) => (a.createdAt as any)?.seconds - (b.createdAt as any)?.seconds);
+  const sites = [...allWebsites].sort((a,b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt as string).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt as string).getTime() : 0;
+      return timeA - timeB;
+  });
   const index = sites.findIndex(site => site.id === id);
 
   if (index === -1) return;
@@ -61,13 +77,18 @@ export const moveWebsite = async (id: string, allWebsites: Website[], direction:
   const batch = writeBatch(db);
   const item = sites[index];
   const otherItem = sites[newIndex];
+  
+  if (!item.createdAt || !otherItem.createdAt) {
+      console.error("Cannot move items without a createdAt timestamp.");
+      return;
+  }
 
   // Swap createdAt timestamps
   const itemRef = doc(db, 'websites', item.id);
-  batch.update(itemRef, { createdAt: otherItem.createdAt });
+  batch.update(itemRef, { createdAt: Timestamp.fromDate(new Date(otherItem.createdAt as string)) });
   
   const otherItemRef = doc(db, 'websites', otherItem.id);
-  batch.update(otherItemRef, { createdAt: item.createdAt });
+  batch.update(otherItemRef, { createdAt: Timestamp.fromDate(new Date(item.createdAt as string)) });
 
   await batch.commit();
 }
@@ -75,16 +96,22 @@ export const moveWebsite = async (id: string, allWebsites: Website[], direction:
 
 // Seed initial data if the collection is empty
 export const seedInitialData = async (initialWebsites: Omit<Website, 'id'>[]) => {
-    const q = query(websitesCollection);
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-        console.log("Database is empty, seeding initial data...");
-        const batch = writeBatch(db);
-        initialWebsites.forEach(site => {
-            const docRef = doc(websitesCollection); // Automatically generate unique ID
-            batch.set(docRef, { ...site, createdAt: serverTimestamp() });
-        });
-        await batch.commit();
-        console.log("Initial data seeded.");
+    try {
+        const q = query(websitesCollection);
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            console.log("Database is empty, seeding initial data...");
+            const batch = writeBatch(db);
+            initialWebsites.forEach(site => {
+                const docRef = doc(websitesCollection); // Automatically generate unique ID
+                batch.set(docRef, { ...site, createdAt: serverTimestamp(), isPaused: false });
+            });
+            await batch.commit();
+            console.log("Initial data seeded.");
+        }
+    } catch (error) {
+        console.error("Error seeding data:", error);
     }
 }
+
+    

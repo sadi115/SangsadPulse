@@ -45,6 +45,10 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
       (acc, site) => {
         if (site.isPaused) {
             acc['Paused']++;
+        } else if (site.status === 'Up') {
+            acc['Up']++;
+        } else if (site.status === 'Down') {
+            acc['Down']++;
         } else {
             acc[site.status]++;
         }
@@ -242,3 +246,5 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
     </Card>
   );
 }
+
+    
