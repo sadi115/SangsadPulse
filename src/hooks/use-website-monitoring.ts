@@ -35,16 +35,14 @@ type NotificationInfo = {
 
 export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>(initialWebsites);
-  const [isLoading, setIsLoading] = useState(false); 
+  const [isLoading, setIsLoading] = useState(true); 
   const [pollingInterval, setPollingInterval] = useState(30);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [notificationQueue, setNotificationQueue] = useState<NotificationInfo[]>([]);
 
   const { toast } = useToast();
   
-  // Use a ref to store the latest websites array for access inside the interval
-  const websitesRef = useRef(websites);
-  websitesRef.current = websites;
+  const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
     if (notificationQueue.length > 0) {
@@ -53,7 +51,6 @@ export function useWebsiteMonitoring() {
       setNotificationQueue(rest);
     }
   }, [notificationQueue, toast]);
-
 
   const showNotification = useCallback((site: Website) => {
     if (!notificationsEnabled) return;
@@ -141,50 +138,93 @@ export function useWebsiteMonitoring() {
     });
   }, [showNotification]);
 
-  const manualCheck = useCallback(async (id: string) => {
-    // Find the site from the ref, not the state, to avoid dependency issues
-    const siteToCheck = websitesRef.current.find(s => s.id === id);
+  const scheduleCheck = useCallback((site: Website) => {
+    const interval = (site.pollingInterval ?? pollingInterval) * 1000;
     
+    // Clear any existing timeout for this site to prevent duplicates
+    if (timeoutsRef.current.has(site.id)) {
+        clearTimeout(timeoutsRef.current.get(site.id));
+    }
+
+    const timerId = setTimeout(async () => {
+        if (site.isPaused || site.monitorType === 'Downtime') {
+            return;
+        }
+
+        updateWebsiteState(site.id, { status: 'Checking' });
+
+        try {
+            const result = await checkStatus(site);
+            let ttfbResult;
+            if (result.status === 'Up' && (site.monitorType === 'HTTP(s)' || site.monitorType === 'HTTP(s) - Keyword')) {
+                ttfbResult = await getTtfb({ url: site.url });
+            }
+            updateWebsiteState(site.id, { ...result, ttfb: ttfbResult?.ttfb });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+            updateWebsiteState(site.id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+        } finally {
+            // Reschedule the next check after this one completes
+            const currentSites = websites;
+            const updatedSite = currentSites.find(s => s.id === site.id);
+            if (updatedSite) {
+                scheduleCheck(updatedSite);
+            }
+        }
+    }, interval);
+
+    timeoutsRef.current.set(site.id, timerId);
+  }, [pollingInterval, updateWebsiteState, websites]);
+  
+  const manualCheck = useCallback(async (id: string) => {
+    const siteToCheck = websites.find(s => s.id === id);
     if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
-      return;
+        return;
+    }
+
+    // Cancel the scheduled check to avoid a double-run
+    if (timeoutsRef.current.has(id)) {
+        clearTimeout(timeoutsRef.current.get(id));
     }
 
     updateWebsiteState(id, { status: 'Checking' });
 
     try {
-      const result = await checkStatus(siteToCheck);
-      let ttfbResult;
-      if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-        ttfbResult = await getTtfb({ url: siteToCheck.url });
-      }
-      updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
+        const result = await checkStatus(siteToCheck);
+        let ttfbResult;
+        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+            ttfbResult = await getTtfb({ url: siteToCheck.url });
+        }
+        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+    } finally {
+        // Reschedule the next check immediately after the manual one
+        const updatedSite = websites.find(s => s.id === id);
+        if (updatedSite) {
+            scheduleCheck(updatedSite);
+        }
     }
-  }, [updateWebsiteState]);
+  }, [websites, updateWebsiteState, scheduleCheck]);
 
 
+  // Effect to initialize and manage polling timers
   useEffect(() => {
-    const pollAllWebsites = () => {
-        websitesRef.current.forEach(site => {
-            if (!site.isPaused && site.status !== 'Checking') {
-                manualCheck(site.id);
-            }
-        });
-    };
-    
-    // Initial check on load after a short delay
-    const initialCheckTimeout = setTimeout(pollAllWebsites, 1000); 
+    setIsLoading(false);
+    websites.forEach(site => {
+        // Initial check is staggered slightly
+        const initialDelay = Math.random() * 5000; // 0-5 seconds
+        const timerId = setTimeout(() => manualCheck(site.id), initialDelay);
+        timeoutsRef.current.set(site.id, timerId);
+    });
 
-    const intervalId = setInterval(pollAllWebsites, pollingInterval * 1000);
-    
+    // Cleanup function to clear all timeouts when the component unmounts
     return () => {
-      clearTimeout(initialCheckTimeout);
-      clearInterval(intervalId);
+        timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-  }, [pollingInterval, manualCheck]);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   const addWebsite = useCallback((data: WebsiteFormData) => {
     setWebsites(currentWebsites => {
@@ -220,15 +260,20 @@ export function useWebsiteMonitoring() {
               ...data,
               status: wasPaused ? 'Paused' as const : 'Idle' as const,
           };
-          const finalSites = currentWebsites.map(s => s.id === id ? updatedSite : s);
+          
           if (!wasPaused) {
             manualCheck(updatedSite.id);
           }
-          return finalSites;
+          
+          return currentWebsites.map(s => s.id === id ? updatedSite : s);
       });
   }, [manualCheck]);
 
   const deleteWebsite = useCallback((id: string) => {
+    if (timeoutsRef.current.has(id)) {
+        clearTimeout(timeoutsRef.current.get(id));
+        timeoutsRef.current.delete(id);
+    }
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
   }, []);
 
@@ -254,14 +299,23 @@ export function useWebsiteMonitoring() {
     setWebsites(current => current.map(s => {
         if (s.id === id) {
             const isNowPaused = !s.isPaused;
+            if (isNowPaused) {
+                // Clear timeout when pausing
+                if (timeoutsRef.current.has(id)) {
+                    clearTimeout(timeoutsRef.current.get(id));
+                }
+            } else {
+                // Restart checks when resuming
+                manualCheck(id);
+            }
             return { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' : 'Idle' };
         }
         return s;
     }));
-  }, []);
+  }, [manualCheck]);
   
   const diagnose = useCallback(async (id: string) => {
-    const website = websitesRef.current.find(s => s.id === id);
+    const website = websites.find(s => s.id === id);
     
     if (!website || !website.httpResponse) return;
 
@@ -274,7 +328,7 @@ export function useWebsiteMonitoring() {
         toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
         updateWebsiteState(id, { diagnosis: 'AI analysis failed.' });
     }
-  }, [toast, updateWebsiteState]);
+  }, [toast, updateWebsiteState, websites]);
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -306,3 +360,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
