@@ -55,7 +55,7 @@ export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePa
             <div className="col-span-4 text-center">SERVICE</div>
             <div className="col-span-4 text-center">UPTIME</div>
             <div className="col-span-2 text-center">LATENCY</div>
-            <div className="col-span-2 text-left">LAST CHECK</div>
+            <div className="col-span-1 text-left">LAST CHECK</div>
             <div className="col-span-1 text-right">ACTIONS</div>
           </div>
         </div>
