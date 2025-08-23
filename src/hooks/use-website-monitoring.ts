@@ -118,7 +118,7 @@ export function useWebsiteMonitoring() {
         const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
         
         if (updates.status === 'Down' && siteToUpdate.status !== 'Down') {
-            showNotification(siteToUpdate);
+          showNotification(siteToUpdate);
         }
 
         const updatedSite: Website = {
@@ -137,37 +137,39 @@ export function useWebsiteMonitoring() {
     });
   }, [showNotification]);
 
-  const manualCheck = useCallback(async (siteToCheck: Website) => {
-    if (siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
-        return;
-    }
-    
-    updateWebsiteState(siteToCheck.id, { status: 'Checking' });
-    
-    try {
-        const result = await checkStatus(siteToCheck);
-        let ttfbResult;
-        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-            ttfbResult = await getTtfb({ url: siteToCheck.url });
-        }
-        updateWebsiteState(siteToCheck.id, { ...result, ttfb: ttfbResult?.ttfb });
+ const manualCheck = useCallback(async (id: string) => {
+    let siteToCheck: Website | undefined;
+    setWebsites(current => {
+      siteToCheck = current.find(s => s.id === id);
+      return current;
+    });
 
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+      return;
+    }
+
+    updateWebsiteState(id, { status: 'Checking' });
+
+    try {
+      const result = await checkStatus(siteToCheck);
+      let ttfbResult;
+      if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+        ttfbResult = await getTtfb({ url: siteToCheck.url });
+      }
+      updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        updateWebsiteState(siteToCheck.id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
     }
   }, [updateWebsiteState]);
 
 
   useEffect(() => {
     const pollAllWebsites = () => {
-        setWebsites(currentWebsites => {
-          currentWebsites.forEach(site => {
-              if (!site.isPaused) {
-                  manualCheck(site);
-              }
-          });
-          return currentWebsites; 
+        websites.forEach(site => {
+            if (!site.isPaused) {
+                manualCheck(site.id);
+            }
         });
     };
 
@@ -176,7 +178,7 @@ export function useWebsiteMonitoring() {
 
     const intervalId = setInterval(pollAllWebsites, pollingInterval * 1000);
     return () => clearInterval(intervalId);
-  }, [pollingInterval, manualCheck]);
+  }, [pollingInterval, websites, manualCheck]);
 
 
   const addWebsite = useCallback((data: WebsiteFormData) => {
@@ -197,7 +199,7 @@ export function useWebsiteMonitoring() {
         };
         const newWebsites = [...currentWebsites, newWebsite];
         // Immediately check the new website
-        manualCheck(newWebsite);
+        manualCheck(newWebsite.id);
         return newWebsites;
     });
   }, [toast, manualCheck]);
@@ -215,7 +217,7 @@ export function useWebsiteMonitoring() {
           };
           const finalSites = currentWebsites.map(s => s.id === id ? updatedSite : s);
           if (!wasPaused) {
-            manualCheck(updatedSite);
+            manualCheck(updatedSite.id);
           }
           return finalSites;
       });
@@ -286,16 +288,6 @@ export function useWebsiteMonitoring() {
       });
     }
   }, [toast]);
-  
-  const manualCheckWrapper = useCallback((id: string) => {
-      setWebsites(current => {
-          const site = current.find(s => s.id === id);
-          if (site) {
-              manualCheck(site);
-          }
-          return current;
-      });
-  }, [manualCheck]);
 
   return {
     websites,
@@ -307,11 +299,9 @@ export function useWebsiteMonitoring() {
     deleteWebsite,
     moveWebsite,
     togglePause,
-    manualCheck: manualCheckWrapper,
+    manualCheck,
     diagnose,
     notificationsEnabled,
     handleNotificationToggle
   };
 }
-
-    
