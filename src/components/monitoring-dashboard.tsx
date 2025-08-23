@@ -73,7 +73,9 @@ export default function MonitoringDashboard() {
     }
   };
 
-  const filteredWebsites = websites.filter(site =>
+  const sortedWebsites = websites.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+  const filteredWebsites = sortedWebsites.filter(site =>
     site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     site.url.toLowerCase().includes(searchTerm.toLowerCase())
   );
