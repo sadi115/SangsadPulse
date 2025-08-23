@@ -10,9 +10,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Clock, ServerOff } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
+import { Skeleton } from './ui/skeleton';
 
 type SummaryOverviewProps = {
     websites: Website[];
+    isLoading: boolean;
 };
 
 const CHART_CONFIG = {
@@ -39,7 +41,7 @@ const CHART_CONFIG = {
 } satisfies ChartConfig;
 
 
-export function SummaryOverview({ websites }: SummaryOverviewProps) {
+export function SummaryOverview({ websites, isLoading }: SummaryOverviewProps) {
   const { summary, chartData, lastDownService, currentlyDownServices } = useMemo(() => {
     const summaryData = websites.reduce(
       (acc, site) => {
@@ -78,6 +80,34 @@ export function SummaryOverview({ websites }: SummaryOverviewProps) {
   }, [websites]);
   
   const totalMonitors = websites.length;
+
+  if (isLoading) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-center">Service Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="h-48 md:h-56 flex flex-col items-center justify-center">
+                        <Skeleton className="h-40 w-40 rounded-full" />
+                    </div>
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <Skeleton key={i} className="h-[92px] rounded-lg" />
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <Skeleton className="h-[108px] rounded-lg" />
+                           <Skeleton className="h-[108px] rounded-lg" />
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+  }
 
   return (
     <Card>

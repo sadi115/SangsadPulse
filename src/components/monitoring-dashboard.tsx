@@ -87,7 +87,7 @@ export default function MonitoringDashboard() {
   return (
     <>
       <div className="container mx-auto p-4 md:p-8 space-y-8">
-        <SummaryOverview websites={websites} />
+        <SummaryOverview websites={websites} isLoading={isLoading} />
         
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
