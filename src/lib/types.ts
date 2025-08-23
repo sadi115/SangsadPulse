@@ -51,6 +51,6 @@ export interface Website {
   pollingInterval?: number; // Custom interval in seconds
 }
 
-export type WebsiteFormData = Omit<Website, 'id' | 'createdAt' | 'status' | 'latencyHistory' | 'statusHistory' | 'uptimeData' | 'displayOrder'>
+export type WebsiteFormData = Omit<Website, 'id' | 'status' | 'latencyHistory' | 'statusHistory' | 'uptimeData' | 'displayOrder'>
 
     
