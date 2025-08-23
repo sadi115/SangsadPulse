@@ -17,15 +17,17 @@ type StatusDisplayProps = {
 };
 
 const StatusBadge = ({ status }: StatusDisplayProps) => {
-  const statusInfo = {
-    Up: { text: 'Up', variant: 'success' as const },
-    Down: { text: 'Down', variant: 'destructive' as const },
-    Checking: { text: 'Checking', variant: 'secondary' as const, className: 'bg-yellow-500 text-yellow-900 dark:bg-yellow-500/20 dark:text-yellow-400' },
-    Idle: { text: 'Idle', variant: 'secondary' as const, className: 'bg-gray-500/20 text-gray-500' },
-    Paused: { text: 'Paused', variant: 'outline' as const },
-  };
+  const current = useMemo(() => {
+    const statusInfo = {
+      Up: { text: 'Up', variant: 'success' as const, className: '' },
+      Down: { text: 'Down', variant: 'destructive' as const, className: '' },
+      Checking: { text: 'Checking', variant: 'secondary' as const, className: 'bg-yellow-500 text-yellow-900 dark:bg-yellow-500/20 dark:text-yellow-400' },
+      Idle: { text: 'Idle', variant: 'secondary' as const, className: 'bg-gray-500/20 text-gray-500' },
+      Paused: { text: 'Paused', variant: 'outline' as const, className: '' },
+    };
+    return statusInfo[status];
+  }, [status]);
 
-  const current = statusInfo[status];
 
   return (
     <Badge variant={current.variant} className={cn("w-24 justify-center text-sm font-semibold", current.className)}>
@@ -33,6 +35,7 @@ const StatusBadge = ({ status }: StatusDisplayProps) => {
     </Badge>
   );
 };
+
 
 type WebsiteCardProps = {
     website: Website;
