@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { WebsiteCardDetails } from './website-card-details';
 import { Card } from './ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
-import { UptimeBar } from './uptime-bar';
 import { cn } from '@/lib/utils';
 
 type StatusDisplayProps = {
