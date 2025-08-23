@@ -177,23 +177,35 @@ export function useWebsiteMonitoring() {
             currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
         );
     }
-  }, [showNotification, websites]);
+  }, [showNotification]);
+
+  // Use a ref to hold the pollWebsite function to avoid circular dependencies
+  const pollWebsiteRef = useRef(pollWebsite);
+  useEffect(() => {
+    pollWebsiteRef.current = pollWebsite;
+  }, [pollWebsite]);
 
   // Effect to manage polling timeouts
   useEffect(() => {
     const schedulePoll = (website: Website) => {
         const pollAndReschedule = async () => {
-            await pollWebsite(website);
-            // After polling, find the *new* latest version to get the correct interval
-            const currentWebsite = websites.find(w => w.id === website.id);
-            if (currentWebsite && !currentWebsite.isPaused) {
-                const interval = (currentWebsite.pollingInterval || pollingInterval) * 1000;
-                if (timeoutsRef.current.has(website.id)) {
-                    clearTimeout(timeoutsRef.current.get(website.id));
+            // Use the function from the ref
+            await pollWebsiteRef.current(website);
+            
+            // After polling, we need to find the *latest* version of the website
+            // from state to get the correct interval for the next poll.
+            setWebsites(currentWebsites => {
+                const currentWebsite = currentWebsites.find(w => w.id === website.id);
+                if (currentWebsite && !currentWebsite.isPaused) {
+                    const interval = (currentWebsite.pollingInterval || pollingInterval) * 1000;
+                    if (timeoutsRef.current.has(website.id)) {
+                        clearTimeout(timeoutsRef.current.get(website.id));
+                    }
+                    const timeoutId = setTimeout(pollAndReschedule, interval);
+                    timeoutsRef.current.set(website.id, timeoutId);
                 }
-                const timeoutId = setTimeout(pollAndReschedule, interval);
-                timeoutsRef.current.set(website.id, timeoutId);
-            }
+                return currentWebsites;
+            });
         };
         pollAndReschedule();
     };
@@ -203,7 +215,7 @@ export function useWebsiteMonitoring() {
     timeoutsRef.current.clear();
 
     websites.forEach(website => {
-        if (!website.isPaused) {
+        if (!website.isPaused && website.status === 'Idle') {
             schedulePoll(website);
         }
     });
@@ -212,7 +224,7 @@ export function useWebsiteMonitoring() {
     return () => {
       timeoutsRef.current.forEach(clearTimeout);
     };
-  }, [pollingInterval, websites, pollWebsite]);
+  }, [websites, pollingInterval]);
 
   const handleNotificationToggle = (enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -366,5 +378,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
