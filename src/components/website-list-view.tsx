@@ -10,7 +10,6 @@ import { Skeleton } from './ui/skeleton';
 type WebsiteListViewProps = {
   websites: Website[];
   onDelete: (id: string) => void;
-  onDiagnose: (id: string) => void;
   onEdit: (id: string) => void;
   onMove: (id: string, direction: 'up' | 'down') => void;
   onTogglePause: (id: string) => void;
@@ -46,7 +45,7 @@ export const ListSkeleton = () => (
     </div>
 )
 
-export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
+export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
   return (
     <Card>
       <CardContent className="p-0">
@@ -70,7 +69,6 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
                 key={website.id}
                 website={website}
                 onDelete={onDelete}
-                onDiagnose={onDiagnose}
                 onEdit={onEdit}
                 onMove={onMove}
                 onTogglePause={onTogglePause}

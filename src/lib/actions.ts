@@ -1,7 +1,6 @@
 
 'use server';
 
-import { diagnoseWebsiteOutage } from '@/ai/flows/diagnose-website-outage';
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
 import type { Website } from '@/lib/types';
 import net from 'net';
@@ -256,23 +255,6 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
         }
      }
      return { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
-  }
-}
-
-
-export async function getAIDiagnosis(input: {
-  url: string;
-  httpResponse: string;
-}): Promise<{ diagnosis: string }> {
-  try {
-    const result = await diagnoseWebsiteOutage({
-      url: input.url,
-      httpResponse: input.httpResponse,
-    });
-    return { diagnosis: result.diagnosticMessage };
-  } catch (error) {
-    console.error('AI diagnosis failed:', error);
-    return { diagnosis: 'AI analysis failed. Please try again.' };
   }
 }
 

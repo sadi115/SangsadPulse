@@ -35,7 +35,6 @@ export default function MonitoringDashboard() {
     moveWebsite,
     togglePause,
     manualCheck,
-    diagnose,
     notificationsEnabled,
     handleNotificationToggle
   } = useWebsiteMonitoring();
@@ -117,7 +116,6 @@ export default function MonitoringDashboard() {
       <WebsiteCardView
         websites={filteredWebsites}
         onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
-        onDiagnose={diagnose}
         onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
         onMove={moveWebsite}
         onTogglePause={togglePause}
@@ -128,7 +126,6 @@ export default function MonitoringDashboard() {
       <WebsiteListView
         websites={filteredWebsites}
         onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
-        onDiagnose={diagnose}
         onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
         onMove={moveWebsite}
         onTogglePause={togglePause}
@@ -287,5 +284,3 @@ export default function MonitoringDashboard() {
     </>
   );
 }
-
-    

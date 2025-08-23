@@ -41,7 +41,6 @@ const StatusBadge = ({ status, uptimePercentage }: StatusDisplayProps) => {
 type WebsiteListItemProps = {
     website: Website;
     onDelete: (id: string) => void;
-    onDiagnose: (id: string) => void;
     onEdit: (id: string) => void;
     onMove: (id: string, direction: 'up' | 'down') => void;
     onTogglePause: (id: string) => void;
@@ -51,7 +50,7 @@ type WebsiteListItemProps = {
     isLast: boolean;
 };
 
-export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast }: WebsiteListItemProps) {
+export function WebsiteListItem({ website, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast }: WebsiteListItemProps) {
   
   const statusColor = useMemo(() => {
     switch (website.status) {
@@ -123,11 +122,6 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
                         Move Down
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onDiagnose(website.id)} disabled={website.status !== 'Down'}>
-                        <Wand2 className="mr-2 h-4 w-4" />
-                        Diagnose with AI
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
@@ -140,5 +134,3 @@ export function WebsiteListItem({ website, onDelete, onDiagnose, onEdit, onMove,
       </div>
   );
 }
-
-    

@@ -9,7 +9,6 @@ import { Skeleton } from './ui/skeleton';
 type WebsiteCardViewProps = {
   websites: Website[];
   onDelete: (id: string) => void;
-  onDiagnose: (id: string) => void;
   onEdit: (id: string) => void;
   onMove: (id: string, direction: 'up' | 'down') => void;
   onTogglePause: (id: string) => void;
@@ -31,7 +30,7 @@ export const CardSkeleton = () => (
     </div>
 );
 
-export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteCardViewProps) {
+export function WebsiteCardView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteCardViewProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {websites.map((website, index) => {
@@ -43,7 +42,6 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
             key={website.id}
             website={website}
             onDelete={onDelete}
-            onDiagnose={onDiagnose}
             onEdit={onEdit}
             onMove={onMove}
             onTogglePause={onTogglePause}

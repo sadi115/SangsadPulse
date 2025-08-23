@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory } from '@/lib/types';
-import { checkStatus, getAIDiagnosis, getTtfb } from '@/lib/actions';
+import { checkStatus, getTtfb } from '@/lib/actions';
 
 const initialWebsites: Website[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 0, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
@@ -138,28 +138,9 @@ export function useWebsiteMonitoring() {
     });
   }, [showNotification]);
   
-  const runCheck = useCallback(async (site: Website) => {
-    if (site.isPaused || site.monitorType === 'Downtime') {
-        return;
-    }
-    
-    updateWebsiteState(site.id, { status: 'Checking' });
-    try {
-        const result = await checkStatus(site);
-        let ttfbResult;
-        if (result.status === 'Up' && (site.monitorType === 'HTTP(s)' || site.monitorType === 'HTTP(s) - Keyword')) {
-            ttfbResult = await getTtfb({ url: site.url });
-        }
-        updateWebsiteState(site.id, { ...result, ttfb: ttfbResult?.ttfb });
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        updateWebsiteState(site.id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
-    }
-  }, [updateWebsiteState]);
-
   const scheduleCheck = useCallback((site: Website) => {
     if (timeoutsRef.current.has(site.id)) {
-        clearTimeout(timeoutsRef.current.get(site.id));
+      clearTimeout(timeoutsRef.current.get(site.id));
     }
     
     if (site.isPaused || site.monitorType === 'Downtime') {
@@ -169,40 +150,48 @@ export function useWebsiteMonitoring() {
     const interval = (site.pollingInterval ?? pollingInterval) * 1000;
 
     const timerId = setTimeout(async () => {
-        await runCheck(site);
-        // Reschedule the next check
-        setWebsites(currentWebsites => {
-            const nextSite = currentWebsites.find(s => s.id === site.id);
-            if (nextSite) {
-                scheduleCheck(nextSite);
-            }
-            return currentWebsites;
-        });
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        await manualCheck(site.id);
     }, interval);
 
     timeoutsRef.current.set(site.id, timerId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollingInterval]); 
 
-  }, [pollingInterval, runCheck]);
-  
   const manualCheck = useCallback(async (id: string) => {
-    const siteToCheck = websites.find(s => s.id === id);
-    if (!siteToCheck) return;
+      const siteToCheck = websites.find(s => s.id === id);
+      if (!siteToCheck) return;
 
-    if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id));
-    }
+      if (timeoutsRef.current.has(id)) {
+          clearTimeout(timeoutsRef.current.get(id));
+      }
 
-    await runCheck(siteToCheck);
-
-    setWebsites(currentWebsites => {
-        const siteToReschedule = currentWebsites.find(s => s.id === id);
-        if(siteToReschedule) {
-            scheduleCheck(siteToReschedule);
-        }
-        return currentWebsites;
-    });
-
-  }, [websites, runCheck, scheduleCheck]);
+      if (siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+          return;
+      }
+      
+      updateWebsiteState(id, { status: 'Checking' });
+      
+      try {
+          const result = await checkStatus(siteToCheck);
+          let ttfbResult;
+          if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+              ttfbResult = await getTtfb({ url: siteToCheck.url });
+          }
+          updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
+      } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+          updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+      } finally {
+        setWebsites(currentWebsites => {
+          const siteToReschedule = currentWebsites.find(s => s.id === id);
+          if (siteToReschedule) {
+              scheduleCheck(siteToReschedule);
+          }
+          return currentWebsites;
+        });
+      }
+  }, [websites, updateWebsiteState, scheduleCheck]);
 
 
   // Effect to initialize and manage polling timers
@@ -218,7 +207,20 @@ export function useWebsiteMonitoring() {
         timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, []);
+
+  useEffect(() => {
+    // This effect runs when the global polling interval changes
+    websites.forEach(site => {
+      // We only need to reschedule for sites that DON'T have a custom interval
+      // because their schedule depends on the global one.
+      if (!site.pollingInterval) {
+        scheduleCheck(site);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollingInterval]);
+
 
   const addWebsite = useCallback((data: WebsiteFormData) => {
     let newWebsite: Website | null = null;
@@ -245,26 +247,27 @@ export function useWebsiteMonitoring() {
   }, [toast, manualCheck]);
   
   const editWebsite = useCallback((id: string, data: WebsiteFormData) => {
-      let siteToUpdate: Website | undefined;
-      setWebsites(currentWebsites => {
-          const siteIndex = currentWebsites.findIndex(s => s.id === id);
-          if (siteIndex === -1) return currentWebsites;
+    let siteToUpdate: Website | undefined;
+    
+    setWebsites(currentWebsites => {
+        const siteIndex = currentWebsites.findIndex(s => s.id === id);
+        if (siteIndex === -1) return currentWebsites;
 
-          const originalSite = currentWebsites[siteIndex];
-          
-          siteToUpdate = {
-              ...originalSite,
-              ...data,
-          };
-          
-          const newWebsites = [...currentWebsites];
-          newWebsites[siteIndex] = siteToUpdate;
-          return newWebsites;
-      });
+        const originalSite = currentWebsites[siteIndex];
+        
+        siteToUpdate = {
+            ...originalSite,
+            ...data,
+        };
+        
+        const newWebsites = [...currentWebsites];
+        newWebsites[siteIndex] = siteToUpdate;
+        return newWebsites;
+    });
 
-      if (siteToUpdate) {
-        manualCheck(siteToUpdate.id);
-      }
+    if (siteToUpdate) {
+      manualCheck(siteToUpdate.id);
+    }
   }, [manualCheck]);
 
   const deleteWebsite = useCallback((id: string) => {
@@ -316,21 +319,6 @@ export function useWebsiteMonitoring() {
         }
     }
   }, [manualCheck]);
-  
-  const diagnose = useCallback(async (id: string) => {
-    const website = websites.find(s => s.id === id);
-    if (!website || !website.httpResponse) return;
-
-    updateWebsiteState(id, { diagnosis: 'AI is analyzing...' });
-
-    try {
-        const { diagnosis } = await getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse });
-        updateWebsiteState(id, { diagnosis });
-    } catch (error) {
-        toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
-        updateWebsiteState(id, { diagnosis: 'AI analysis failed.' });
-    }
-  }, [websites, toast, updateWebsiteState]);
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -346,17 +334,6 @@ export function useWebsiteMonitoring() {
     }
   }, [toast]);
   
-  // Effect to re-schedule checks when the global polling interval changes
-  useEffect(() => {
-    websites.forEach(site => {
-        // Only re-schedule if the site doesn't have a custom interval
-        if (!site.pollingInterval) {
-            scheduleCheck(site);
-        }
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pollingInterval]);
-
 
   return {
     websites,
@@ -369,7 +346,6 @@ export function useWebsiteMonitoring() {
     moveWebsite,
     togglePause,
     manualCheck,
-    diagnose,
     notificationsEnabled,
     handleNotificationToggle
   };

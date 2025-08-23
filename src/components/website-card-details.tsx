@@ -111,15 +111,6 @@ export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
                   </div>
                 )}
                
-                {website.diagnosis && (
-                    <div className="md:col-span-2 space-y-2">
-                         <h4 className="font-semibold text-base">AI Diagnosis</h4>
-                        <div className="flex items-start gap-3">
-                            <Wand2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                            <p className="text-muted-foreground">{website.diagnosis}</p>
-                        </div>
-                    </div>
-                )}
                 {website.latencyHistory && website.latencyHistory.length > 1 && (
                      <div className="md:col-span-2 space-y-2">
                         <h4 className="font-semibold text-base">Latency History (ms)</h4>

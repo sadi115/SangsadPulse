@@ -40,7 +40,6 @@ const StatusBadge = ({ status }: StatusDisplayProps) => {
 type WebsiteCardProps = {
     website: Website;
     onDelete: (id: string) => void;
-    onDiagnose: (id: string) => void;
     onEdit: (id: string) => void;
     onMove: (id: string, direction: 'up' | 'down') => void;
     onTogglePause: (id: string) => void;
@@ -50,7 +49,7 @@ type WebsiteCardProps = {
     isLast: boolean;
 };
 
-export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast }: WebsiteCardProps) {
+export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast }: WebsiteCardProps) {
   
   const statusColor = useMemo(() => {
     switch (website.status) {
@@ -119,11 +118,6 @@ export function WebsiteCard({ website, onDelete, onDiagnose, onEdit, onMove, onT
                         <DropdownMenuItem onClick={() => onMove(website.id, 'down')} disabled={isLast || website.isPaused}>
                         <ArrowDown className="mr-2 h-4 w-4" />
                         Move Down
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onDiagnose(website.id)} disabled={website.status !== 'Down'}>
-                        <Wand2 className="mr-2 h-4 w-4" />
-                        Diagnose with AI
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onDelete(website.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
