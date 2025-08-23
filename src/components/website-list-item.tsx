@@ -17,15 +17,17 @@ type StatusDisplayProps = {
 };
 
 const StatusBadge = ({ status, uptimePercentage }: StatusDisplayProps) => {
-  const statusInfo = {
-    Up: { text: 'Up', variant: 'success' as const },
-    Down: { text: 'Down', variant: 'destructive' as const },
-    Checking: { text: 'Checking', variant: 'secondary' as const },
-    Idle: { text: 'Idle', variant: 'secondary' as const },
-    Paused: { text: 'Paused', variant: 'outline' as const },
-  };
+  const current = useMemo(() => {
+    const statusInfo = {
+      Up: { text: 'Up', variant: 'success' as const },
+      Down: { text: 'Down', variant: 'destructive' as const },
+      Checking: { text: 'Checking', variant: 'secondary' as const },
+      Idle: { text: 'Idle', variant: 'secondary' as const },
+      Paused: { text: 'Paused', variant: 'outline' as const },
+    };
+    return statusInfo[status];
+  }, [status]);
 
-  const current = statusInfo[status];
 
   return (
     <Badge variant={current.variant} className="w-24 justify-center text-sm font-semibold">
