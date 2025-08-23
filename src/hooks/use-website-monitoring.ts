@@ -91,24 +91,21 @@ export function useWebsiteMonitoring() {
   }, [notificationsEnabled, toast]);
 
   const pollWebsite = useCallback(async (siteToCheck: Website) => {
-    // Re-fetch the latest state of the website from the array, to ensure we have the most up-to-date info
-    // This is important because the 'siteToCheck' object can be stale in the setTimeout closure
-    const currentSite = websites.find(w => w.id === siteToCheck.id);
-    if (!currentSite || currentSite.isPaused || currentSite.monitorType === 'Downtime') return;
+    if (siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
     
     setWebsites(currentWebsites => 
-      currentWebsites.map(s => s.id === currentSite.id ? { ...s, status: 'Checking' } : s)
+      currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Checking' } : s)
     );
     
     try {
-      const result = await checkStatus(currentSite);
+      const result = await checkStatus(siteToCheck);
       let ttfbResult;
-      if (result.status === 'Up' && (currentSite.monitorType === 'HTTP(s)' || currentSite.monitorType === 'HTTP(s) - Keyword')) {
-        ttfbResult = await getTtfb({ url: currentSite.url });
+      if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+        ttfbResult = await getTtfb({ url: siteToCheck.url });
       }
 
       setWebsites(currentWebsites => {
-        const siteToUpdate = currentWebsites.find(s => s.id === currentSite.id);
+        const siteToUpdate = currentWebsites.find(s => s.id === siteToCheck.id);
         if (!siteToUpdate) return currentWebsites;
 
         const calculateUptime = (history: StatusHistory[]) => {
@@ -176,52 +173,51 @@ export function useWebsiteMonitoring() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       setWebsites(currentWebsites => 
-          currentWebsites.map(s => s.id === currentSite.id ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
+          currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
       );
     }
-  }, [showNotification, websites]);
+  }, [showNotification]);
 
   // Effect to manage polling timeouts
   useEffect(() => {
-    // This function will schedule the next poll for a website
     const schedulePoll = (website: Website) => {
-        // Clear any existing timeout for this website to prevent duplicates
-        if (timeoutsRef.current.has(website.id)) {
-            clearTimeout(timeoutsRef.current.get(website.id));
+      // Clear any existing timeout for this website to prevent duplicates
+      if (timeoutsRef.current.has(website.id)) {
+        clearTimeout(timeoutsRef.current.get(website.id));
+      }
+
+      const pollAndReschedule = async () => {
+        // Find the latest version of the website to poll
+        const currentWebsite = websites.find(w => w.id === website.id);
+        if (currentWebsite && !currentWebsite.isPaused) {
+          await pollWebsite(currentWebsite);
+
+          // After polling, find the *new* latest version to get the correct interval
+          const updatedWebsite = websites.find(w => w.id === website.id);
+          if (updatedWebsite) {
+              const interval = (updatedWebsite.pollingInterval || pollingInterval) * 1000;
+              const timeoutId = setTimeout(pollAndReschedule, interval);
+              timeoutsRef.current.set(website.id, timeoutId);
+          }
         }
-
-        const pollAndReschedule = async () => {
-            // Get the most recent version of the website state before polling
-            const currentWebsite = websites.find(w => w.id === website.id);
-            if (currentWebsite && !currentWebsite.isPaused) {
-                await pollWebsite(currentWebsite);
-                
-                // Use the custom interval if it exists, otherwise use the global one
-                const interval = (currentWebsite.pollingInterval || pollingInterval) * 1000;
-                
-                // Schedule the next poll
-                const timeoutId = setTimeout(pollAndReschedule, interval);
-                timeoutsRef.current.set(website.id, timeoutId);
-            }
-        };
-
-        pollAndReschedule();
+      };
+      
+      // Perform the first check immediately
+      pollAndReschedule();
     };
-    
-    // Start polling for all websites
+
     websites.forEach(website => {
-        if (!website.isPaused) {
-            schedulePoll(website);
-        }
+      if (!website.isPaused) {
+        schedulePoll(website);
+      }
     });
 
-    // Cleanup function to clear all timeouts when the component unmounts or dependencies change
+    // Cleanup: clear all timeouts when the component unmounts or dependencies change
     return () => {
-        timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current.forEach(clearTimeout);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [websites, pollingInterval]); // We intentionally leave pollWebsite out to avoid re-triggering on every state change it causes. The logic inside schedulePoll gets the latest state.
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [websites, pollingInterval]); 
 
   const handleNotificationToggle = (enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -374,3 +370,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
