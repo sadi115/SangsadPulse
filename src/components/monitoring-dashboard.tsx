@@ -28,6 +28,7 @@ import { useWebsiteMonitoring } from '@/hooks/use-website-monitoring';
 export default function MonitoringDashboard() {
   const {
     websites,
+    isLoading,
     pollingInterval,
     setPollingInterval,
     addWebsite,
@@ -80,6 +81,9 @@ export default function MonitoringDashboard() {
     site.url.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const displayWebsites = isLoading ? Array(5).fill(null).map((_, i) => ({ id: `skeleton-${i}`, isLoading: true })) as Website[] : filteredWebsites;
+
+
   return (
     <>
       <div className="container mx-auto p-4 md:p-8 space-y-8">
@@ -118,7 +122,7 @@ export default function MonitoringDashboard() {
 
           {view === 'card' ? (
             <WebsiteCardView 
-              websites={filteredWebsites}
+              websites={displayWebsites}
               onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
               onDiagnose={diagnose}
               onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
@@ -129,7 +133,7 @@ export default function MonitoringDashboard() {
             />
           ) : (
             <WebsiteListView
-              websites={filteredWebsites}
+              websites={displayWebsites}
               onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
               onDiagnose={diagnose}
               onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
@@ -250,3 +254,5 @@ export default function MonitoringDashboard() {
     </>
   );
 }
+
+    

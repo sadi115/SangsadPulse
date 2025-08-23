@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory } from '@/lib/types';
 import { checkStatus, getAIDiagnosis, getTtfb } from '@/lib/actions';
-import { getWebsites, addWebsite as addWebsiteFS, updateWebsite, deleteWebsiteFS as deleteWebsite, seedInitialData } from '@/lib/firestore';
+import { getWebsites, addWebsite as addWebsiteFS, updateWebsite, deleteWebsiteFS, seedInitialData } from '@/lib/firestore';
 
 const initialWebsites: Omit<Website, 'id' | 'statusHistory' | 'latencyHistory' | 'uptimeData'>[] = [
   { name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 0 },
@@ -33,43 +33,7 @@ export function useWebsiteMonitoring() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
   const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
-  const isInitialLoad = useRef(true);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        await seedInitialData(initialWebsites);
-        const sitesFromDB = await getWebsites();
-        setWebsites(sitesFromDB);
-      } catch (error) {
-        console.error("Could not load data from Firestore", error);
-        toast({ title: 'Error', description: 'Could not load monitoring data from the database.', variant: 'destructive' });
-      }
-    }
-    loadData();
-  }, [toast]);
-  
-
-  useEffect(() => {
-    try {
-      const storedInterval = localStorage.getItem('pollingInterval');
-      const storedNotifications = localStorage.getItem('notificationsEnabled');
-
-      if (storedInterval) setPollingInterval(Number(storedInterval));
-      if (storedNotifications !== null) setNotificationsEnabled(JSON.parse(storedNotifications));
-    } catch (error) {
-      console.error("Could not load settings from localStorage", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('pollingInterval', String(pollingInterval));
-      localStorage.setItem('notificationsEnabled', JSON.stringify(notificationsEnabled));
-    } catch (error) {
-       console.error("Could not save settings to localStorage", error);
-    }
-  }, [pollingInterval, notificationsEnabled]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const showNotification = useCallback((site: Website) => {
     if (!notificationsEnabled) return;
@@ -86,12 +50,14 @@ export function useWebsiteMonitoring() {
     }
   }, [notificationsEnabled, toast]);
 
-  const pollWebsite = useCallback(async (siteToCheck: Website) => {
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
+  const pollWebsite = useCallback(async (siteId: string) => {
     
     setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Checking', isLoading: true } : s)
+        currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Checking', isLoading: true } : s)
     );
+    
+    const siteToCheck = websites.find(s => s.id === siteId);
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
     
     try {
         const result = await checkStatus(siteToCheck);
@@ -99,9 +65,6 @@ export function useWebsiteMonitoring() {
         if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
             ttfbResult = await getTtfb({ url: siteToCheck.url });
         }
-
-        const siteToUpdate = websites.find(s => s.id === siteToCheck.id);
-        if (!siteToUpdate) return;
         
         const calculateUptime = (history: StatusHistory[]) => {
             if (!history || history.length === 0) return { '1h': null, '24h': null, '30d': null, 'total': null };
@@ -124,33 +87,38 @@ export function useWebsiteMonitoring() {
             };
         };
 
-        const newLatencyHistory = [...(siteToUpdate.latencyHistory || []), { time: new Date().toISOString(), latency: result.latency ?? 0 }].slice(-MAX_LATENCY_HISTORY);
-      
-        let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
-        const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
-        const newStatusEntry: StatusHistory = {
-            time: new Date().toISOString(),
-            status: result.status === 'Up' ? 'Up' : 'Down',
-            latency: result.latency ?? 0,
-            reason: result.httpResponse ?? '',
-        };
+        const updatedSiteFields: Partial<Website> = {};
 
-        if (newStatusHistory.length === 0 || newStatusEntry.status !== lastStatus) {
-            newStatusHistory.push(newStatusEntry);
-        }
-        newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
+        setWebsites(currentWebsites => {
+          const siteToUpdate = currentWebsites.find(s => s.id === siteToCheck.id);
+          if (!siteToUpdate) return currentWebsites;
 
-        const upHistory = newLatencyHistory.filter(h => h.latency > 0);
-        const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
-        const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
-        const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
+          const newLatencyHistory = [...(siteToUpdate.latencyHistory || []), { time: new Date().toISOString(), latency: result.latency ?? 0 }].slice(-MAX_LATENCY_HISTORY);
+        
+          let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
+          const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
+          const newStatusEntry: StatusHistory = {
+              time: new Date().toISOString(),
+              status: result.status === 'Up' ? 'Up' : 'Down',
+              latency: result.latency ?? 0,
+              reason: result.httpResponse ?? '',
+          };
+  
+          if (newStatusHistory.length === 0 || newStatusEntry.status !== lastStatus) {
+              newStatusHistory.push(newStatusEntry);
+          }
+          newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
+  
+          const upHistory = newLatencyHistory.filter(h => h.latency > 0);
+          const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
+          const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
+          const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
+  
+          if (result.status === 'Down' && siteToUpdate.status !== 'Down') {
+              showNotification(siteToUpdate);
+          }
 
-        if (result.status === 'Down' && siteToUpdate.status !== 'Down') {
-            showNotification(siteToUpdate);
-        }
-
-        const updatedSite: Website = {
-            ...siteToUpdate,
+          Object.assign(updatedSiteFields, {
             ...result,
             isLoading: false,
             ttfb: ttfbResult?.ttfb,
@@ -161,10 +129,12 @@ export function useWebsiteMonitoring() {
             highestLatency,
             uptimeData: calculateUptime(newStatusHistory),
             lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
-        };
-        
-        await updateWebsite(siteToCheck.id, updatedSite);
-        setWebsites(currentWebsites => currentWebsites.map(s => s.id === siteToCheck.id ? updatedSite : s));
+          });
+
+          return currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, ...updatedSiteFields } : s);
+        });
+
+        await updateWebsite(siteToCheck.id, updatedSiteFields);
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -174,9 +144,31 @@ export function useWebsiteMonitoring() {
             currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, ...updatedSite } : s)
         );
     }
-  }, [showNotification, websites]);
+  }, [showNotification, toast, websites]);
 
   useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        await seedInitialData(initialWebsites);
+        const sitesFromDB = await getWebsites();
+        setWebsites(sitesFromDB);
+      } catch (error) {
+        console.error("Could not load data from Firestore", error);
+        toast({ title: 'Error', description: 'Could not load monitoring data from the database.', variant: 'destructive' });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, [toast]);
+  
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
     Object.values(timeoutsRef.current).forEach(clearTimeout);
     timeoutsRef.current = {};
 
@@ -184,26 +176,19 @@ export function useWebsiteMonitoring() {
       if (site.isPaused) return;
 
       const pollAndReschedule = () => {
-        pollWebsite(site);
+        pollWebsite(site.id);
         const interval = (site.pollingInterval || pollingInterval) * 1000;
         timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
       };
       
-      if (isInitialLoad.current) {
-        timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, 1000 + Math.random() * 2000);
-      } else {
-         pollAndReschedule();
-      }
+      // Stagger initial checks
+      timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, Math.random() * 2000); 
     });
     
-    if (isInitialLoad.current && websites.length > 0) {
-      isInitialLoad.current = false;
-    }
-
     return () => {
       Object.values(timeoutsRef.current).forEach(clearTimeout);
     };
-  }, [websites, pollingInterval, pollWebsite]);
+  }, [isLoading, websites, pollingInterval, pollWebsite]); 
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -224,9 +209,9 @@ export function useWebsiteMonitoring() {
         toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
         return;
     }
-
+    const newId = `${Date.now()}`;
     const newWebsite: Website = {
-        id: `${Date.now()}`,
+        id: newId,
         name: data.name,
         url: data.url,
         monitorType: data.monitorType,
@@ -267,50 +252,51 @@ export function useWebsiteMonitoring() {
       clearTimeout(timeoutsRef.current[id]);
       delete timeoutsRef.current[id];
     }
-    await deleteWebsite(id);
+    await deleteWebsiteFS(id);
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
   }, []);
 
   const moveWebsite = useCallback(async (id: string, direction: 'up' | 'down') => {
-      const sites = [...websites].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-      const index = sites.findIndex(site => site.id === id);
-
-      if (index === -1) return;
-      
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-
-      if (newIndex < 0 || newIndex >= sites.length) return;
-
-      const [movedItem] = sites.splice(index, 1);
-      sites.splice(newIndex, 0, movedItem);
-
-      const updatedSites = sites.map((site, idx) => ({ ...site, displayOrder: idx }));
-      
-      const batch = writeBatch(db);
-      updatedSites.forEach(site => {
-          const docRef = doc(collection(db, "websites"), site.id);
-          batch.update(docRef, { displayOrder: site.displayOrder });
+      setWebsites(currentSites => {
+        const sites = [...currentSites].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+        const index = sites.findIndex(site => site.id === id);
+  
+        if (index === -1) return currentSites;
+        
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+  
+        if (newIndex < 0 || newIndex >= sites.length) return currentSites;
+  
+        const [movedItem] = sites.splice(index, 1);
+        sites.splice(newIndex, 0, movedItem);
+  
+        const updatedSites = sites.map((site, idx) => ({ ...site, displayOrder: idx }));
+        
+        const updates = updatedSites.map(site => updateWebsite(site.id, { displayOrder: site.displayOrder }));
+        Promise.all(updates).catch(err => {
+            console.error("Failed to update display order in Firestore", err);
+        });
+  
+        return updatedSites;
       });
-      await batch.commit();
-
-      setWebsites(updatedSites);
-  }, [websites]);
+  }, []);
   
   const togglePause = useCallback(async (id: string) => {
-      const site = websites.find(s => s.id === id);
-      if (!site) return;
+    const site = websites.find(s => s.id === id);
+    if (!site) return;
 
-      const isNowPaused = !site.isPaused;
-      const newStatus = isNowPaused ? 'Paused' : 'Idle';
-      
-      if (isNowPaused && timeoutsRef.current[id]) {
-          clearTimeout(timeoutsRef.current[id]);
-      }
-      
-      await updateWebsite(id, { isPaused: isNowPaused, status: newStatus });
-      setWebsites(currentWebsites => 
-          currentWebsites.map(s => s.id === id ? { ...s, isPaused: isNowPaused, status: newStatus } : s)
-      );
+    const isNowPaused = !site.isPaused;
+    const newStatus = isNowPaused ? 'Paused' : 'Idle';
+
+    if (isNowPaused && timeoutsRef.current[id]) {
+      clearTimeout(timeoutsRef.current[id]);
+      delete timeoutsRef.current[id];
+    }
+
+    await updateWebsite(id, { isPaused: isNowPaused, status: newStatus });
+    setWebsites(currentWebsites =>
+      currentWebsites.map(s => (s.id === id ? { ...s, isPaused: isNowPaused, status: newStatus } : s))
+    );
   }, [websites]);
   
   const manualCheck = useCallback((id: string) => {
@@ -321,7 +307,7 @@ export function useWebsiteMonitoring() {
         }
         toast({ title: 'Manual Check', description: `Requesting a manual status check for ${site.name}.` });
         
-        pollWebsite(site); // No need to reschedule, main useEffect will handle it
+        pollWebsite(site.id); 
       }
   }, [websites, pollWebsite, toast]);
   
@@ -344,6 +330,7 @@ export function useWebsiteMonitoring() {
 
   return {
     websites,
+    isLoading,
     pollingInterval,
     setPollingInterval,
     addWebsite,
