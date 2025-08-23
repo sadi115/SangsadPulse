@@ -107,11 +107,13 @@ export function useWebsiteMonitoring() {
       const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
       
       if (result.status === 'Down' && siteToUpdate.status !== 'Down' && notificationsEnabledRef.current) {
-         toast({
-            title: 'Service Down',
-            description: `${siteToUpdate.name} is currently down.`,
-            variant: 'destructive',
-          });
+         setTimeout(() => {
+            toast({
+              title: 'Service Down',
+              description: `${siteToUpdate.name} is currently down.`,
+              variant: 'destructive',
+            });
+         }, 0);
       }
 
       const updatedSite: Website = {
