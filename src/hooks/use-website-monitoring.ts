@@ -31,7 +31,7 @@ export function useWebsiteMonitoring() {
   const [pollingInterval, setPollingInterval] = useState(30);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
-  const timeoutsRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Load from localStorage on initial render
   useEffect(() => {
@@ -92,11 +92,12 @@ export function useWebsiteMonitoring() {
     }
   }, [notificationsEnabled, toast]);
 
-  const pollWebsite = useCallback(async (siteToCheck: Website) => {
-    if (siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
-
+  const pollWebsite = useCallback(async (siteId: string) => {
+    const siteToCheck = websites.find(s => s.id === siteId);
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
+    
     setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Checking' } : s)
+        currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Checking' } : s)
     );
     
     try {
@@ -107,7 +108,7 @@ export function useWebsiteMonitoring() {
         }
 
         setWebsites(currentWebsites => {
-            const siteToUpdate = currentWebsites.find(s => s.id === siteToCheck.id);
+            const siteToUpdate = currentWebsites.find(s => s.id === siteId);
             if (!siteToUpdate) return currentWebsites;
 
             const calculateUptime = (history: StatusHistory[]) => {
@@ -169,51 +170,40 @@ export function useWebsiteMonitoring() {
                 lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
             };
             
-            return currentWebsites.map(s => s.id === siteToCheck.id ? updatedSite : s);
+            return currentWebsites.map(s => s.id === siteId ? updatedSite : s);
         });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         setWebsites(currentWebsites => 
-            currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
+            currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
         );
     }
-  }, [showNotification]);
+  }, [websites, showNotification]);
 
   useEffect(() => {
-    if (timeoutsRef.current) {
-      clearTimeout(timeoutsRef.current);
-    }
+    // Clear all existing timeouts when component unmounts or dependencies change
+    const cleanup = () => {
+      Object.values(timeoutsRef.current).forEach(clearTimeout);
+      timeoutsRef.current = {};
+    };
 
-    const poll = async () => {
-      const activeWebsites = websites.filter(site => !site.isPaused && site.monitorType !== 'Downtime');
-      
-      const individualIntervals = activeWebsites.map(site => (site.pollingInterval || pollingInterval) * 1000);
-      const minInterval = Math.min(...individualIntervals, pollingInterval * 1000);
-
-      const websitesToPoll = websites.filter(site => {
-        if (site.isPaused || site.monitorType === 'Downtime') return false;
+    const pollAndReschedule = async (site: Website) => {
+        if (site.isPaused || site.monitorType === 'Downtime') {
+          return;
+        }
+        await pollWebsite(site.id);
         
         const interval = (site.pollingInterval || pollingInterval) * 1000;
-        const lastChecked = site.lastChecked ? new Date(site.lastChecked).getTime() : 0;
-        
-        // Poll if it's never been checked, or if the time since last check is >= its interval
-        return !lastChecked || (Date.now() - lastChecked >= interval);
-      });
-      
-      // We run all polls concurrently
-      await Promise.all(websitesToPoll.map(site => pollWebsite(site)));
-      
-      timeoutsRef.current = setTimeout(poll, minInterval);
+        timeoutsRef.current[site.id] = setTimeout(() => pollAndReschedule(site), interval);
     };
 
-    poll();
+    cleanup();
+    websites.forEach(site => pollAndReschedule(site));
 
-    return () => {
-      if (timeoutsRef.current) {
-        clearTimeout(timeoutsRef.current);
-      }
-    };
-  }, [websites, pollingInterval, pollWebsite]);
+    return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [websites, pollingInterval]);
+
 
   const handleNotificationToggle = (enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -271,6 +261,10 @@ export function useWebsiteMonitoring() {
   };
 
   const deleteWebsite = async (id: string) => {
+    if (timeoutsRef.current[id]) {
+      clearTimeout(timeoutsRef.current[id]);
+      delete timeoutsRef.current[id];
+    }
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
   };
 
@@ -299,9 +293,12 @@ export function useWebsiteMonitoring() {
             if (s.id === id) {
                 const isNowPaused = !s.isPaused;
                 if (isNowPaused) {
+                    if (timeoutsRef.current[id]) {
+                      clearTimeout(timeoutsRef.current[id]);
+                    }
                     return { ...s, isPaused: true, status: 'Paused' };
                 } else {
-                    return { ...s, isPaused: false, status: 'Idle', lastChecked: undefined };
+                    return { ...s, isPaused: false, status: 'Idle' };
                 }
             }
             return s;
@@ -312,8 +309,20 @@ export function useWebsiteMonitoring() {
   const manualCheck = (id: string) => {
     const website = websites.find(site => site.id === id);
     if (website) {
+      if (timeoutsRef.current[id]) {
+        clearTimeout(timeoutsRef.current[id]);
+      }
       toast({ title: 'Manual Check', description: `Requesting a manual status check for ${website.name}.` });
-      pollWebsite(website);
+      
+      const pollAndReschedule = async () => {
+        await pollWebsite(id);
+        const site = websites.find(s => s.id === id);
+        if(site) {
+            const interval = (site.pollingInterval || pollingInterval) * 1000;
+            timeoutsRef.current[id] = setTimeout(() => pollAndReschedule(), interval);
+        }
+      };
+      pollAndReschedule();
     }
   };
   
@@ -351,3 +360,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
