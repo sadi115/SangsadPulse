@@ -52,7 +52,7 @@ export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePa
         <div className="hidden md:flex items-center p-4 gap-4 border-b text-xs font-semibold text-muted-foreground">
           <div className="w-2 h-8"></div>
           <div className="flex-1 grid grid-cols-12 items-center gap-4">
-            <div className="col-span-4">SERVICE</div>
+            <div className="col-span-4 text-center">SERVICE</div>
             <div className="col-span-4 text-center">UPTIME</div>
             <div className="col-span-2 text-center">LATENCY</div>
             <div className="col-span-1 text-left">LAST CHECK</div>
