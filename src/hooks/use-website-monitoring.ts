@@ -6,21 +6,21 @@ import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory } from '@/lib/types';
 import { checkStatus, getAIDiagnosis, getTtfb } from '@/lib/actions';
 
-const initialWebsites: Omit<Website, 'id' | 'createdAt' | 'updatedAt'>[] = [
-  { name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 0 },
-  { name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 1 },
-  { name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 2 },
-  { name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 3 },
-  { name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 4 },
-  { name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 5 },
-  { name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 6 },
-  { name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 7 },
-  { name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 8 },
-  { name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 9 },
-  { name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 10 },
-  { name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', port: 443, latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 11 },
-  { name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 12 },
-  { name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', latencyHistory: [], statusHistory: [], uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null }, isPaused: false, displayOrder: 13 },
+const initialWebsites: Omit<Website, 'id' | 'statusHistory' | 'latencyHistory' | 'uptimeData'>[] = [
+  { name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 0 },
+  { name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 1 },
+  { name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 2 },
+  { name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 3 },
+  { name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 4 },
+  { name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 5 },
+  { name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 6 },
+  { name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 7 },
+  { name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 8 },
+  { name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 9 },
+  { name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 10 },
+  { name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', port: 443, isPaused: false, displayOrder: 11 },
+  { name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', isPaused: false, displayOrder: 12 },
+  { name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', isPaused: false, displayOrder: 13 },
 ];
 
 const MAX_LATENCY_HISTORY = 50;
@@ -33,7 +33,7 @@ export function useWebsiteMonitoring() {
   const { toast } = useToast();
   const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-  // Load from localStorage on initial render
+  // Load from localStorage on initial client-side render
   useEffect(() => {
     try {
       const storedWebsites = localStorage.getItem('websites');
@@ -47,6 +47,9 @@ export function useWebsiteMonitoring() {
         const sitesWithIds = initialWebsites.map((site, index) => ({
             ...site,
             id: `${Date.now()}-${index}`,
+            latencyHistory: [],
+            statusHistory: [],
+            uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
         }));
         setWebsites(sitesWithIds);
       }
@@ -65,10 +68,10 @@ export function useWebsiteMonitoring() {
 
   // Save to localStorage whenever state changes
   useEffect(() => {
+    // Don't save the initial empty array
+    if (websites.length === 0) return;
     try {
-      if (websites.length > 0) {
-        localStorage.setItem('websites', JSON.stringify(websites));
-      }
+      localStorage.setItem('websites', JSON.stringify(websites));
       localStorage.setItem('pollingInterval', String(pollingInterval));
       localStorage.setItem('notificationsEnabled', JSON.stringify(notificationsEnabled));
     } catch (error) {
@@ -96,7 +99,7 @@ export function useWebsiteMonitoring() {
     if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
     
     setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Checking' } : s)
+        currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Checking', isLoading: true } : s)
     );
     
     try {
@@ -159,6 +162,7 @@ export function useWebsiteMonitoring() {
             const updatedSite: Website = {
                 ...siteToUpdate,
                 ...result,
+                isLoading: false,
                 ttfb: ttfbResult?.ttfb,
                 latencyHistory: newLatencyHistory,
                 statusHistory: newStatusHistory,
@@ -174,7 +178,7 @@ export function useWebsiteMonitoring() {
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         setWebsites(currentWebsites => 
-            currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}` } : s)
+            currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, status: 'Down', httpResponse: `Poll failed: ${errorMessage}`, isLoading: false } : s)
         );
     }
   }, [showNotification]);
@@ -183,36 +187,23 @@ export function useWebsiteMonitoring() {
     // This effect manages the polling timers for all websites.
     Object.values(timeoutsRef.current).forEach(clearTimeout);
     timeoutsRef.current = {};
-    
-    // Use a timeout to ensure this runs after the initial render cycle is complete.
-    const timer = setTimeout(() => {
-        websites.forEach(site => {
-            const pollAndReschedule = () => {
-                // Find the most up-to-date version of the site from state before polling
-                setWebsites(currentWebsites => {
-                    const currentSite = currentWebsites.find(s => s.id === site.id);
-                    if (currentSite) {
-                        pollWebsite(currentSite);
-                    }
-                    return currentWebsites;
-                });
-                
-                // Schedule the next poll
-                const interval = (site.pollingInterval || pollingInterval) * 1000;
-                timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
-            };
 
-            pollAndReschedule();
-        });
-    }, 0);
+    websites.forEach(site => {
+      if (site.isPaused) return;
 
+      const pollAndReschedule = () => {
+        pollWebsite(site);
+        const interval = (site.pollingInterval || pollingInterval) * 1000;
+        timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, interval);
+      };
+      pollAndReschedule();
+    });
 
     // Cleanup function to clear all timeouts when the component unmounts or dependencies change
     return () => {
-      clearTimeout(timer);
       Object.values(timeoutsRef.current).forEach(clearTimeout);
     };
-  }, [websites.map(w => w.id).join(','), pollingInterval, pollWebsite]);
+  }, [websites, pollingInterval, pollWebsite]);
 
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
@@ -319,41 +310,37 @@ export function useWebsiteMonitoring() {
   }, []);
   
   const manualCheck = useCallback((id: string) => {
-    const site = websites.find(site => site.id === id);
-    if (site) {
-      if (timeoutsRef.current[id]) {
-        clearTimeout(timeoutsRef.current[id]);
-      }
-      toast({ title: 'Manual Check', description: `Requesting a manual status check for ${site.name}.` });
-      
-      const pollAndReschedule = () => {
+    setWebsites(currentWebsites => {
+      const site = currentWebsites.find(s => s.id === id);
+      if (site) {
+        if (timeoutsRef.current[id]) {
+          clearTimeout(timeoutsRef.current[id]);
+        }
+        toast({ title: 'Manual Check', description: `Requesting a manual status check for ${site.name}.` });
         pollWebsite(site);
-        const interval = (site.pollingInterval || pollingInterval) * 1000;
-        timeoutsRef.current[id] = setTimeout(pollAndReschedule, interval);
-      };
-      pollAndReschedule();
-    }
-  }, [websites, pollWebsite, toast, pollingInterval]);
+      }
+      return currentWebsites;
+    });
+  }, [pollWebsite, toast]);
   
   const diagnose = useCallback((id: string) => {
-    const website = websites.find(site => site.id === id);
-    if (!website || !website.httpResponse) return;
-    try {
-      setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === id ? { ...s, diagnosis: 'AI is analyzing...' } : s)
-      );
-      getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse }).then(({ diagnosis }) => {
-        setWebsites(currentWebsites => 
-            currentWebsites.map(s => s.id === id ? { ...s, diagnosis } : s)
-        );
-      });
-    } catch (error) {
-       setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === id ? { ...s, diagnosis: 'AI analysis failed.' } : s)
-      );
-      toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
-    }
-  }, [websites, toast]);
+    setWebsites(currentWebsites => {
+      const website = currentWebsites.find(s => s.id === id);
+      if (!website || !website.httpResponse) return currentWebsites;
+
+      try {
+        getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse }).then(({ diagnosis }) => {
+          setWebsites(prevWebsites => 
+              prevWebsites.map(s => s.id === id ? { ...s, diagnosis } : s)
+          );
+        });
+        return currentWebsites.map(s => s.id === id ? { ...s, diagnosis: 'AI is analyzing...' } : s);
+      } catch (error) {
+        toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
+        return currentWebsites.map(s => s.id === id ? { ...s, diagnosis: 'AI analysis failed.' } : s);
+      }
+    });
+  }, [toast]);
 
   return {
     websites,
@@ -370,3 +357,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    

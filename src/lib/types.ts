@@ -31,8 +31,6 @@ export interface Website {
   url: string;
   monitorType: MonitorType;
   status: WebsiteStatus;
-  createdAt?: Timestamp | FieldValue;
-  updatedAt?: string;
   isPaused?: boolean;
   isLoading?: boolean;
   httpResponse?: string;
@@ -55,3 +53,5 @@ export interface Website {
 }
 
 export type WebsiteFormData = Omit<Website, 'id' | 'createdAt' | 'status' | 'latencyHistory' | 'statusHistory' | 'uptimeData' | 'isLoading' | 'displayOrder'>
+
+    
