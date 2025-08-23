@@ -27,7 +27,7 @@ const MAX_LATENCY_HISTORY = 50;
 const MAX_STATUS_HISTORY = 100;
 
 export function useWebsiteMonitoring() {
-  const [websites, setWebsites] = useState<Website[]>(initialWebsites);
+  const [websites, setWebsites] = useState<Website[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pollingInterval, setPollingInterval] = useState(30);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -39,6 +39,65 @@ export function useWebsiteMonitoring() {
   useEffect(() => {
     notificationsEnabledRef.current = notificationsEnabled;
   }, [notificationsEnabled]);
+
+  // Load from local storage on initial mount
+  useEffect(() => {
+    try {
+      const savedWebsites = localStorage.getItem('monitoring-websites');
+      const savedInterval = localStorage.getItem('monitoring-interval');
+      const savedNotifications = localStorage.getItem('monitoring-notifications');
+
+      if (savedWebsites) {
+        setWebsites(JSON.parse(savedWebsites));
+      } else {
+        setWebsites(initialWebsites);
+      }
+
+      if (savedInterval) {
+        setPollingInterval(JSON.parse(savedInterval));
+      }
+
+      if (savedNotifications) {
+        setNotificationsEnabled(JSON.parse(savedNotifications));
+      }
+    } catch (error) {
+      console.error("Failed to load settings from local storage", error);
+      // If loading fails, use defaults
+      setWebsites(initialWebsites);
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Save to local storage whenever state changes
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem('monitoring-websites', JSON.stringify(websites));
+      } catch (error) {
+        console.error("Failed to save websites to local storage", error);
+      }
+    }
+  }, [websites, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem('monitoring-interval', JSON.stringify(pollingInterval));
+      } catch (error) {
+        console.error("Failed to save interval to local storage", error);
+      }
+    }
+  }, [pollingInterval, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem('monitoring-notifications', JSON.stringify(notificationsEnabled));
+      } catch (error) {
+        console.error("Failed to save notification settings to local storage", error);
+      }
+    }
+  }, [notificationsEnabled, isLoading]);
 
   const scheduleCheck = useCallback((site: Website) => {
     if (timeoutsRef.current.has(site.id)) {
@@ -166,18 +225,22 @@ export function useWebsiteMonitoring() {
 
 
   useEffect(() => {
-    setIsLoading(false);
+    if (isLoading) return; // Don't start checks until loaded from local storage
+    
     websites.forEach(site => {
+        // Stagger initial checks to avoid overwhelming the network
         setTimeout(() => manualCheck(site.id), Math.random() * 2000);
     });
     
     return () => {
+      // Cleanup timeouts when component unmounts
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isLoading]); // This effect now depends on isLoading
 
   useEffect(() => {
+    if (isLoading) return;
     // This effect runs when the global pollingInterval changes.
     // It clears all existing timeouts and reschedules checks with the new interval.
     timeoutsRef.current.forEach((timeoutId, siteId) => {
@@ -189,7 +252,7 @@ export function useWebsiteMonitoring() {
       scheduleCheck(site);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pollingInterval]);
+  }, [pollingInterval, isLoading]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
@@ -321,3 +384,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
