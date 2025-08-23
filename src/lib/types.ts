@@ -31,7 +31,7 @@ export interface Website {
   url: string;
   monitorType: MonitorType;
   status: WebsiteStatus;
-  createdAt: Timestamp | FieldValue;
+  createdAt?: Timestamp | FieldValue;
   updatedAt?: string;
   isPaused?: boolean;
   isLoading?: boolean;
@@ -47,10 +47,11 @@ export interface Website {
   latencyHistory?: { time: string; latency: number }[];
   statusHistory?: StatusHistory[];
   lastDownTime?: string;
+  displayOrder?: number;
   // Options for specific monitor types
   port?: number;
   keyword?: string;
   pollingInterval?: number; // Custom interval in seconds
 }
 
-    
+export type WebsiteFormData = Omit<Website, 'id' | 'createdAt' | 'status' | 'latencyHistory' | 'statusHistory' | 'uptimeData' | 'isLoading' | 'displayOrder'>
