@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory } from '@/lib/types';
 import { checkStatus, getAIDiagnosis, getTtfb } from '@/lib/actions';
@@ -41,6 +41,10 @@ export function useWebsiteMonitoring() {
   const [notificationQueue, setNotificationQueue] = useState<NotificationInfo[]>([]);
 
   const { toast } = useToast();
+  
+  // Use a ref to store the latest websites array for access inside the interval
+  const websitesRef = useRef(websites);
+  websitesRef.current = websites;
 
   useEffect(() => {
     if (notificationQueue.length > 0) {
@@ -137,13 +141,10 @@ export function useWebsiteMonitoring() {
     });
   }, [showNotification]);
 
- const manualCheck = useCallback(async (id: string) => {
-    let siteToCheck: Website | undefined;
-    setWebsites(current => {
-      siteToCheck = current.find(s => s.id === id);
-      return current;
-    });
-
+  const manualCheck = useCallback(async (id: string) => {
+    // Find the site from the ref, not the state, to avoid dependency issues
+    const siteToCheck = websitesRef.current.find(s => s.id === id);
+    
     if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
       return;
     }
@@ -166,19 +167,23 @@ export function useWebsiteMonitoring() {
 
   useEffect(() => {
     const pollAllWebsites = () => {
-        websites.forEach(site => {
-            if (!site.isPaused) {
+        websitesRef.current.forEach(site => {
+            if (!site.isPaused && site.status !== 'Checking') {
                 manualCheck(site.id);
             }
         });
     };
-
-    // Initial check on load
-    setTimeout(pollAllWebsites, 1000); 
+    
+    // Initial check on load after a short delay
+    const initialCheckTimeout = setTimeout(pollAllWebsites, 1000); 
 
     const intervalId = setInterval(pollAllWebsites, pollingInterval * 1000);
-    return () => clearInterval(intervalId);
-  }, [pollingInterval, websites, manualCheck]);
+    
+    return () => {
+      clearTimeout(initialCheckTimeout);
+      clearInterval(intervalId);
+    };
+  }, [pollingInterval, manualCheck]);
 
 
   const addWebsite = useCallback((data: WebsiteFormData) => {
@@ -256,11 +261,7 @@ export function useWebsiteMonitoring() {
   }, []);
   
   const diagnose = useCallback(async (id: string) => {
-    let website: Website | undefined;
-    setWebsites(current => {
-      website = current.find(s => s.id === id);
-      return current;
-    });
+    const website = websitesRef.current.find(s => s.id === id);
     
     if (!website || !website.httpResponse) return;
 
