@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -18,9 +19,14 @@ export function Header() {
                     className="h-10 w-10"
                     data-ai-hint="emblem"
                 />
-                <h1 className="text-xl font-bold text-foreground hidden md:block">
-                    Bangladesh Parliament Web Service Monitor System
-                </h1>
+                <div className="hidden md:flex flex-col">
+                    <h1 className="text-xl font-bold text-foreground leading-tight">
+                        SangsadPulse
+                    </h1>
+                    <p className="text-xs text-muted-foreground">
+                        Bangladesh Parliament Uptime Monitor
+                    </p>
+                </div>
                 </div>
                 <div className="flex items-center gap-4">
                     <LiveClock />
