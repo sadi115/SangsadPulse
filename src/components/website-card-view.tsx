@@ -17,7 +17,7 @@ type WebsiteCardViewProps = {
   onManualCheck: (id: string) => void;
 };
 
-const CardSkeleton = () => (
+export const CardSkeleton = () => (
     <div className="p-4 border rounded-lg shadow-sm bg-card">
         <div className="flex items-center gap-4">
             <Skeleton className="w-2 h-8 rounded-full" />
@@ -32,30 +32,9 @@ const CardSkeleton = () => (
 );
 
 export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteCardViewProps) {
-  if (websites.length === 0) {
-    return (
-      <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
-        <div className="mx-auto h-24 w-24 relative">
-             <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
-        </div>
-        <h2 className="mt-6 text-xl font-medium text-foreground">No websites yet</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Add a website above to start monitoring its status.
-        </p>
-      </div>
-    );
-  }
-
-  const nonPausedWebsites = websites.filter(w => !w.isPaused);
-  const nonPausedCount = nonPausedWebsites.length;
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {websites.map((website, index) => {
-        if (website.isLoading) {
-          return <CardSkeleton key={website.id} />;
-        }
-        
         const isFirst = index === 0;
         const isLast = index === websites.length - 1;
 

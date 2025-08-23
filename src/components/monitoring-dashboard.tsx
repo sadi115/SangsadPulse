@@ -14,8 +14,8 @@ import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LayoutGrid, List, Bell, Search } from 'lucide-react';
-import { WebsiteCardView } from '@/components/website-card-view';
-import { WebsiteListView } from '@/components/website-list-view';
+import { WebsiteCardView, CardSkeleton } from '@/components/website-card-view';
+import { WebsiteListView, ListSkeleton } from '@/components/website-list-view';
 import Image from 'next/image';
 import { LiveClock } from '@/components/live-clock';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -81,7 +81,64 @@ export default function MonitoringDashboard() {
     site.url.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const displayWebsites = isLoading ? Array(5).fill(null).map((_, i) => ({ id: `skeleton-${i}`, isLoading: true })) as Website[] : filteredWebsites;
+  const renderContent = () => {
+    if (isLoading) {
+      if (view === 'card') {
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
+          </div>
+        )
+      }
+      return (
+        <Card>
+          <CardContent className="p-0 divide-y divide-border">
+            {Array.from({ length: 6 }).map((_, i) => <ListSkeleton key={i} />)}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (filteredWebsites.length === 0) {
+      return (
+        <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
+          <div className="mx-auto h-24 w-24 relative">
+            <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
+          </div>
+          <h2 className="mt-6 text-xl font-medium text-foreground">
+            {searchTerm ? 'No services found' : 'No websites yet'}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {searchTerm ? 'Try a different search term.' : 'Add a website using the form below to start monitoring.'}
+          </p>
+        </div>
+      );
+    }
+
+    return view === 'card' ? (
+      <WebsiteCardView
+        websites={filteredWebsites}
+        onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
+        onDiagnose={diagnose}
+        onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+        onMove={moveWebsite}
+        onTogglePause={togglePause}
+        onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+        onManualCheck={manualCheck}
+      />
+    ) : (
+      <WebsiteListView
+        websites={filteredWebsites}
+        onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
+        onDiagnose={diagnose}
+        onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
+        onMove={moveWebsite}
+        onTogglePause={togglePause}
+        onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+        onManualCheck={manualCheck}
+      />
+    );
+  };
 
 
   return (
@@ -120,29 +177,7 @@ export default function MonitoringDashboard() {
             </div>
           </div>
 
-          {view === 'card' ? (
-            <WebsiteCardView 
-              websites={displayWebsites}
-              onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
-              onDiagnose={diagnose}
-              onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-              onMove={moveWebsite}
-              onTogglePause={togglePause}
-              onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
-              onManualCheck={manualCheck}
-            />
-          ) : (
-            <WebsiteListView
-              websites={displayWebsites}
-              onDelete={(id) => setDeletingWebsite(websites.find(w => w.id === id) || null)}
-              onDiagnose={diagnose}
-              onEdit={(id) => setEditingWebsite(websites.find(w => w.id === id) || null)}
-              onMove={moveWebsite}
-              onTogglePause={togglePause}
-              onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
-              onManualCheck={manualCheck}
-            />
-          )}
+          {renderContent()}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
@@ -254,5 +289,3 @@ export default function MonitoringDashboard() {
     </>
   );
 }
-
-    

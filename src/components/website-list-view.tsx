@@ -18,7 +18,7 @@ type WebsiteListViewProps = {
   onManualCheck: (id: string) => void;
 };
 
-const ListSkeleton = () => (
+export const ListSkeleton = () => (
     <div className="p-4">
         <div className="flex items-center gap-4">
             <Skeleton className="w-2 h-8 rounded-full" />
@@ -47,23 +47,6 @@ const ListSkeleton = () => (
 )
 
 export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
-  if (websites.length === 0) {
-    return (
-      <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
-        <div className="mx-auto h-24 w-24 relative">
-             <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
-        </div>
-        <h2 className="mt-6 text-xl font-medium text-foreground">No websites yet</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Add a website above to start monitoring its status.
-        </p>
-      </div>
-    );
-  }
-
-  const nonPausedWebsites = websites.filter(w => !w.isPaused);
-  const nonPausedCount = nonPausedWebsites.length;
-
   return (
     <Card>
       <CardContent className="p-0">
@@ -79,10 +62,6 @@ export function WebsiteListView({ websites, onDelete, onDiagnose, onEdit, onMove
         </div>
         <div className="divide-y divide-border">
           {websites.map((website, index) => {
-            if (website.isLoading) {
-              return <ListSkeleton key={website.id} />;
-            }
-            
             const isFirst = index === 0;
             const isLast = index === websites.length - 1;
 
