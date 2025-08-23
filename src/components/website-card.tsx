@@ -28,6 +28,9 @@ const StatusBadge = ({ status }: StatusDisplayProps) => {
     return statusInfo[status];
   }, [status]);
 
+  if (!current) {
+    return null;
+  }
 
   return (
     <Badge variant={current.variant} className={cn("w-24 justify-center text-sm font-semibold", current.className)}>
