@@ -31,11 +31,11 @@ export const ListSkeleton = () => (
                          <Skeleton key={index} className="w-1.5 h-full rounded-sm" />
                      ))}
                 </div>
-                 <div className="col-span-2 text-right">
-                    <Skeleton className="h-4 w-12 ml-auto" />
+                 <div className="col-span-2 text-left">
+                    <Skeleton className="h-4 w-12" />
                 </div>
-                <div className="col-span-1 text-right">
-                    <Skeleton className="h-4 w-16 ml-auto" />
+                <div className="col-span-1 text-left">
+                    <Skeleton className="h-4 w-16" />
                 </div>
                  <div className="col-span-1 flex items-center justify-end gap-2">
                      <Skeleton className="h-8 w-8 rounded-md" />
@@ -54,8 +54,8 @@ export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePa
           <div className="flex-1 grid grid-cols-12 items-center gap-4">
             <div className="col-span-4">SERVICE</div>
             <div className="col-span-4 text-center">UPTIME</div>
-            <div className="col-span-2 text-right">LATENCY</div>
-            <div className="col-span-1 text-right pr-4">LAST CHECK</div>
+            <div className="col-span-2 text-left">LATENCY</div>
+            <div className="col-span-1 text-left">LAST CHECK</div>
             <div className="col-span-1 text-right">ACTIONS</div>
           </div>
         </div>
