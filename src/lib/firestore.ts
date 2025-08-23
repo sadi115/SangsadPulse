@@ -38,7 +38,7 @@ export async function deleteWebsiteFS(id: string): Promise<void> {
     await deleteDoc(docRef);
 }
 
-export async function seedInitialData(initialWebsites: Omit<Website, 'id'>[]) {
+export async function seedInitialData(initialWebsites: Omit<Website, 'id' | 'statusHistory' | 'latencyHistory' | 'uptimeData'>[]) {
     const querySnapshot = await getDocs(websitesCollection);
     if (querySnapshot.empty) {
         const batch = writeBatch(db);
@@ -46,7 +46,7 @@ export async function seedInitialData(initialWebsites: Omit<Website, 'id'>[]) {
             const id = `${Date.now()}-${index}`;
             const newSite: Website = {
                 ...siteData,
-                id,
+                id, // Ensure the id is part of the object
                 latencyHistory: [],
                 statusHistory: [],
                 uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
