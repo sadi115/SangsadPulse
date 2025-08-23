@@ -6,7 +6,7 @@ import { Header } from '@/components/header';
 
 
 export const metadata: Metadata = {
-  title: 'Bangladesh Parliament - Web Services Status',
+  title: 'Jatiya Sangsad Digital Service Monitor',
   description: 'Monitor your websites with AI-powered diagnostics.',
 };
 
