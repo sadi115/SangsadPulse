@@ -168,10 +168,7 @@ export function useWebsiteMonitoring() {
   useEffect(() => {
     setIsLoading(false);
     websites.forEach(site => {
-      if (!site.isPaused && site.monitorType !== 'Downtime') {
-        const initialDelay = Math.random() * 2000;
-        setTimeout(() => manualCheck(site.id), initialDelay);
-      }
+        setTimeout(() => manualCheck(site.id), Math.random() * 2000);
     });
     
     return () => {
@@ -179,6 +176,21 @@ export function useWebsiteMonitoring() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // This effect runs when the global pollingInterval changes.
+    // It clears all existing timeouts and reschedules checks with the new interval.
+    timeoutsRef.current.forEach((timeoutId, siteId) => {
+      clearTimeout(timeoutId);
+    });
+    timeoutsRef.current.clear();
+    
+    websites.forEach(site => {
+      scheduleCheck(site);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollingInterval]);
+
 
   const addWebsite = (data: WebsiteFormData) => {
     let newWebsite: Website | null = null;
@@ -309,5 +321,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
