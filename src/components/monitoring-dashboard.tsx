@@ -48,18 +48,18 @@ export default function MonitoringDashboard() {
   const { toast } = useToast();
 
   const handleEditWebsite = async (id: string, data: WebsiteFormData) => {
-    await editWebsite(id, data);
+    editWebsite(id, data);
     toast({ title: "Service Updated", description: `${data.name} has been updated.` });
   };
   
   const handleAddWebsite = async (data: WebsiteFormData) => {
-    await addWebsite(data);
+    addWebsite(data);
     toast({ title: "Service Added", description: `${data.name} has been added.` });
   };
   
   const handleDeleteWebsite = async (id: string) => {
     const siteName = websites.find(w => w.id === id)?.name || 'Service';
-    await deleteWebsite(id);
+    deleteWebsite(id);
     toast({ title: "Service Removed", description: `"${siteName}" has been removed.` });
   };
 
@@ -287,3 +287,5 @@ export default function MonitoringDashboard() {
     </>
   );
 }
+
+    

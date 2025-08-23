@@ -70,9 +70,9 @@ export function useWebsiteMonitoring() {
   }, [notificationsEnabled]);
 
   const updateWebsiteState = useCallback((id: string, updates: Partial<Website>) => {
-    setWebsites(current => {
-        const siteToUpdate = current.find(s => s.id === id);
-        if (!siteToUpdate) return current;
+    setWebsites(currentWebsites => {
+        const siteToUpdate = currentWebsites.find(s => s.id === id);
+        if (!siteToUpdate) return currentWebsites;
 
         const newLatencyHistory = updates.latency !== undefined 
             ? [...(siteToUpdate.latencyHistory || []), { time: new Date().toISOString(), latency: updates.latency }].slice(-MAX_LATENCY_HISTORY)
@@ -133,17 +133,16 @@ export function useWebsiteMonitoring() {
             lastDownTime: updates.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
         };
         
-        return current.map(s => s.id === id ? updatedSite : s);
+        return currentWebsites.map(s => s.id === id ? updatedSite : s);
     });
   }, [showNotification]);
 
-  const manualCheck = useCallback(async (id: string) => {
-    const siteToCheck = websites.find(s => s.id === id);
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+  const manualCheck = useCallback(async (siteToCheck: Website) => {
+    if (siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
         return;
     }
     
-    updateWebsiteState(id, { status: 'Checking' });
+    updateWebsiteState(siteToCheck.id, { status: 'Checking' });
     
     try {
         const result = await checkStatus(siteToCheck);
@@ -151,21 +150,24 @@ export function useWebsiteMonitoring() {
         if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
             ttfbResult = await getTtfb({ url: siteToCheck.url });
         }
-        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
+        updateWebsiteState(siteToCheck.id, { ...result, ttfb: ttfbResult?.ttfb });
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+        updateWebsiteState(siteToCheck.id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
     }
-  }, [websites, updateWebsiteState]);
+  }, [updateWebsiteState]);
 
 
   useEffect(() => {
     const pollAllWebsites = () => {
-        websites.forEach(site => {
-            if (!site.isPaused) {
-                manualCheck(site.id);
-            }
+        setWebsites(currentWebsites => {
+          currentWebsites.forEach(site => {
+              if (!site.isPaused) {
+                  manualCheck(site);
+              }
+          });
+          return currentWebsites; 
         });
     };
 
@@ -193,9 +195,10 @@ export function useWebsiteMonitoring() {
             uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
             displayOrder: currentWebsites.length > 0 ? Math.max(...currentWebsites.map(w => w.displayOrder || 0)) + 1 : 0,
         };
+        const newWebsites = [...currentWebsites, newWebsite];
         // Immediately check the new website
-        manualCheck(newWebsite.id);
-        return [...currentWebsites, newWebsite];
+        manualCheck(newWebsite);
+        return newWebsites;
     });
   }, [toast, manualCheck]);
   
@@ -212,7 +215,7 @@ export function useWebsiteMonitoring() {
           };
           const finalSites = currentWebsites.map(s => s.id === id ? updatedSite : s);
           if (!wasPaused) {
-            manualCheck(id);
+            manualCheck(updatedSite);
           }
           return finalSites;
       });
@@ -251,7 +254,12 @@ export function useWebsiteMonitoring() {
   }, []);
   
   const diagnose = useCallback(async (id: string) => {
-    const website = websites.find(s => s.id === id);
+    let website: Website | undefined;
+    setWebsites(current => {
+      website = current.find(s => s.id === id);
+      return current;
+    });
+    
     if (!website || !website.httpResponse) return;
 
     updateWebsiteState(id, { diagnosis: 'AI is analyzing...' });
@@ -263,7 +271,7 @@ export function useWebsiteMonitoring() {
         toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
         updateWebsiteState(id, { diagnosis: 'AI analysis failed.' });
     }
-  }, [websites, toast, updateWebsiteState]);
+  }, [toast, updateWebsiteState]);
 
   const handleNotificationToggle = useCallback((enabled: boolean) => {
     setNotificationsEnabled(enabled);
@@ -278,6 +286,16 @@ export function useWebsiteMonitoring() {
       });
     }
   }, [toast]);
+  
+  const manualCheckWrapper = useCallback((id: string) => {
+      setWebsites(current => {
+          const site = current.find(s => s.id === id);
+          if (site) {
+              manualCheck(site);
+          }
+          return current;
+      });
+  }, [manualCheck]);
 
   return {
     websites,
@@ -289,13 +307,11 @@ export function useWebsiteMonitoring() {
     deleteWebsite,
     moveWebsite,
     togglePause,
-    manualCheck,
+    manualCheck: manualCheckWrapper,
     diagnose,
     notificationsEnabled,
     handleNotificationToggle
   };
 }
-
-    
 
     
