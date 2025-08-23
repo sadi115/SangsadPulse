@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory } from '@/lib/types';
 import { checkStatus, getAIDiagnosis, getTtfb } from '@/lib/actions';
-import { getWebsites, addWebsite as addWebsiteFS, updateWebsite, deleteWebsite as deleteWebsiteFS, seedInitialData } from '@/lib/firestore';
+import { getWebsites, addWebsite as addWebsiteFS, updateWebsite, deleteWebsiteFS, seedInitialData } from '@/lib/firestore';
 
 const initialWebsites: Omit<Website, 'id' | 'statusHistory' | 'latencyHistory' | 'uptimeData'>[] = [
   { name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'TCP Port', port: 443, isPaused: false, displayOrder: 0 },
@@ -30,7 +30,7 @@ const MAX_STATUS_HISTORY = 100;
 export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [pollingInterval, setPollingInterval] = useState(30); // This is now for manual refresh timing, not auto-polling
+  const [pollingInterval, setPollingInterval] = useState(30);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
 
@@ -39,10 +39,8 @@ export function useWebsiteMonitoring() {
     try {
       let sitesFromDB = await getWebsites();
       if (sitesFromDB.length === 0) {
-          console.log("No websites found in DB, seeding initial data...");
           await seedInitialData(initialWebsites);
           sitesFromDB = await getWebsites(); // Re-fetch after seeding
-          console.log("Seeded data fetched:", sitesFromDB);
       }
       setWebsites(sitesFromDB);
     } catch (error) {
