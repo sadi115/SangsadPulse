@@ -81,7 +81,7 @@ export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
                     </div>
                  </div>
 
-                {(website.latency !== undefined || website.averageLatency !== undefined) && (
+                {(website.latency !== undefined) && (
                   <div className="space-y-2">
                     <h4 className="font-semibold text-base flex items-center gap-2"><BarChart2 className="h-4 w-4" />Performance</h4>
                     <div className="space-y-1 text-muted-foreground">

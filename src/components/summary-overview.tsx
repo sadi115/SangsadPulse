@@ -276,5 +276,3 @@ export function SummaryOverview({ websites, isLoading }: SummaryOverviewProps) {
     </Card>
   );
 }
-
-    

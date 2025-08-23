@@ -32,7 +32,6 @@ export interface Website {
   monitorType: MonitorType;
   status: WebsiteStatus;
   isPaused?: boolean;
-  isLoading?: boolean;
   httpResponse?: string;
   lastChecked?: string;
   diagnosis?: string;
@@ -52,6 +51,6 @@ export interface Website {
   pollingInterval?: number; // Custom interval in seconds
 }
 
-export type WebsiteFormData = Omit<Website, 'id' | 'createdAt' | 'status' | 'latencyHistory' | 'statusHistory' | 'uptimeData' | 'isLoading' | 'displayOrder'>
+export type WebsiteFormData = Omit<Website, 'id' | 'createdAt' | 'status' | 'latencyHistory' | 'statusHistory' | 'uptimeData' | 'displayOrder'>
 
     

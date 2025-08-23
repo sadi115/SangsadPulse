@@ -53,14 +53,14 @@ export function useWebsiteMonitoring() {
   const pollWebsite = useCallback(async (siteId: string) => {
     
     setWebsites(currentWebsites => 
-        currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Checking', isLoading: true } : s)
+        currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Checking' } : s)
     );
     
     // Get the latest version of the site from the state
     const siteToCheck = (await getWebsites()).find(s => s.id === siteId);
     if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
         setWebsites(currentWebsites => 
-            currentWebsites.map(s => s.id === siteId ? { ...s, isLoading: false } : s)
+            currentWebsites.map(s => s.id === siteId ? { ...s } : s)
         );
         return;
     }
@@ -124,7 +124,6 @@ export function useWebsiteMonitoring() {
 
         const updatedSiteFields: Partial<Website> = {
           ...result,
-          isLoading: false,
           ttfb: ttfbResult?.ttfb,
           latencyHistory: newLatencyHistory,
           statusHistory: newStatusHistory,
@@ -142,7 +141,7 @@ export function useWebsiteMonitoring() {
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        const updatedSite = { status: 'Down' as const, httpResponse: `Poll failed: ${errorMessage}`, isLoading: false };
+        const updatedSite = { status: 'Down' as const, httpResponse: `Poll failed: ${errorMessage}` };
         await updateWebsite(siteToCheck.id, updatedSite);
         setWebsites(currentWebsites => 
             currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, ...updatedSite } : s)
@@ -256,7 +255,7 @@ export function useWebsiteMonitoring() {
       );
   }, []);
 
-  const deleteWebsiteCallback = useCallback(async (id: string) => {
+  const deleteWebsite = useCallback(async (id: string) => {
     if (timeoutsRef.current[id]) {
       clearTimeout(timeoutsRef.current[id]);
       delete timeoutsRef.current[id];
@@ -348,7 +347,7 @@ export function useWebsiteMonitoring() {
     setPollingInterval,
     addWebsite,
     editWebsite,
-    deleteWebsite: deleteWebsiteCallback,
+    deleteWebsite,
     moveWebsite,
     togglePause,
     manualCheck,
@@ -357,5 +356,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
