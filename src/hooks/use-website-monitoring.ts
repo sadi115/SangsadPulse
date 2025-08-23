@@ -30,7 +30,7 @@ const MAX_STATUS_HISTORY = 100;
 export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [pollingInterval, setPollingInterval] = useState(30);
+  const [pollingInterval, setPollingInterval] = useState(30); // Kept for UI, but no active polling
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
 
