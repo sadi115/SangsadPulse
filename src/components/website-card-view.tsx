@@ -36,7 +36,7 @@ export function WebsiteCardView({ websites, onDelete, onDiagnose, onEdit, onMove
     return (
       <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg">
         <div className="mx-auto h-24 w-24 relative">
-             <Image src="/emblem.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
+             <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png" alt="Empty list illustration" layout="fill" objectFit="contain" data-ai-hint="magnifying glass analytics" />
         </div>
         <h2 className="mt-6 text-xl font-medium text-foreground">No websites yet</h2>
         <p className="mt-2 text-sm text-muted-foreground">

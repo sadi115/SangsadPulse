@@ -387,7 +387,7 @@ export default function MonitoringDashboard() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
                <Image 
-                src="/emblem.png"
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Emblem_of_the_Jatiya_Sangsad.svg/500px-Emblem_of_the_Jatiya_Sangsad.svg.png"
                 alt="Parliament Logo"
                 width={40}
                 height={40}
