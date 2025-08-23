@@ -56,8 +56,14 @@ export function useWebsiteMonitoring() {
         currentWebsites.map(s => s.id === siteId ? { ...s, status: 'Checking', isLoading: true } : s)
     );
     
-    const siteToCheck = websites.find(s => s.id === siteId);
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') return;
+    // Get the latest version of the site from the state
+    const siteToCheck = (await getWebsites()).find(s => s.id === siteId);
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+        setWebsites(currentWebsites => 
+            currentWebsites.map(s => s.id === siteId ? { ...s, isLoading: false } : s)
+        );
+        return;
+    }
     
     try {
         const result = await checkStatus(siteToCheck);
@@ -87,71 +93,72 @@ export function useWebsiteMonitoring() {
             };
         };
 
-        const updatedSiteFields: Partial<Website> = {};
+        const currentSiteState = (await getWebsites()).find(s => s.id === siteToCheck.id);
+        if (!currentSiteState) return;
 
-        setWebsites(currentWebsites => {
-          const siteToUpdate = currentWebsites.find(s => s.id === siteToCheck.id);
-          if (!siteToUpdate) return currentWebsites;
 
-          const newLatencyHistory = [...(siteToUpdate.latencyHistory || []), { time: new Date().toISOString(), latency: result.latency ?? 0 }].slice(-MAX_LATENCY_HISTORY);
-        
-          let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
-          const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
-          const newStatusEntry: StatusHistory = {
-              time: new Date().toISOString(),
-              status: result.status === 'Up' ? 'Up' : 'Down',
-              latency: result.latency ?? 0,
-              reason: result.httpResponse ?? '',
-          };
-  
-          if (newStatusHistory.length === 0 || newStatusEntry.status !== lastStatus) {
-              newStatusHistory.push(newStatusEntry);
-          }
-          newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
-  
-          const upHistory = newLatencyHistory.filter(h => h.latency > 0);
-          const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
-          const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
-          const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
-  
-          if (result.status === 'Down' && siteToUpdate.status !== 'Down') {
-              showNotification(siteToUpdate);
-          }
+        const newLatencyHistory = [...(currentSiteState.latencyHistory || []), { time: new Date().toISOString(), latency: result.latency ?? 0 }].slice(-MAX_LATENCY_HISTORY);
+      
+        let newStatusHistory = [...(currentSiteState.statusHistory || [])];
+        const lastStatus = newStatusHistory[newStatusHistory.length - 1]?.status;
+        const newStatusEntry: StatusHistory = {
+            time: new Date().toISOString(),
+            status: result.status === 'Up' ? 'Up' : 'Down',
+            latency: result.latency ?? 0,
+            reason: result.httpResponse ?? '',
+        };
 
-          Object.assign(updatedSiteFields, {
-            ...result,
-            isLoading: false,
-            ttfb: ttfbResult?.ttfb,
-            latencyHistory: newLatencyHistory,
-            statusHistory: newStatusHistory,
-            averageLatency,
-            lowestLatency,
-            highestLatency,
-            uptimeData: calculateUptime(newStatusHistory),
-            lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
-          });
+        if (newStatusHistory.length === 0 || newStatusEntry.status !== lastStatus) {
+            newStatusHistory.push(newStatusEntry);
+        }
+        newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
 
-          return currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, ...updatedSiteFields } : s);
-        });
+        const upHistory = newLatencyHistory.filter(h => h.latency > 0);
+        const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
+        const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
+        const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
+
+        if (result.status === 'Down' && currentSiteState.status !== 'Down') {
+            showNotification(currentSiteState);
+        }
+
+        const updatedSiteFields: Partial<Website> = {
+          ...result,
+          isLoading: false,
+          ttfb: ttfbResult?.ttfb,
+          latencyHistory: newLatencyHistory,
+          statusHistory: newStatusHistory,
+          averageLatency,
+          lowestLatency,
+          highestLatency,
+          uptimeData: calculateUptime(newStatusHistory),
+          lastDownTime: result.status === 'Down' && currentSiteState.status !== 'Down' ? new Date().toISOString() : currentSiteState.lastDownTime,
+        };
 
         await updateWebsite(siteToCheck.id, updatedSiteFields);
+        setWebsites(currentWebsites => 
+            currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, ...updatedSiteFields } : s)
+        );
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        const updatedSite = { status: 'Down', httpResponse: `Poll failed: ${errorMessage}`, isLoading: false };
+        const updatedSite = { status: 'Down' as const, httpResponse: `Poll failed: ${errorMessage}`, isLoading: false };
         await updateWebsite(siteToCheck.id, updatedSite);
         setWebsites(currentWebsites => 
             currentWebsites.map(s => s.id === siteToCheck.id ? { ...s, ...updatedSite } : s)
         );
     }
-  }, [showNotification, toast, websites]);
+  }, [showNotification, toast]);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
       try {
-        await seedInitialData(initialWebsites);
-        const sitesFromDB = await getWebsites();
+        let sitesFromDB = await getWebsites();
+        if (sitesFromDB.length === 0) {
+            await seedInitialData(initialWebsites);
+            sitesFromDB = await getWebsites();
+        }
         setWebsites(sitesFromDB);
       } catch (error) {
         console.error("Could not load data from Firestore", error);
@@ -182,7 +189,8 @@ export function useWebsiteMonitoring() {
       };
       
       // Stagger initial checks
-      timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, Math.random() * 2000); 
+      const initialDelay = Math.random() * 5000; 
+      timeoutsRef.current[site.id] = setTimeout(pollAndReschedule, initialDelay); 
     });
     
     return () => {
@@ -205,7 +213,8 @@ export function useWebsiteMonitoring() {
   }, [toast]);
 
   const addWebsite = useCallback(async (data: WebsiteFormData) => {
-    if (websites.some(site => site.url === data.url && site.port === data.port)) {
+    const currentWebsites = await getWebsites();
+    if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
         toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
         return;
     }
@@ -223,21 +232,21 @@ export function useWebsiteMonitoring() {
         latencyHistory: [],
         statusHistory: [],
         uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
-        displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder || 0)) + 1 : 0,
+        displayOrder: currentWebsites.length > 0 ? Math.max(...currentWebsites.map(w => w.displayOrder || 0)) + 1 : 0,
     };
     
     await addWebsiteFS(newWebsite);
     setWebsites(current => [...current, newWebsite]);
-  }, [toast, websites]);
+  }, [toast]);
   
   const editWebsite = useCallback(async (id: string, data: WebsiteFormData) => {
-      const siteToEdit = websites.find(s => s.id === id);
+      const siteToEdit = (await getWebsites()).find(s => s.id === id);
       if (!siteToEdit) return;
 
       const wasPaused = siteToEdit.isPaused;
       const updatedData = {
           ...data,
-          status: wasPaused ? 'Paused' : 'Idle',
+          status: wasPaused ? 'Paused' as const : 'Idle' as const,
           lastChecked: undefined,
       };
       
@@ -245,7 +254,7 @@ export function useWebsiteMonitoring() {
       setWebsites(currentWebsites => 
           currentWebsites.map(s => s.id === id ? { ...s, ...updatedData } : s)
       );
-  }, [websites]);
+  }, []);
 
   const deleteWebsiteCallback = useCallback(async (id: string) => {
     if (timeoutsRef.current[id]) {
@@ -257,36 +266,33 @@ export function useWebsiteMonitoring() {
   }, []);
 
   const moveWebsite = useCallback(async (id: string, direction: 'up' | 'down') => {
-      setWebsites(currentSites => {
-        const sites = [...currentSites].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-        const index = sites.findIndex(site => site.id === id);
-  
-        if (index === -1) return currentSites;
-        
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-  
-        if (newIndex < 0 || newIndex >= sites.length) return currentSites;
-  
-        const [movedItem] = sites.splice(index, 1);
-        sites.splice(newIndex, 0, movedItem);
-  
-        const updatedSites = sites.map((site, idx) => ({ ...site, displayOrder: idx }));
-        
-        const updates = updatedSites.map(site => updateWebsite(site.id, { displayOrder: site.displayOrder }));
-        Promise.all(updates).catch(err => {
-            console.error("Failed to update display order in Firestore", err);
-        });
-  
-        return updatedSites;
-      });
+      const currentSites = await getWebsites();
+      const sites = [...currentSites].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      const index = sites.findIndex(site => site.id === id);
+
+      if (index === -1) return;
+      
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+      if (newIndex < 0 || newIndex >= sites.length) return;
+
+      const [movedItem] = sites.splice(index, 1);
+      sites.splice(newIndex, 0, movedItem);
+
+      const updatedSites = sites.map((site, idx) => ({ ...site, displayOrder: idx }));
+      
+      const updates = updatedSites.map(site => updateWebsite(site.id, { displayOrder: site.displayOrder }));
+      await Promise.all(updates);
+
+      setWebsites(updatedSites);
   }, []);
   
   const togglePause = useCallback(async (id: string) => {
-    const site = websites.find(s => s.id === id);
+    const site = (await getWebsites()).find(s => s.id === id);
     if (!site) return;
 
     const isNowPaused = !site.isPaused;
-    const newStatus = isNowPaused ? 'Paused' : 'Idle';
+    const newStatus = isNowPaused ? 'Paused' as const : 'Idle' as const;
 
     if (isNowPaused && timeoutsRef.current[id]) {
       clearTimeout(timeoutsRef.current[id]);
@@ -297,36 +303,43 @@ export function useWebsiteMonitoring() {
     setWebsites(currentWebsites =>
       currentWebsites.map(s => (s.id === id ? { ...s, isPaused: isNowPaused, status: newStatus } : s))
     );
-  }, [websites]);
+  }, []);
   
   const manualCheck = useCallback((id: string) => {
-      const site = websites.find(s => s.id === id);
-      if (site) {
+    const site = websites.find(s => s.id === id);
+    if (site) {
         if (timeoutsRef.current[id]) {
-          clearTimeout(timeoutsRef.current[id]);
+            clearTimeout(timeoutsRef.current[id]);
         }
         toast({ title: 'Manual Check', description: `Requesting a manual status check for ${site.name}.` });
         
-        pollWebsite(site.id); 
-      }
-  }, [websites, pollWebsite, toast]);
+        // Immediately start a poll and then reschedule it
+        pollWebsite(site.id).then(() => {
+            if (!site.isPaused) {
+                const interval = (site.pollingInterval || pollingInterval) * 1000;
+                timeoutsRef.current[id] = setTimeout(() => pollWebsite(site.id), interval);
+            }
+        });
+    }
+  }, [websites, pollWebsite, toast, pollingInterval]);
   
-  const diagnose = useCallback((id: string) => {
-    const website = websites.find(s => s.id === id);
+  const diagnose = useCallback(async (id: string) => {
+    const website = (await getWebsites()).find(s => s.id === id);
     if (!website || !website.httpResponse) return;
 
     setWebsites(current => current.map(s => s.id === id ? { ...s, diagnosis: 'AI is analyzing...' } : s));
 
-    getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse }).then(async ({ diagnosis }) => {
-      await updateWebsite(id, { diagnosis });
-      setWebsites(prevWebsites => 
-          prevWebsites.map(s => s.id === id ? { ...s, diagnosis } : s)
-      );
-    }).catch(error => {
-      toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
-      setWebsites(current => current.map(s => s.id === id ? { ...s, diagnosis: 'AI analysis failed.' } : s));
-    });
-  }, [websites, toast]);
+    try {
+        const { diagnosis } = await getAIDiagnosis({ url: website.url, httpResponse: website.httpResponse });
+        await updateWebsite(id, { diagnosis });
+        setWebsites(prevWebsites => 
+            prevWebsites.map(s => s.id === id ? { ...s, diagnosis } : s)
+        );
+    } catch (error) {
+        toast({ title: 'Diagnosis Failed', description: 'Could not get AI analysis.', variant: 'destructive' });
+        setWebsites(current => current.map(s => s.id === id ? { ...s, diagnosis: 'AI analysis failed.' } : s));
+    }
+  }, [toast]);
 
   return {
     websites,
@@ -344,3 +357,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
