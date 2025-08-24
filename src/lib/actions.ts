@@ -74,10 +74,10 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
     try {
         const startTime = performance.now();
         
-        let currentUrl = website.url;
+        let currentUrl = website.url.includes('://') ? website.url : `http://${website.url}`;
         let response;
         let redirectCount = 0;
-        const maxRedirects = 10; // Increased redirect limit
+        const maxRedirects = 10;
 
         while(redirectCount < maxRedirects) {
             response = await fetch(currentUrl, { method: 'GET', headers, redirect: 'manual', cache: 'no-store' });
@@ -85,7 +85,6 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
             if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
                 let redirectUrl = response.headers.get('location')!;
                 
-                // Properly handle relative URLs
                 if (redirectUrl.startsWith('/')) {
                     const origin = new URL(currentUrl).origin;
                     redirectUrl = origin + redirectUrl;
@@ -208,8 +207,17 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
         return { status: 'Down', httpResponse: 'In scheduled downtime.', lastChecked: new Date().toISOString(), latency: 0 };
       }
 
-      const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
-      const hostname = urlObject.hostname || url;
+      // For HTTP checks, we now handle protocol-less URLs in the checkHttp function itself.
+      // For other types, we'll try to parse it, but fall back to using the raw URL if it fails.
+      let hostname = url;
+      try {
+        const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
+        hostname = urlObject.hostname || url;
+      } catch (e) {
+        // This is fine, it means it's likely just a hostname or IP for TCP/DNS/Ping checks.
+        hostname = url;
+      }
+
 
       switch(monitorType) {
         case 'TCP Port':
@@ -235,8 +243,7 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
   } catch (error) {
      let message = 'Invalid URL or Host.';
      if (error instanceof TypeError && error.message.includes('Invalid URL')) {
-        // This is likely a hostname for TCP/Ping check that is not a valid URL.
-        // We can proceed with the raw `url` as hostname.
+        // This logic is now mostly redundant due to the new handling, but kept as a fallback.
         switch(monitorType) {
             case 'TCP Port':
                 if (!port) {
