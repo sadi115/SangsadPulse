@@ -6,11 +6,16 @@ import type { Website } from '@/lib/types';
 import net from 'net';
 import dns from 'dns';
 import { promisify } from 'util';
+import https from 'https';
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
 
 const dnsResolve = promisify(dns.resolve);
 const dnsReverse = promisify(dns.reverse);
+
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+});
 
 
 async function checkTcpPort(host: string, port: number): Promise<CheckStatusResult> {
@@ -70,6 +75,9 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
     };
+    
+    // @ts-ignore
+    const fetchOptions: { [key: string]: any } = { method: 'GET', headers, redirect: 'manual', cache: 'no-store', agent: httpsAgent };
 
     const attemptFetch = async (url: string) => {
         let currentUrl = url;
@@ -78,7 +86,7 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
         const maxRedirects = 10;
 
         while (redirectCount < maxRedirects) {
-            response = await fetch(currentUrl, { method: 'GET', headers, redirect: 'manual', cache: 'no-store' });
+            response = await fetch(currentUrl, fetchOptions);
 
             if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
                 let redirectUrl = response.headers.get('location')!;
