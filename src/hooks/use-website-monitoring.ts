@@ -132,6 +132,7 @@ export function useWebsiteMonitoring() {
     const interval = (site.pollingInterval ?? pollingInterval) * 1000;
 
     const timerId = setTimeout(() => {
+      // Use manualCheck which is now stable thanks to useCallback
       manualCheck(site.id);
     }, interval);
 
