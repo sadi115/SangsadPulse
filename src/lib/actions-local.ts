@@ -7,27 +7,38 @@ import type { Website } from '@/lib/types';
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
 
 /**
- * Performs an HTTP check from the client's browser.
+ * Performs a check from the client's browser. Only supports HTTP(s) types.
  */
 export async function checkStatusLocal(website: Website): Promise<CheckStatusResult> {
-    const { monitorType, url, keyword } = website;
+    const { monitorType, url, keyword, port } = website;
 
     if (monitorType !== 'HTTP(s)' && monitorType !== 'HTTP(s) - Keyword') {
         return {
             status: 'Down',
-            httpResponse: 'Unsupported monitor type for local check.',
+            httpResponse: `Unsupported monitor type for local check. Only HTTP(s) checks are possible from the browser.`,
             lastChecked: new Date().toISOString(),
             latency: 0,
         };
     }
-
+    
     try {
         const startTime = performance.now();
         
         let finalUrl = url;
+
+        // If the URL does not contain a protocol, prepend https://
         if (!finalUrl.includes('://')) {
             finalUrl = `https://${finalUrl}`;
         }
+
+        // If a port is specified and not already in the URL, append it.
+        // This is useful if the user entered a hostname and a separate port.
+        // The URL constructor correctly handles merging these.
+        const urlObject = new URL(finalUrl);
+        if (port && !urlObject.port) {
+            urlObject.port = String(port);
+        }
+        finalUrl = urlObject.toString();
         
         const response = await fetch(finalUrl, {
             method: 'GET',

@@ -11,23 +11,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { MonitorType, WebsiteFormData, MonitorLocation } from '@/lib/types';
-import { useEffect } from 'react';
 
-const cloudMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
+const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLocation }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
-    { label: "TCP Port", value: "TCP Port" },
-    { label: "Ping", value: "Ping" },
+    { label: "TCP Port", value: "TCP Port", disabledFor: 'local' },
+    { label: "Ping", value: "Ping", disabledFor: 'local' },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
-    { label: "DNS Records", value: "DNS Records" },
-    { label: "Downtime", value: "Downtime" },
+    { label: "DNS Records", value: "DNS Records", disabledFor: 'local' },
+    { label: "Downtime", value: "Downtime", disabledFor: 'local' },
 ];
 
-const localMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
-    { label: "HTTP(s)", value: "HTTP(s)" },
-    { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
-];
-
-const allMonitorTypes = [...new Set([...cloudMonitorTypes, ...localMonitorTypes].map(m => m.value))];
+const allMonitorTypes = monitorTypes.map(m => m.value);
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
@@ -59,15 +53,6 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
 
   const monitorType = form.watch('monitorType');
 
-  const availableMonitorTypes = monitorLocation === 'local' ? localMonitorTypes : cloudMonitorTypes;
-
-  useEffect(() => {
-    if (!availableMonitorTypes.some(t => t.value === monitorType)) {
-      form.setValue('monitorType', availableMonitorTypes[0].value);
-    }
-  }, [monitorLocation, monitorType, availableMonitorTypes, form]);
-
-
   function onSubmit(values: z.infer<typeof formSchema>) {
     onAddWebsite(values);
     form.reset();
@@ -90,8 +75,8 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                {availableMonitorTypes.map(type => (
-                                    <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
+                                {monitorTypes.map(type => (
+                                    <SelectItem key={type.value} value={type.value} disabled={type.disabledFor === monitorLocation}>
                                         <div className="flex items-center gap-2">
                                             {type.value === 'HTTP(s)' && <Globe className="h-4 w-4" />}
                                             {type.value === 'HTTP(s) - Keyword' && <Search className="h-4 w-4" />}
@@ -144,7 +129,7 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
               )}
             />
 
-            {monitorType === 'TCP Port' && monitorLocation === 'cloud' && (
+            {monitorType === 'TCP Port' && (
                  <FormField
                     control={form.control}
                     name="port"
