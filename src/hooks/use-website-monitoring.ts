@@ -11,11 +11,11 @@ const initialWebsites: Website[] = [
   { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 1, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
   { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 2, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
   { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 3, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 4, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 5, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 4, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 5, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
   { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 6, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 7, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 8, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 7, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 8, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
   { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 9, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
   { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 10, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
   { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 11, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
@@ -256,30 +256,26 @@ export function useWebsiteMonitoring() {
 
 
   const addWebsite = (data: WebsiteFormData) => {
-    let newWebsite: Website | null = null;
+    const newWebsite: Website = {
+        ...data,
+        id: `${Date.now()}`,
+        status: 'Idle',
+        isPaused: false,
+        latencyHistory: [],
+        statusHistory: [],
+        uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+        displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder || 0)) + 1 : 0,
+    };
+    
     setWebsites(currentWebsites => {
         if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
             toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
             return currentWebsites;
         }
-        newWebsite = {
-            ...data,
-            id: `${Date.now()}`,
-            status: 'Idle',
-            isPaused: false,
-            latencyHistory: [],
-            statusHistory: [],
-            uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
-            displayOrder: currentWebsites.length > 0 ? Math.max(...currentWebsites.map(w => w.displayOrder || 0)) + 1 : 0,
-        };
-        
         return [...currentWebsites, newWebsite];
     });
 
-    if (newWebsite) {
-      const id = newWebsite.id;
-      setTimeout(() => manualCheck(id), 0);
-    }
+    setTimeout(() => manualCheck(newWebsite.id), 0);
   };
   
   const editWebsite = (id: string, data: WebsiteFormData) => {
@@ -296,7 +292,7 @@ export function useWebsiteMonitoring() {
         newWebsites[siteIndex] = updatedSite;
         return newWebsites;
     });
-     setTimeout(() => manualCheck(id), 0);
+    setTimeout(() => manualCheck(id), 0);
   };
 
   const deleteWebsite = (id: string) => {
@@ -327,30 +323,27 @@ export function useWebsiteMonitoring() {
   
   const togglePause = (id: string) => {
     let shouldCheck = false;
-    setWebsites(current => {
-        const newWebsites = current.map(s => {
-            if (s.id === id) {
-                const isNowPaused = !s.isPaused;
-                if (!isNowPaused) {
-                    shouldCheck = true;
-                }
-                const updatedSite = { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' as const : 'Idle' as const };
-                
-                if (isNowPaused) {
-                    if (timeoutsRef.current.has(id)) {
-                        clearTimeout(timeoutsRef.current.get(id));
-                        timeoutsRef.current.delete(id);
-                    }
-                }
-
-                return updatedSite;
+    setWebsites(current => current.map(s => {
+        if (s.id === id) {
+            const isNowPaused = !s.isPaused;
+            if (!isNowPaused) {
+                shouldCheck = true;
             }
-            return s;
-        });
-        return newWebsites;
-    });
+            const updatedSite = { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' as const : 'Idle' as const };
+            
+            if (isNowPaused) {
+                if (timeoutsRef.current.has(id)) {
+                    clearTimeout(timeoutsRef.current.get(id));
+                    timeoutsRef.current.delete(id);
+                }
+            }
 
-     if (shouldCheck) {
+            return updatedSite;
+        }
+        return s;
+    }));
+
+    if (shouldCheck) {
         setTimeout(() => manualCheck(id), 0);
     }
   };
@@ -384,5 +377,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
