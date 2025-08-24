@@ -77,7 +77,7 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
         let currentUrl = website.url;
         let response;
         let redirectCount = 0;
-        const maxRedirects = 5;
+        const maxRedirects = 10; // Increased redirect limit
 
         while(redirectCount < maxRedirects) {
             response = await fetch(currentUrl, { method: 'GET', headers, redirect: 'manual', cache: 'no-store' });
@@ -85,6 +85,7 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
             if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
                 let redirectUrl = response.headers.get('location')!;
                 
+                // Properly handle relative URLs
                 if (redirectUrl.startsWith('/')) {
                     const origin = new URL(currentUrl).origin;
                     redirectUrl = origin + redirectUrl;
