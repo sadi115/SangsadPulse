@@ -14,6 +14,7 @@ type WebsiteCardViewProps = {
   onMove: (id: string, direction: 'up' | 'down') => void;
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
+  onClearHistory: (id: string) => void;
   onManualCheck: (id: string) => void;
   monitorLocation: MonitorLocation;
 };
@@ -32,7 +33,7 @@ export const CardSkeleton = () => (
     </div>
 );
 
-export function WebsiteCardView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, monitorLocation }: WebsiteCardViewProps) {
+export function WebsiteCardView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onClearHistory, onManualCheck, monitorLocation }: WebsiteCardViewProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {websites.map((website, index) => {
@@ -48,6 +49,7 @@ export function WebsiteCardView({ websites, onDelete, onEdit, onMove, onTogglePa
             onMove={onMove}
             onTogglePause={onTogglePause}
             onShowHistory={onShowHistory}
+            onClearHistory={onClearHistory}
             onManualCheck={onManualCheck}
             isFirst={isFirst}
             isLast={isLast}

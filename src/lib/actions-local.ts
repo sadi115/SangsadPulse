@@ -24,7 +24,10 @@ export async function checkStatusLocal(website: Website): Promise<CheckStatusRes
     try {
         const startTime = performance.now();
         
-        let finalUrl = url.includes('://') ? url : `http://${url}`;
+        let finalUrl = url;
+        if (!finalUrl.includes('://')) {
+            finalUrl = `https://${finalUrl}`;
+        }
         
         const response = await fetch(finalUrl, {
             method: 'GET',

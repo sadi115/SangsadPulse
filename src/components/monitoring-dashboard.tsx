@@ -36,6 +36,7 @@ export default function MonitoringDashboard() {
     addWebsite,
     editWebsite,
     deleteWebsite,
+    clearHistory,
     moveWebsite,
     togglePause,
     manualCheck,
@@ -65,6 +66,13 @@ export default function MonitoringDashboard() {
     deleteWebsite(id);
     toast({ title: "Service Removed", description: `"${siteName}" has been removed.` });
   };
+  
+  const handleClearHistory = (id: string) => {
+    const siteName = websites.find(w => w.id === id)?.name || 'Service';
+    clearHistory(id);
+    toast({ title: "History Cleared", description: `The history for "${siteName}" has been cleared.` });
+  };
+
 
   const handleIntervalChange = () => {
     if (pollingInterval > 0) {
@@ -130,6 +138,7 @@ export default function MonitoringDashboard() {
         onMove={moveWebsite}
         onTogglePause={togglePause}
         onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+        onClearHistory={handleClearHistory}
         onManualCheck={manualCheck}
         monitorLocation={monitorLocation}
       />
@@ -141,6 +150,7 @@ export default function MonitoringDashboard() {
         onMove={moveWebsite}
         onTogglePause={togglePause}
         onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
+        onClearHistory={handleClearHistory}
         onManualCheck={manualCheck}
       />
     );

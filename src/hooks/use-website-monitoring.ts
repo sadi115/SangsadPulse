@@ -331,6 +331,24 @@ export function useWebsiteMonitoring() {
     }
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
   };
+  
+  const clearHistory = (id: string) => {
+    setWebsites(current => current.map(s => {
+      if (s.id === id) {
+        return { 
+          ...s, 
+          latencyHistory: [],
+          statusHistory: [],
+          uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+          averageLatency: undefined,
+          lowestLatency: undefined,
+          highestLatency: undefined,
+          lastDownTime: undefined,
+        };
+      }
+      return s;
+    }));
+  };
 
   const moveWebsite = (id: string, direction: 'up' | 'down') => {
       setWebsites(currentSites => {
@@ -403,6 +421,7 @@ export function useWebsiteMonitoring() {
     addWebsite,
     editWebsite,
     deleteWebsite,
+    clearHistory,
     moveWebsite,
     togglePause,
     manualCheck,

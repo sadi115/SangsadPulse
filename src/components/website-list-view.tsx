@@ -14,6 +14,7 @@ type WebsiteListViewProps = {
   onMove: (id: string, direction: 'up' | 'down') => void;
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
+  onClearHistory: (id: string) => void;
   onManualCheck: (id: string) => void;
 };
 
@@ -45,7 +46,7 @@ export const ListSkeleton = () => (
     </div>
 )
 
-export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteListViewProps) {
+export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onClearHistory, onManualCheck }: WebsiteListViewProps) {
   return (
     <Card>
       <CardContent className="p-0">
@@ -73,6 +74,7 @@ export function WebsiteListView({ websites, onDelete, onEdit, onMove, onTogglePa
                 onMove={onMove}
                 onTogglePause={onTogglePause}
                 onShowHistory={onShowHistory}
+                onClearHistory={onClearHistory}
                 onManualCheck={onManualCheck}
                 isFirst={isFirst}
                 isLast={isLast}
