@@ -288,6 +288,15 @@ export function useWebsiteMonitoring() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, pollingInterval, monitorLocation]);
 
+  // Effect to run checks for newly added websites
+  useEffect(() => {
+    websites.forEach(site => {
+      if (site.status === 'Idle') {
+        setTimeout(() => manualCheck(site.id), 100);
+      }
+    });
+  }, [websites]);
+
 
   const addWebsite = (data: WebsiteFormData) => {
      setTimeout(() => {
@@ -307,9 +316,7 @@ export function useWebsiteMonitoring() {
                 toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
                 return currentWebsites;
             }
-            const newWebsites = [...currentWebsites, newWebsite];
-            manualCheck(newWebsite.id);
-            return newWebsites;
+            return [...currentWebsites, newWebsite];
         });
      }, 0);
   };
@@ -438,3 +445,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
