@@ -1,26 +1,28 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory } from '@/lib/types';
-import { checkStatus, getTtfb } from '@/lib/actions';
+import { checkStatus as checkStatusCloud, getTtfb } from '@/lib/actions';
+import { checkStatusLocal } from '@/lib/actions-local';
 
 const initialWebsites: Website[] = [
-  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 0, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 1, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 2, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 3, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 4, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 5, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 6, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 7, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 8, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 9, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 10, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 11, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', isPaused: false, displayOrder: 12, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', isPaused: false, displayOrder: 13, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 0, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 1, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 2, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 3, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 4, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 5, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 6, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 7, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 8, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 9, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 10, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 11, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', monitorLocation: 'cloud', isPaused: false, displayOrder: 12, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', monitorLocation: 'cloud', isPaused: false, displayOrder: 13, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
 ];
 
 const MAX_LATENCY_HISTORY = 50;
@@ -100,11 +102,13 @@ export function useWebsiteMonitoring() {
   }, [notificationsEnabled, isLoading]);
 
   const scheduleCheck = useCallback((site: Website) => {
+    // Clear any existing timer for this site
     if (timeoutsRef.current.has(site.id)) {
       clearTimeout(timeoutsRef.current.get(site.id));
       timeoutsRef.current.delete(site.id);
     }
     
+    // Do not schedule if paused or downtime monitor
     if (site.isPaused || site.monitorType === 'Downtime') {
       return;
     }
@@ -189,7 +193,9 @@ export function useWebsiteMonitoring() {
           lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
       };
 
+      // Reschedule the next check
       scheduleCheck(updatedSite);
+      
       return current.map(s => s.id === id ? updatedSite : s);
     });
   }, [scheduleCheck, toast]);
@@ -197,22 +203,29 @@ export function useWebsiteMonitoring() {
   const manualCheck = useCallback(async (id: string) => {
     let siteToCheck: Website | undefined;
     setWebsites(current => {
-      siteToCheck = current.find(s => s.id === id);
-      if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
-        return current;
-      }
-      
-      if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id));
-      }
-      return current.map(s => s.id === id ? { ...s, status: 'Checking' } : s);
+        const updated = current.map(s => {
+            if (s.id === id) {
+                siteToCheck = s;
+                if (s.isPaused || s.monitorType === 'Downtime') {
+                    return s; // Don't check if paused
+                }
+                if (timeoutsRef.current.has(id)) {
+                    clearTimeout(timeoutsRef.current.get(id));
+                }
+                return { ...s, status: 'Checking' as const };
+            }
+            return s;
+        });
+        return updated;
     });
   
-    if (siteToCheck) {
+    if (siteToCheck && !siteToCheck.isPaused && siteToCheck.monitorType !== 'Downtime') {
       try {
-        const result = await checkStatus(siteToCheck);
+        const checkStatusFn = siteToCheck.monitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
+        const result = await checkStatusFn(siteToCheck);
+        
         let ttfbResult;
-        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+        if (result.status === 'Up' && siteToCheck.monitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
           ttfbResult = await getTtfb({ url: siteToCheck.url });
         }
         updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
@@ -224,75 +237,74 @@ export function useWebsiteMonitoring() {
   }, [updateWebsiteState]);
 
 
+  // Effect for initial load and for rescheduling all checks when pollingInterval changes
   useEffect(() => {
-    if (isLoading) return; // Don't start checks until loaded from local storage
+    if (isLoading) return;
     
+    // Clear all previous timeouts
+    timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+    timeoutsRef.current.clear();
+    
+    // Stagger initial checks or re-checks
     websites.forEach(site => {
-        // Stagger initial checks to avoid overwhelming the network
-        setTimeout(() => manualCheck(site.id), Math.random() * 2000);
+      // If the site is just loaded, check it after a random delay.
+      // Otherwise (if interval changed), reschedule based on its interval.
+      if (site.status === 'Idle') {
+         setTimeout(() => manualCheck(site.id), Math.random() * 2000);
+      } else {
+         scheduleCheck(site);
+      }
     });
     
     return () => {
-      // Cleanup timeouts when component unmounts
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]); // This effect now depends on isLoading
-
-  useEffect(() => {
-    if (isLoading) return;
-    // This effect runs when the global pollingInterval changes.
-    // It clears all existing timeouts and reschedules checks with the new interval.
-    timeoutsRef.current.forEach((timeoutId, siteId) => {
-      clearTimeout(timeoutId);
-    });
-    timeoutsRef.current.clear();
-    
-    websites.forEach(site => {
-      scheduleCheck(site);
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pollingInterval, isLoading]);
+  }, [isLoading, pollingInterval]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
-    const newWebsite: Website = {
-        ...data,
-        id: `${Date.now()}`,
-        status: 'Idle',
-        isPaused: false,
-        latencyHistory: [],
-        statusHistory: [],
-        uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
-        displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder || 0)) + 1 : 0,
-    };
-    
-    setWebsites(currentWebsites => {
-        if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
-            toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
-            return currentWebsites;
-        }
-        return [...currentWebsites, newWebsite];
-    });
-
-    setTimeout(() => manualCheck(newWebsite.id), 0);
+     setTimeout(() => {
+        const newWebsite: Website = {
+            ...data,
+            id: `${Date.now()}`,
+            status: 'Idle',
+            isPaused: false,
+            latencyHistory: [],
+            statusHistory: [],
+            uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null },
+            displayOrder: websites.length > 0 ? Math.max(...websites.map(w => w.displayOrder || 0)) + 1 : 0,
+        };
+        
+        setWebsites(currentWebsites => {
+            if (currentWebsites.some(site => site.url === data.url && site.port === data.port)) {
+                toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
+                return currentWebsites;
+            }
+            const newWebsites = [...currentWebsites, newWebsite];
+            manualCheck(newWebsite.id);
+            return newWebsites;
+        });
+     }, 0);
   };
   
   const editWebsite = (id: string, data: WebsiteFormData) => {
-    setWebsites(currentWebsites => {
-        const siteIndex = currentWebsites.findIndex(s => s.id === id);
-        if (siteIndex === -1) return currentWebsites;
-        
-        const updatedSite: Website = {
-            ...currentWebsites[siteIndex],
-            ...data,
-        };
-        
-        const newWebsites = [...currentWebsites];
-        newWebsites[siteIndex] = updatedSite;
-        return newWebsites;
-    });
-    setTimeout(() => manualCheck(id), 0);
+    setTimeout(() => {
+        setWebsites(currentWebsites => {
+            const siteIndex = currentWebsites.findIndex(s => s.id === id);
+            if (siteIndex === -1) return currentWebsites;
+            
+            const updatedSite: Website = {
+                ...currentWebsites[siteIndex],
+                ...data,
+            };
+            
+            const newWebsites = [...currentWebsites];
+            newWebsites[siteIndex] = updatedSite;
+            manualCheck(id);
+            return newWebsites;
+        });
+    }, 0);
   };
 
   const deleteWebsite = (id: string) => {
@@ -322,30 +334,32 @@ export function useWebsiteMonitoring() {
   };
   
   const togglePause = (id: string) => {
-    let shouldCheck = false;
-    setWebsites(current => current.map(s => {
-        if (s.id === id) {
-            const isNowPaused = !s.isPaused;
-            if (!isNowPaused) {
-                shouldCheck = true;
-            }
-            const updatedSite = { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' as const : 'Idle' as const };
-            
-            if (isNowPaused) {
-                if (timeoutsRef.current.has(id)) {
-                    clearTimeout(timeoutsRef.current.get(id));
-                    timeoutsRef.current.delete(id);
-                }
-            }
+    setTimeout(() => {
+      let shouldCheck = false;
+      setWebsites(current => current.map(s => {
+          if (s.id === id) {
+              const isNowPaused = !s.isPaused;
+              if (!isNowPaused) {
+                  shouldCheck = true;
+              }
+              const updatedSite = { ...s, isPaused: isNowPaused, status: isNowPaused ? 'Paused' as const : 'Idle' as const };
+              
+              if (isNowPaused) {
+                  if (timeoutsRef.current.has(id)) {
+                      clearTimeout(timeoutsRef.current.get(id));
+                      timeoutsRef.current.delete(id);
+                  }
+              }
 
-            return updatedSite;
-        }
-        return s;
-    }));
+              return updatedSite;
+          }
+          return s;
+      }));
 
-    if (shouldCheck) {
-        setTimeout(() => manualCheck(id), 0);
-    }
+      if (shouldCheck) {
+          manualCheck(id);
+      }
+    }, 0);
   };
 
   const handleNotificationToggle = (enabled: boolean) => {

@@ -1,16 +1,18 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
 import type { Website, WebsiteStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw } from 'lucide-react';
+import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw, Laptop, Server } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { WebsiteCardDetails } from './website-card-details';
 import { Card } from './ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
@@ -25,6 +27,9 @@ const StatusBadge = ({ status }: StatusDisplayProps) => {
       Idle: { text: 'Idle', variant: 'secondary' as const, className: 'bg-gray-500/20 text-gray-500' },
       Paused: { text: 'Paused', variant: 'outline' as const, className: '' },
     };
+    if (!status || !statusInfo[status]) {
+      return statusInfo['Idle'];
+    }
     return statusInfo[status];
   }, [status]);
 
@@ -74,7 +79,19 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
             <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
             <div className="flex-1 grid grid-cols-[1fr_auto] md:grid-cols-4 items-center gap-4">
                 <div className="flex flex-col col-span-1 md:col-span-2">
-                    <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
+                    <div className="flex items-center gap-2">
+                         <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                     {website.monitorLocation === 'local' ? <Laptop className="h-4 w-4 text-muted-foreground" /> : <Server className="h-4 w-4 text-muted-foreground" />}
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Monitored from {website.monitorLocation === 'local' ? 'Local Browser' : 'Cloud'}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
+                    </div>
                     <span className="text-sm text-muted-foreground truncate" title={website.url}>{website.url}</span>
                 </div>
 

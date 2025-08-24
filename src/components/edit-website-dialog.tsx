@@ -6,29 +6,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle, Folder } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle, Folder, Server, Laptop } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import type { MonitorType, Website, WebsiteFormData } from '@/lib/types';
 import { useEffect } from 'react';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
-const monitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
+const cloudMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
     { label: "TCP Port", value: "TCP Port" },
     { label: "Ping", value: "Ping" },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
+    { label: "DNS Records", value: "DNS Records" },
     { label: "Downtime", value: "Downtime" },
 ];
 
-const advancedMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
-     { label: "DNS Records", value: "DNS Records" },
-]
+const localMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
+    { label: "HTTP(s)", value: "HTTP(s)" },
+    { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
+];
 
-const allMonitorTypes = [...monitorTypes, ...advancedMonitorTypes].map(m => m.value);
+const allMonitorTypes = [...new Set([...cloudMonitorTypes, ...localMonitorTypes].map(m => m.value))];
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
   url: z.string().min(1, { message: 'URL/Host is required.' }),
   monitorType: z.enum(allMonitorTypes as [string, ...string[]]),
+  monitorLocation: z.enum(['cloud', 'local']),
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
   pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
@@ -48,6 +52,9 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
   });
 
   const monitorType = form.watch('monitorType');
+  const monitorLocation = form.watch('monitorLocation');
+
+  const availableMonitorTypes = monitorLocation === 'local' ? localMonitorTypes : cloudMonitorTypes;
 
   useEffect(() => {
     if (website) {
@@ -55,12 +62,21 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
         name: website.name,
         url: website.url,
         monitorType: website.monitorType,
+        monitorLocation: website.monitorLocation || 'cloud',
         port: website.port,
         keyword: website.keyword,
         pollingInterval: website.pollingInterval,
       });
     }
   }, [website, form, isOpen]);
+
+  useEffect(() => {
+    const currentMonitorType = form.getValues('monitorType');
+    if (!availableMonitorTypes.some(t => t.value === currentMonitorType)) {
+      form.setValue('monitorType', availableMonitorTypes[0].value);
+    }
+  }, [monitorLocation, availableMonitorTypes, form]);
+
 
   if (!website) return null;
 
@@ -81,44 +97,61 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
              <FormField
+              control={form.control}
+              name="monitorLocation"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Monitor Location</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="cloud" />
+                        </FormControl>
+                         <FormLabel className="font-normal flex items-center gap-2"><Server className="h-4 w-4" /> Cloud</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="local" />
+                        </FormControl>
+                        <FormLabel className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Browser</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
                 control={form.control}
                 name="monitorType"
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Monitor Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a monitor type" />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectGroup>
-                                    <SelectLabel>General Monitors</SelectLabel>
-                                    {monitorTypes.map(type => (
-                                        <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
-                                            <div className="flex items-center gap-2">
-                                                {type.value === 'HTTP(s)' && <Globe className="h-4 w-4" />}
-                                                {type.value === 'HTTP(s) - Keyword' && <Search className="h-4 w-4" />}
-                                                {type.value === 'TCP Port' && <Hash className="h-4 w-4" />}
-                                                {type.value === 'Ping' && <Timer className="h-4 w-4" />}
-                                                {type.value === 'Downtime' && <PauseCircle className="h-4 w-4" />}
-                                                {type.label}
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectGroup>
-                                 <SelectGroup>
-                                     <SelectLabel>Advanced Monitors</SelectLabel>
-                                     {advancedMonitorTypes.map(type => (
-                                        <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
-                                            <div className="flex items-center gap-2">
-                                                {type.value === 'DNS Records' && <Book className="h-4 w-4" />}
-                                                {type.label}
-                                            </div>
-                                        </SelectItem>
-                                     ))}
-                                </SelectGroup>
+                                {availableMonitorTypes.map(type => (
+                                    <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
+                                        <div className="flex items-center gap-2">
+                                            {type.value === 'HTTP(s)' && <Globe className="h-4 w-4" />}
+                                            {type.value === 'HTTP(s) - Keyword' && <Search className="h-4 w-4" />}
+                                            {type.value === 'TCP Port' && <Hash className="h-4 w-4" />}
+                                            {type.value === 'Ping' && <Timer className="h-4 w-4" />}
+                                            {type.value === 'DNS Records' && <Book className="h-4 w-4" />}
+                                            {type.value === 'Downtime' && <PauseCircle className="h-4 w-4" />}
+                                            {type.label}
+                                        </div>
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                         <FormMessage />
@@ -157,7 +190,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                 </FormItem>
               )}
             />
-             {monitorType === 'TCP Port' && (
+             {monitorType === 'TCP Port' && monitorLocation === 'cloud' && (
                  <FormField
                     control={form.control}
                     name="port"

@@ -1,4 +1,5 @@
 
+
 import type { FieldValue, Timestamp } from "firebase/firestore";
 
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
@@ -10,6 +11,8 @@ export type MonitorType =
   | 'HTTP(s) - Keyword'
   | 'Downtime'
   | 'DNS Records';
+
+export type MonitorLocation = 'cloud' | 'local';
 
 export type StatusHistory = {
     time: string;
@@ -30,6 +33,7 @@ export interface Website {
   name: string;
   url: string;
   monitorType: MonitorType;
+  monitorLocation: MonitorLocation;
   status: WebsiteStatus;
   isPaused?: boolean;
   httpResponse?: string;
