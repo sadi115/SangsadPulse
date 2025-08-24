@@ -198,6 +198,15 @@ export function useWebsiteMonitoring() {
          }, 0);
       }
 
+      if (result.status === 'Up' && siteToUpdate.status === 'Down' && notificationsEnabledRef.current) {
+        setTimeout(() => {
+          toast({
+            title: 'Service Up',
+            description: `${siteToUpdate.name} is back online.`,
+          });
+        }, 0);
+      }
+
       const updatedSite: Website = {
           ...siteToUpdate,
           ...result,
