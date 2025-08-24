@@ -71,15 +71,13 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
         'Pragma': 'no-cache',
     };
 
-    try {
-        const startTime = performance.now();
-        
-        let currentUrl = website.url.includes('://') ? website.url : `http://${website.url}`;
+    const attemptFetch = async (url: string) => {
+        let currentUrl = url;
         let response;
         let redirectCount = 0;
         const maxRedirects = 10;
 
-        while(redirectCount < maxRedirects) {
+        while (redirectCount < maxRedirects) {
             response = await fetch(currentUrl, { method: 'GET', headers, redirect: 'manual', cache: 'no-store' });
 
             if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
@@ -93,7 +91,7 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
                 currentUrl = redirectUrl;
                 redirectCount++;
             } else {
-                break;
+                break; // Exit loop if not a redirect
             }
         }
 
@@ -101,6 +99,30 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
             throw new Error('Exceeded maximum number of redirects.');
         }
 
+        if (!response) {
+            throw new Error('No response received.');
+        }
+        
+        return response;
+    };
+
+
+    try {
+        const startTime = performance.now();
+        let response;
+
+        if (website.url.includes('://')) {
+            response = await attemptFetch(website.url);
+        } else {
+            try {
+                // Try HTTPS first
+                response = await attemptFetch(`https://${website.url}`);
+            } catch (e) {
+                // Fallback to HTTP if HTTPS fails
+                response = await attemptFetch(`http://${website.url}`);
+            }
+        }
+        
         const endTime = performance.now();
         const latency = Math.max(1, Math.round(endTime - startTime));
 
