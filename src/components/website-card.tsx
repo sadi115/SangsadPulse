@@ -3,7 +3,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Website, WebsiteStatus } from '@/lib/types';
+import type { Website, WebsiteStatus, MonitorLocation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw, Laptop, Server } from 'lucide-react';
@@ -55,9 +55,10 @@ type WebsiteCardProps = {
     onManualCheck: (id: string) => void;
     isFirst: boolean;
     isLast: boolean;
+    monitorLocation: MonitorLocation;
 };
 
-export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast }: WebsiteCardProps) {
+export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, isFirst, isLast, monitorLocation }: WebsiteCardProps) {
   
   const statusColor = useMemo(() => {
     switch (website.status) {
@@ -83,10 +84,10 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
                          <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger>
-                                     {website.monitorLocation === 'local' ? <Laptop className="h-4 w-4 text-muted-foreground" /> : <Server className="h-4 w-4 text-muted-foreground" />}
+                                     {monitorLocation === 'local' ? <Laptop className="h-4 w-4 text-muted-foreground" /> : <Server className="h-4 w-4 text-muted-foreground" />}
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>Monitored from {website.monitorLocation === 'local' ? 'Local Browser' : 'Cloud'}</p>
+                                    <p>Monitored from {monitorLocation === 'local' ? 'Local Browser' : 'Cloud'}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>

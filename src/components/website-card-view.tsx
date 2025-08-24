@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import type { Website } from '@/lib/types';
+import type { Website, MonitorLocation } from '@/lib/types';
 import { WebsiteCard } from './website-card';
 import Image from 'next/image';
 import { Skeleton } from './ui/skeleton';
@@ -14,6 +15,7 @@ type WebsiteCardViewProps = {
   onTogglePause: (id: string) => void;
   onShowHistory: (id: string) => void;
   onManualCheck: (id: string) => void;
+  monitorLocation: MonitorLocation;
 };
 
 export const CardSkeleton = () => (
@@ -30,7 +32,7 @@ export const CardSkeleton = () => (
     </div>
 );
 
-export function WebsiteCardView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck }: WebsiteCardViewProps) {
+export function WebsiteCardView({ websites, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onManualCheck, monitorLocation }: WebsiteCardViewProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {websites.map((website, index) => {
@@ -49,6 +51,7 @@ export function WebsiteCardView({ websites, onDelete, onEdit, onMove, onTogglePa
             onManualCheck={onManualCheck}
             isFirst={isFirst}
             isLast={isLast}
+            monitorLocation={monitorLocation}
           />
         );
       })}

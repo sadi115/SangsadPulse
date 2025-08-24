@@ -4,25 +4,25 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import type { Website, WebsiteFormData, StatusHistory } from '@/lib/types';
+import type { Website, WebsiteFormData, StatusHistory, MonitorLocation } from '@/lib/types';
 import { checkStatus as checkStatusCloud, getTtfb } from '@/lib/actions';
 import { checkStatusLocal } from '@/lib/actions-local';
 
 const initialWebsites: Website[] = [
-  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 0, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 1, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 2, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 3, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 4, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 5, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 6, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 7, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: true, displayOrder: 8, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 9, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 10, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', monitorLocation: 'cloud', isPaused: false, displayOrder: 11, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', monitorLocation: 'cloud', isPaused: false, displayOrder: 12, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
-  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', monitorLocation: 'cloud', isPaused: false, displayOrder: 13, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 0, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '2', name: 'PRP Parliament', url: 'https://prp.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 1, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '3', name: 'QAMS Parliament', url: 'https://qams.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 2, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '4', name: 'CMIS Parliament', url: 'https://cmis.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 3, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '5', name: 'Debate Parliament', url: 'https://debate.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 4, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '6', name: 'DRM Parliament', url: 'https://drm.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 5, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '7', name: 'eBilling Parliament', url: 'https://ebilling.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 6, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '8', name: 'Sitting Parliament', url: 'https://sitting.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 7, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '9', name: 'eBook Parliament', url: 'https://ebook.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: true, displayOrder: 8, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '10', name: 'Broadcast Parliament', url: 'https://broadcast.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 9, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '11', name: 'Library Parliament', url: 'https://library.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 10, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '12', name: 'Google', url: 'https://www.google.com', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 11, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '13', name: 'Google DNS', url: '8.8.8.8', status: 'Idle', monitorType: 'DNS Records', isPaused: false, displayOrder: 12, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
+  { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', isPaused: false, displayOrder: 13, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
 ];
 
 const MAX_LATENCY_HISTORY = 50;
@@ -32,6 +32,7 @@ export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pollingInterval, setPollingInterval] = useState(30);
+  const [monitorLocation, setMonitorLocation] = useState<MonitorLocation>('cloud');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
 
@@ -48,6 +49,7 @@ export function useWebsiteMonitoring() {
       const savedWebsites = localStorage.getItem('monitoring-websites');
       const savedInterval = localStorage.getItem('monitoring-interval');
       const savedNotifications = localStorage.getItem('monitoring-notifications');
+      const savedLocation = localStorage.getItem('monitoring-location');
 
       if (savedWebsites) {
         setWebsites(JSON.parse(savedWebsites));
@@ -62,6 +64,11 @@ export function useWebsiteMonitoring() {
       if (savedNotifications) {
         setNotificationsEnabled(JSON.parse(savedNotifications));
       }
+      
+      if (savedLocation) {
+        setMonitorLocation(JSON.parse(savedLocation));
+      }
+
     } catch (error) {
       console.error("Failed to load settings from local storage", error);
       // If loading fails, use defaults
@@ -90,6 +97,16 @@ export function useWebsiteMonitoring() {
       }
     }
   }, [pollingInterval, isLoading]);
+  
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem('monitoring-location', JSON.stringify(monitorLocation));
+      } catch (error) {
+        console.error("Failed to save location to local storage", error);
+      }
+    }
+  }, [monitorLocation, isLoading]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -221,11 +238,11 @@ export function useWebsiteMonitoring() {
   
     if (siteToCheck && !siteToCheck.isPaused && siteToCheck.monitorType !== 'Downtime') {
       try {
-        const checkStatusFn = siteToCheck.monitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
+        const checkStatusFn = monitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
         const result = await checkStatusFn(siteToCheck);
         
         let ttfbResult;
-        if (result.status === 'Up' && siteToCheck.monitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+        if (result.status === 'Up' && monitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
           ttfbResult = await getTtfb({ url: siteToCheck.url });
         }
         updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
@@ -234,7 +251,7 @@ export function useWebsiteMonitoring() {
         updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
       }
     }
-  }, [updateWebsiteState]);
+  }, [updateWebsiteState, monitorLocation]);
 
 
   // Effect for initial load and for rescheduling all checks when pollingInterval changes
@@ -260,7 +277,7 @@ export function useWebsiteMonitoring() {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, pollingInterval]);
+  }, [isLoading, pollingInterval, monitorLocation]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
@@ -381,6 +398,8 @@ export function useWebsiteMonitoring() {
     isLoading,
     pollingInterval,
     setPollingInterval,
+    monitorLocation,
+    setMonitorLocation,
     addWebsite,
     editWebsite,
     deleteWebsite,

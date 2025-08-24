@@ -33,7 +33,6 @@ export interface Website {
   name: string;
   url: string;
   monitorType: MonitorType;
-  monitorLocation: MonitorLocation;
   status: WebsiteStatus;
   isPaused?: boolean;
   httpResponse?: string;

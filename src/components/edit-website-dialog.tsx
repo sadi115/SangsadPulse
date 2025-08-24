@@ -1,4 +1,5 @@
 
+
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,11 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle, Folder, Server, Laptop } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
-import type { MonitorType, Website, WebsiteFormData } from '@/lib/types';
+import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { MonitorType, Website, WebsiteFormData, MonitorLocation } from '@/lib/types';
 import { useEffect } from 'react';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 const cloudMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
@@ -32,7 +32,6 @@ const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
   url: z.string().min(1, { message: 'URL/Host is required.' }),
   monitorType: z.enum(allMonitorTypes as [string, ...string[]]),
-  monitorLocation: z.enum(['cloud', 'local']),
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
   pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
@@ -42,17 +41,17 @@ type EditWebsiteDialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   website: Website | null;
-  onEditWebsite: (id: string, data: WebsiteFormData) => void;
+  onEditWebsite: (id: string, data: Omit<WebsiteFormData, 'monitorLocation'>) => void;
   globalPollingInterval: number;
+  monitorLocation: MonitorLocation;
 };
 
-export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite, globalPollingInterval }: EditWebsiteDialogProps) {
+export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite, globalPollingInterval, monitorLocation }: EditWebsiteDialogProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
 
   const monitorType = form.watch('monitorType');
-  const monitorLocation = form.watch('monitorLocation');
 
   const availableMonitorTypes = monitorLocation === 'local' ? localMonitorTypes : cloudMonitorTypes;
 
@@ -62,7 +61,6 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
         name: website.name,
         url: website.url,
         monitorType: website.monitorType,
-        monitorLocation: website.monitorLocation || 'cloud',
         port: website.port,
         keyword: website.keyword,
         pollingInterval: website.pollingInterval,
@@ -96,36 +94,6 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-             <FormField
-              control={form.control}
-              name="monitorLocation"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Monitor Location</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="cloud" />
-                        </FormControl>
-                         <FormLabel className="font-normal flex items-center gap-2"><Server className="h-4 w-4" /> Cloud</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="local" />
-                        </FormControl>
-                        <FormLabel className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Browser</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
              <FormField
                 control={form.control}
                 name="monitorType"

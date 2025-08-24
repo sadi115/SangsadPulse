@@ -8,11 +8,9 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Globe, Tag, Hash, Search, Timer, Lock, Book, PauseCircle, Folder, Server, Laptop } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
-import type { MonitorType, WebsiteFormData } from '@/lib/types';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { MonitorType, WebsiteFormData, MonitorLocation } from '@/lib/types';
 import { useEffect } from 'react';
 
 const cloudMonitorTypes: { label: string, value: MonitorType, disabled?: boolean }[] = [
@@ -35,25 +33,24 @@ const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
   url: z.string().min(1, { message: 'URL/Host is required.' }),
   monitorType: z.enum(allMonitorTypes as [string, ...string[]]),
-  monitorLocation: z.enum(['cloud', 'local']),
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
   pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
 });
 
 type AddWebsiteFormProps = {
-  onAddWebsite: (data: WebsiteFormData) => void;
+  onAddWebsite: (data: Omit<WebsiteFormData, 'monitorLocation'>) => void;
   globalPollingInterval: number;
+  monitorLocation: MonitorLocation;
 };
 
-export function AddWebsiteForm({ onAddWebsite, globalPollingInterval }: AddWebsiteFormProps) {
+export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLocation }: AddWebsiteFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       url: '',
       monitorType: 'HTTP(s)',
-      monitorLocation: 'cloud',
       port: undefined,
       keyword: '',
       pollingInterval: undefined,
@@ -61,7 +58,6 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval }: AddWebsi
   });
 
   const monitorType = form.watch('monitorType');
-  const monitorLocation = form.watch('monitorLocation');
 
   const availableMonitorTypes = monitorLocation === 'local' ? localMonitorTypes : cloudMonitorTypes;
 
@@ -80,36 +76,6 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval }: AddWebsi
   return (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="monitorLocation"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Monitor Location</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="cloud" />
-                        </FormControl>
-                         <FormLabel className="font-normal flex items-center gap-2"><Server className="h-4 w-4" /> Cloud</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="local" />
-                        </FormControl>
-                        <FormLabel className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Browser</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <FormField
                 control={form.control}

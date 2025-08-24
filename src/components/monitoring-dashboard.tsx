@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Website, WebsiteFormData } from '@/lib/types';
+import type { Website, WebsiteFormData, MonitorLocation } from '@/lib/types';
 import { AddWebsiteForm } from '@/components/add-website-form';
 import { SummaryOverview } from '@/components/summary-overview';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { EditWebsiteDialog } from '@/components/edit-website-dialog';
 import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutGrid, List, Bell, Search } from 'lucide-react';
+import { LayoutGrid, List, Bell, Search, Server, Laptop } from 'lucide-react';
 import { WebsiteCardView, CardSkeleton } from '@/components/website-card-view';
 import { WebsiteListView, ListSkeleton } from '@/components/website-list-view';
 import Image from 'next/image';
@@ -22,6 +23,7 @@ import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useWebsiteMonitoring } from '@/hooks/use-website-monitoring';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 export default function MonitoringDashboard() {
   const {
@@ -29,6 +31,8 @@ export default function MonitoringDashboard() {
     isLoading,
     pollingInterval,
     setPollingInterval,
+    monitorLocation,
+    setMonitorLocation,
     addWebsite,
     editWebsite,
     deleteWebsite,
@@ -127,6 +131,7 @@ export default function MonitoringDashboard() {
         onTogglePause={togglePause}
         onShowHistory={(id) => setHistoryWebsite(websites.find(w => w.id === id) || null)}
         onManualCheck={manualCheck}
+        monitorLocation={monitorLocation}
       />
     ) : (
       <WebsiteListView
@@ -192,7 +197,7 @@ export default function MonitoringDashboard() {
                               <CardDescription>Add a new website or service to the monitoring list.</CardDescription>
                           </CardHeader>
                           <CardContent>
-                              <AddWebsiteForm onAddWebsite={handleAddWebsite} globalPollingInterval={pollingInterval} />
+                              <AddWebsiteForm onAddWebsite={handleAddWebsite} globalPollingInterval={pollingInterval} monitorLocation={monitorLocation}/>
                           </CardContent>
                       </Card>
                   </AccordionContent>
@@ -209,6 +214,23 @@ export default function MonitoringDashboard() {
                           <CardDescription>Customize the monitoring settings.</CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-6">
+                              <div className="space-y-2">
+                                  <Label>Global Monitor Location</Label>
+                                  <RadioGroup
+                                    onValueChange={(value) => setMonitorLocation(value as MonitorLocation)}
+                                    value={monitorLocation}
+                                    className="flex space-x-4 pt-1"
+                                    >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="cloud" id="loc-cloud" />
+                                        <Label htmlFor="loc-cloud" className="font-normal flex items-center gap-2"><Server className="h-4 w-4" /> Cloud</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="local" id="loc-local" />
+                                        <Label htmlFor="loc-local" className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Browser</Label>
+                                    </div>
+                                    </RadioGroup>
+                              </div>
                               <div className="space-y-2">
                                   <Label htmlFor="polling-interval">Global Monitoring Interval (seconds)</Label>
                                   <div className="flex items-center gap-2">
@@ -269,6 +291,7 @@ export default function MonitoringDashboard() {
           website={editingWebsite}
           onEditWebsite={handleEditWebsite}
           globalPollingInterval={pollingInterval}
+          monitorLocation={monitorLocation}
         />
         <HistoryDialog
           isOpen={!!historyWebsite}
