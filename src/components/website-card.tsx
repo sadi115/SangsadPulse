@@ -87,7 +87,7 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
                                      {monitorLocation === 'local' ? <Laptop className="h-4 w-4 text-muted-foreground" /> : <Server className="h-4 w-4 text-muted-foreground" />}
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>Monitored from {monitorLocation === 'local' ? 'Local Browser' : 'Cloud'}</p>
+                                    <p>Monitored from {monitorLocation === 'local' ? 'Local Network' : 'Cloud Network'}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>

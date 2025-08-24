@@ -215,7 +215,7 @@ export default function MonitoringDashboard() {
                           </CardHeader>
                           <CardContent className="space-y-6">
                               <div className="space-y-2">
-                                  <Label>Global Monitor Location</Label>
+                                  <Label>Network Type</Label>
                                   <RadioGroup
                                     onValueChange={(value) => setMonitorLocation(value as MonitorLocation)}
                                     value={monitorLocation}
@@ -223,11 +223,11 @@ export default function MonitoringDashboard() {
                                     >
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="cloud" id="loc-cloud" />
-                                        <Label htmlFor="loc-cloud" className="font-normal flex items-center gap-2"><Server className="h-4 w-4" /> Cloud</Label>
+                                        <Label htmlFor="loc-cloud" className="font-normal flex items-center gap-2"><Server className="h-4 w-4" /> Cloud Network</Label>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="local" id="loc-local" />
-                                        <Label htmlFor="loc-local" className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Browser</Label>
+                                        <Label htmlFor="loc-local" className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Network</Label>
                                     </div>
                                     </RadioGroup>
                               </div>
@@ -237,6 +237,7 @@ export default function MonitoringDashboard() {
                                       <Input
                                           id="polling-interval"
                                           type="number"
+                                          min="1"
                                           value={pollingInterval}
                                           onChange={(e) => setPollingInterval(Number(e.target.value))}
                                           placeholder="e.g. 30"
