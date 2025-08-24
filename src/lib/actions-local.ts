@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { Website } from '@/lib/types';
@@ -27,20 +26,17 @@ export async function checkStatusLocal(website: Website): Promise<CheckStatusRes
         let finalUrl = url;
 
         // If the URL does not contain a protocol, prepend https://
-        if (!finalUrl.includes('://')) {
+        if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
             finalUrl = `https://${finalUrl}`;
         }
-
-        // If a port is specified and not already in the URL, append it.
-        // This is useful if the user entered a hostname and a separate port.
-        // The URL constructor correctly handles merging these.
+        
+        // Use the URL constructor to safely parse and manipulate the URL
         const urlObject = new URL(finalUrl);
         if (port && !urlObject.port) {
             urlObject.port = String(port);
         }
-        finalUrl = urlObject.toString();
         
-        const response = await fetch(finalUrl, {
+        const response = await fetch(urlObject.toString(), {
             method: 'GET',
             mode: 'cors', // Required for cross-origin requests, may be blocked by servers without proper headers
             cache: 'no-store',

@@ -76,27 +76,27 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
         'Pragma': 'no-cache',
     };
     
-    // @ts-ignore
-    const fetchOptions: { [key: string]: any } = { method: 'GET', headers, redirect: 'manual', cache: 'no-store', agent: httpsAgent };
+    const fetchOptions: RequestInit = { 
+        method: 'GET', 
+        headers, 
+        redirect: 'manual', 
+        cache: 'no-store', 
+        // @ts-ignore
+        agent: (url: URL) => (url.protocol === 'https:' ? httpsAgent : undefined)
+    };
 
     const attemptFetch = async (url: string) => {
-        let currentUrl = url;
+        let currentUrl = new URL(url);
         let response;
         let redirectCount = 0;
         const maxRedirects = 10;
 
         while (redirectCount < maxRedirects) {
-            response = await fetch(currentUrl, fetchOptions);
+            response = await fetch(currentUrl.toString(), fetchOptions);
 
             if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
-                let redirectUrl = response.headers.get('location')!;
-                
-                if (redirectUrl.startsWith('/')) {
-                    const origin = new URL(currentUrl).origin;
-                    redirectUrl = origin + redirectUrl;
-                }
-                
-                currentUrl = redirectUrl;
+                const redirectLocation = response.headers.get('location')!;
+                currentUrl = new URL(redirectLocation, currentUrl.toString());
                 redirectCount++;
             } else {
                 break; // Exit loop if not a redirect
@@ -118,16 +118,19 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
     try {
         const startTime = performance.now();
         let response;
+        const urlString = website.url;
 
-        if (website.url.includes('://')) {
-            response = await attemptFetch(website.url);
+        if (urlString.includes('://')) {
+            response = await attemptFetch(urlString);
         } else {
             try {
                 // Try HTTPS first
-                response = await attemptFetch(`https://${website.url}`);
-            } catch (e) {
+                response = await attemptFetch(`https://${urlString}`);
+            } catch (e: any) {
+                 // Don't retry if it's a redirect loop or other non-connection error
+                if (e.message.includes('redirects')) throw e;
                 // Fallback to HTTP if HTTPS fails
-                response = await attemptFetch(`http://${website.url}`);
+                response = await attemptFetch(`http://${urlString}`);
             }
         }
         
@@ -158,11 +161,13 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
     } catch (error: unknown) {
         let message = 'An unknown error occurred.';
         if (error instanceof Error) {
+            // @ts-ignore
             if ('cause' in error && error.cause) {
+                // @ts-ignore
                 const cause = error.cause as Record<string, string>;
                 message = `Request failed: ${cause.code || error.message}`;
             } else {
-                message = error.message;
+                message = `Request failed: ${error.message}`;
             }
         }
         return {
@@ -237,10 +242,10 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
         return { status: 'Down', httpResponse: 'In scheduled downtime.', lastChecked: new Date().toISOString(), latency: 0 };
       }
 
-      // For HTTP checks, we now handle protocol-less URLs in the checkHttp function itself.
-      // For other types, we'll try to parse it, but fall back to using the raw URL if it fails.
       let hostname = url;
       try {
+        // This will handle protocol-less URLs for hostname extraction.
+        // It assumes http, but it's only for getting the hostname. The actual check handles protocol.
         const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
         hostname = urlObject.hostname || url;
       } catch (e) {
@@ -273,7 +278,7 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
   } catch (error) {
      let message = 'Invalid URL or Host.';
      if (error instanceof TypeError && error.message.includes('Invalid URL')) {
-        // This logic is now mostly redundant due to the new handling, but kept as a fallback.
+        // This block might be redundant but serves as a fallback.
         switch(monitorType) {
             case 'TCP Port':
                 if (!port) {
