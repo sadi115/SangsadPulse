@@ -139,29 +139,6 @@ export function useWebsiteMonitoring() {
     }
   }, [notificationsEnabled, isLoading]);
 
-  const scheduleCheck = useCallback((site: Website) => {
-    // Clear any existing timer for this site
-    if (timeoutsRef.current.has(site.id)) {
-      clearTimeout(timeoutsRef.current.get(site.id)!);
-      timeoutsRef.current.delete(site.id);
-    }
-    
-    // Do not schedule if paused or downtime monitor
-    if (site.isPaused || site.monitorType === 'Downtime' || monitorLocation === 'agent') {
-      return;
-    }
-
-    const interval = (site.pollingInterval ?? pollingInterval) * 1000;
-
-    const timerId = setTimeout(() => {
-      // Use manualCheck which is now stable thanks to useCallback
-      manualCheck(site.id);
-    }, interval);
-
-    timeoutsRef.current.set(site.id, timerId);
-  }, [pollingInterval, monitorLocation]);
-
-
   const updateWebsiteState = useCallback((id: string, result: Partial<Website>) => {
     setWebsites(current => {
       const siteToUpdate = current.find(s => s.id === id);
@@ -242,27 +219,42 @@ export function useWebsiteMonitoring() {
       };
 
       // Reschedule the next check
-      scheduleCheck(updatedSite);
+      // This is safe because updateWebsiteState is wrapped in useCallback
+      if (timeoutsRef.current.has(id)) {
+        clearTimeout(timeoutsRef.current.get(id)!);
+      }
+      timeoutsRef.current.delete(id);
+
+      if (!updatedSite.isPaused && updatedSite.monitorType !== 'Downtime' && monitorLocation !== 'agent') {
+        const interval = (updatedSite.pollingInterval ?? pollingInterval) * 1000;
+        const timerId = setTimeout(() => {
+          manualCheck(updatedSite.id, httpClient);
+        }, interval);
+        timeoutsRef.current.set(id, timerId);
+      }
       
       return current.map(s => s.id === id ? updatedSite : s);
     });
-  }, [scheduleCheck, toast]);
-
-  const manualCheck = useCallback(async (id: string) => {
+  // The dependency array is intentionally sparse. `scheduleCheck` is derived from this.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollingInterval, monitorLocation, httpClient, toast]);
+  
+  const manualCheck = useCallback(async (id: string, client: HttpClient = 'fetch') => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
+    const currentMonitorLocation = monitorLocation;
 
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime' || monitorLocation === 'agent') {
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime' || currentMonitorLocation === 'agent') {
         return;
     }
 
     setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
 
     try {
-        const checkStatusFn = monitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
-        const result = await checkStatusFn(siteToCheck, httpClient);
+        const checkStatusFn = currentMonitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
+        const result = await checkStatusFn(siteToCheck, client);
         
         let ttfbResult;
-        if (result.status === 'Up' && monitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+        if (result.status === 'Up' && currentMonitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
             ttfbResult = await getTtfb({ url: siteToCheck.url });
         }
         updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
@@ -270,7 +262,29 @@ export function useWebsiteMonitoring() {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
     }
-  }, [monitorLocation, httpClient, updateWebsiteState]);
+  }, [monitorLocation, updateWebsiteState]);
+
+
+  const scheduleCheck = useCallback((site: Website) => {
+    // Clear any existing timer for this site
+    if (timeoutsRef.current.has(site.id)) {
+      clearTimeout(timeoutsRef.current.get(site.id)!);
+      timeoutsRef.current.delete(site.id);
+    }
+    
+    // Do not schedule if paused or certain monitor types/locations
+    if (site.isPaused || site.monitorType === 'Downtime' || monitorLocation === 'agent') {
+      return;
+    }
+
+    const interval = (site.pollingInterval ?? pollingInterval) * 1000;
+
+    const timerId = setTimeout(() => {
+      manualCheck(site.id, httpClient);
+    }, interval);
+
+    timeoutsRef.current.set(site.id, timerId);
+  }, [pollingInterval, monitorLocation, httpClient, manualCheck]);
 
 
   // Effect for initial load and for rescheduling all checks when pollingInterval changes
@@ -285,7 +299,7 @@ export function useWebsiteMonitoring() {
     websitesRef.current.forEach((site, index) => {
       // Check if the service is newly added
       if (site.status === 'Idle') {
-          setTimeout(() => manualCheck(site.id), 100 * (index + 1));
+          setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
       } else {
           scheduleCheck(site);
       }
@@ -295,7 +309,17 @@ export function useWebsiteMonitoring() {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, pollingInterval, monitorLocation]);
+  }, [isLoading, pollingInterval]);
+
+  // Effect to re-run checks when monitorLocation or httpClient changes
+  useEffect(() => {
+      if(isLoading) return;
+
+      websitesRef.current.forEach(site => {
+          setTimeout(() => manualCheck(site.id, httpClient), 100);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monitorLocation, httpClient, isLoading]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
@@ -317,7 +341,7 @@ export function useWebsiteMonitoring() {
          }
          const newWebsites = [...currentWebsites, newWebsite];
          // Trigger a check for the new site
-         setTimeout(() => manualCheck(newWebsite.id), 100);
+         setTimeout(() => manualCheck(newWebsite.id, httpClient), 100);
          return newWebsites;
      });
   };
@@ -335,7 +359,7 @@ export function useWebsiteMonitoring() {
         const newWebsites = [...currentWebsites];
         newWebsites[siteIndex] = updatedSite;
         // Trigger a re-check immediately after editing
-        setTimeout(() => manualCheck(id), 100);
+        setTimeout(() => manualCheck(id, httpClient), 100);
         return newWebsites;
     });
   };
@@ -407,7 +431,7 @@ export function useWebsiteMonitoring() {
 
     // If we un-paused it, schedule a check
     if (siteToUpdate && !siteToUpdate.isPaused) {
-        setTimeout(() => manualCheck(id), 100);
+        setTimeout(() => manualCheck(id, httpClient), 100);
     }
   };
 
@@ -445,3 +469,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
