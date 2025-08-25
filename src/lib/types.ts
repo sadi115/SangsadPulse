@@ -11,7 +11,8 @@ export type MonitorType =
   | 'HTTP(s) - Keyword'
   | 'Downtime'
   | 'DNS Records'
-  | 'SSL Certificate';
+  | 'SSL Certificate'
+  | 'DNS Lookup';
 
 export type MonitorLocation = 'cloud' | 'local';
 

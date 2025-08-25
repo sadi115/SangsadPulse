@@ -3,7 +3,7 @@
 
 import type { Website } from '@/lib/types';
 import { LatencyChart } from './latency-chart';
-import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search, TrendingUp, Zap } from 'lucide-react';
+import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search, TrendingUp, Zap, ListTree } from 'lucide-react';
 import { format } from 'date-fns';
 
 type WebsiteCardDetailsProps = {
@@ -47,9 +47,9 @@ export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
                                 <span>Keyword: "{website.keyword}"</span>
                             </div>
                         )}
-                        <div className="flex items-center gap-2" title={website.httpResponse}>
-                            <AlertCircle className="h-4 w-4" />
-                            <span>{website.httpResponse || 'No response yet'}</span>
+                        <div className="flex items-start gap-2" title={website.httpResponse}>
+                           {website.monitorType === 'DNS Lookup' ? <ListTree className="h-4 w-4 mt-1" /> : <AlertCircle className="h-4 w-4 mt-1" />}
+                            <pre className="whitespace-pre-wrap font-sans">{website.httpResponse || 'No response yet'}</pre>
                         </div>
                     </div>
                 </div>

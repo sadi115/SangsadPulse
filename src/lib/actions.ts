@@ -12,6 +12,9 @@ import https from 'https';
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
 
 const dnsResolve = promisify(dns.resolve);
+const dnsResolveMx = promisify(dns.resolveMx);
+const dnsResolveNs = promisify(dns.resolveNs);
+const dnsResolveCname = promisify(dns.resolveCname);
 const dnsReverse = promisify(dns.reverse);
 
 const httpsAgent = new https.Agent({
@@ -319,6 +322,82 @@ async function checkDns(host: string): Promise<CheckStatusResult> {
     }
 }
 
+async function checkDnsLookup(host: string): Promise<CheckStatusResult> {
+    const startTime = performance.now();
+    try {
+        const recordTypes = ['A', 'CNAME', 'MX', 'NS'];
+        const results: { [key: string]: any[] } = {};
+        let hasRecords = false;
+
+        for (const type of recordTypes) {
+            try {
+                let records: any[] = [];
+                switch (type) {
+                    case 'A':
+                        records = await dnsResolve(host);
+                        break;
+                    case 'CNAME':
+                        records = await dnsResolveCname(host);
+                        break;
+                    case 'MX':
+                        records = await dnsResolveMx(host);
+                        break;
+                    case 'NS':
+                        records = await dnsResolveNs(host);
+                        break;
+                }
+                if (records.length > 0) {
+                    hasRecords = true;
+                    results[type] = records;
+                }
+            } catch (error: any) {
+                // Ignore errors for specific record types (e.g., NODATA)
+                if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') {
+                   // console.warn(`DNS lookup for ${type} failed: ${error.message}`);
+                }
+            }
+        }
+        
+        const endTime = performance.now();
+
+        if (hasRecords) {
+            let responseText = '';
+            for (const [type, records] of Object.entries(results)) {
+                responseText += `${type} Records:\n`;
+                if (type === 'MX') {
+                    responseText += records.map(r => `  - ${r.exchange} (prio: ${r.priority})`).join('\n');
+                } else {
+                    responseText += records.map(r => `  - ${r}`).join('\n');
+                }
+                responseText += '\n\n';
+            }
+
+            return {
+                status: 'Up',
+                httpResponse: responseText.trim(),
+                lastChecked: new Date().toISOString(),
+                latency: Math.max(1, Math.round(endTime - startTime)),
+            };
+        } else {
+            return {
+                status: 'Down',
+                httpResponse: 'No DNS records found for the host.',
+                lastChecked: new Date().toISOString(),
+                latency: 0,
+            };
+        }
+
+    } catch (error: any) {
+        return {
+            status: 'Down',
+            httpResponse: `DNS lookup failed: ${error.message}`,
+            lastChecked: new Date().toISOString(),
+            latency: 0,
+        };
+    }
+}
+
+
 
 export async function checkStatus(website: Website): Promise<CheckStatusResult> {
   const { monitorType, url, port } = website;
@@ -356,6 +435,8 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
             return { ...result, httpResponse: `Host is unreachable. Reason: ${result.httpResponse}` };
         case 'DNS Records':
             return checkDns(hostname);
+        case 'DNS Lookup':
+            return checkDnsLookup(hostname);
         case 'SSL Certificate':
              return checkSslCertificate(hostname);
         case 'HTTP(s)':
