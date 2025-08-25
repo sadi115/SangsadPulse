@@ -12,7 +12,11 @@ export type MonitorType =
   | 'Downtime'
   | 'DNS Records'
   | 'SSL Certificate'
-  | 'DNS Lookup';
+  | 'DNS Lookup'
+  | 'WebSocket'
+  | 'Push'
+  | 'HTTP/2'
+  | 'HTTPS - Proxy';
 
 export type MonitorLocation = 'cloud' | 'local' | 'agent';
 

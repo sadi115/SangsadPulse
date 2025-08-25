@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
@@ -391,6 +392,9 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
   try {
       if (monitorType === 'Downtime') {
         return { status: 'Down', httpResponse: 'In scheduled downtime.', lastChecked: new Date().toISOString(), latency: 0 };
+      }
+      if (monitorType === 'WebSocket' || monitorType === 'Push' || monitorType === 'HTTP/2' || monitorType === 'HTTPS - Proxy') {
+        return { status: 'Idle', httpResponse: 'This monitor type is not yet implemented.', lastChecked: new Date().toISOString(), latency: 0 };
       }
 
       let hostname = url;

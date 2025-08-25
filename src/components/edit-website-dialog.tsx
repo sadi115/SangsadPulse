@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree, ArrowRightLeft, Rss, Server, Network } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { MonitorType, Website, WebsiteFormData, MonitorLocation } from '@/lib/types';
 import { useEffect } from 'react';
@@ -21,6 +21,10 @@ const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLo
     { label: "DNS Lookup", value: "DNS Lookup", disabledFor: ['local', 'agent'] },
     { label: "SSL Certificate", value: "SSL Certificate", disabledFor: ['local', 'agent'] },
     { label: "Downtime", value: "Downtime", disabledFor: ['local', 'agent'] },
+    { label: "WebSocket", value: "WebSocket", disabledFor: ['local', 'agent'] },
+    { label: "Push", value: "Push", disabledFor: ['local', 'agent'] },
+    { label: "HTTP/2", value: "HTTP/2", disabledFor: ['local', 'agent'] },
+    { label: "HTTPS - Proxy", value: "HTTPS - Proxy", disabledFor: ['local', 'agent'] },
 ];
 
 const allMonitorTypes = monitorTypes.map(m => m.value);
@@ -106,6 +110,10 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                                             {type.value === 'DNS Lookup' && <ListTree className="h-4 w-4" />}
                                             {type.value === 'SSL Certificate' && <ShieldCheck className="h-4 w-4" />}
                                             {type.value === 'Downtime' && <PauseCircle className="h-4 w-4" />}
+                                            {type.value === 'WebSocket' && <ArrowRightLeft className="h-4 w-4" />}
+                                            {type.value === 'Push' && <Rss className="h-4 w-4" />}
+                                            {type.value === 'HTTP/2' && <Server className="h-4 w-4" />}
+                                            {type.value === 'HTTPS - Proxy' && <Network className="h-4 w-4" />}
                                             {type.label}
                                         </div>
                                     </SelectItem>

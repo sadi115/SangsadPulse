@@ -218,33 +218,23 @@ export function useWebsiteMonitoring() {
           lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
       };
 
-      // Reschedule the next check
-      // This is safe because updateWebsiteState is wrapped in useCallback
-      if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id)!);
-      }
-      timeoutsRef.current.delete(id);
-
-      if (!updatedSite.isPaused && updatedSite.monitorType !== 'Downtime' && monitorLocation !== 'agent') {
-        const interval = (updatedSite.pollingInterval ?? pollingInterval) * 1000;
-        const timerId = setTimeout(() => {
-          manualCheck(updatedSite.id, httpClient);
-        }, interval);
-        timeoutsRef.current.set(id, timerId);
-      }
-      
       return current.map(s => s.id === id ? updatedSite : s);
     });
-  // The dependency array is intentionally sparse. `scheduleCheck` is derived from this.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pollingInterval, monitorLocation, httpClient, toast]);
+  }, [toast]);
   
   const manualCheck = useCallback(async (id: string, client: HttpClient = 'fetch') => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
     const currentMonitorLocation = monitorLocation;
 
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime' || currentMonitorLocation === 'agent') {
-        return;
+    if (!siteToCheck || siteToCheck.isPaused || currentMonitorLocation === 'agent') {
+      if (currentMonitorLocation === 'agent') {
+        if (timeoutsRef.current.has(id)) {
+            clearTimeout(timeoutsRef.current.get(id)!);
+            timeoutsRef.current.delete(id);
+        }
+        updateWebsiteState(id, { status: 'Idle', httpResponse: 'Waiting for remote agent.' });
+      }
+      return;
     }
 
     setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
@@ -272,8 +262,8 @@ export function useWebsiteMonitoring() {
       timeoutsRef.current.delete(site.id);
     }
     
-    // Do not schedule if paused or certain monitor types/locations
-    if (site.isPaused || site.monitorType === 'Downtime' || monitorLocation === 'agent') {
+    // Do not schedule if paused or if location is agent
+    if (site.isPaused || monitorLocation === 'agent') {
       return;
     }
 
@@ -297,19 +287,17 @@ export function useWebsiteMonitoring() {
     
     // Stagger initial checks or re-checks
     websitesRef.current.forEach((site, index) => {
-      // Check if the service is newly added
       if (site.status === 'Idle') {
           setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
-      } else {
-          scheduleCheck(site);
       }
+      // Re-schedule based on its own interval after the initial check
+      scheduleCheck(site);
     });
     
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, pollingInterval]);
+  }, [isLoading, pollingInterval, scheduleCheck, httpClient, manualCheck]);
 
   // Effect to re-run checks when monitorLocation or httpClient changes
   useEffect(() => {
@@ -318,8 +306,7 @@ export function useWebsiteMonitoring() {
       websitesRef.current.forEach(site => {
           setTimeout(() => manualCheck(site.id, httpClient), 100);
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monitorLocation, httpClient, isLoading]);
+  }, [monitorLocation, httpClient, isLoading, manualCheck]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
@@ -469,5 +456,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
