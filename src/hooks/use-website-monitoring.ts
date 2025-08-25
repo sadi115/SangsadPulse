@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import type { Website, WebsiteFormData, StatusHistory, MonitorLocation } from '@/lib/types';
+import type { Website, WebsiteFormData, StatusHistory, MonitorLocation, HttpClient } from '@/lib/types';
 import { checkStatus as checkStatusCloud, getTtfb } from '@/lib/actions';
 import { checkStatusLocal } from '@/lib/actions-local';
 
@@ -33,6 +33,7 @@ export function useWebsiteMonitoring() {
   const [isLoading, setIsLoading] = useState(true);
   const [pollingInterval, setPollingInterval] = useState(30);
   const [monitorLocation, setMonitorLocation] = useState<MonitorLocation>('cloud');
+  const [httpClient, setHttpClient] = useState<HttpClient>('fetch');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
 
@@ -55,6 +56,7 @@ export function useWebsiteMonitoring() {
       const savedInterval = localStorage.getItem('monitoring-interval');
       const savedNotifications = localStorage.getItem('monitoring-notifications');
       const savedLocation = localStorage.getItem('monitoring-location');
+      const savedClient = localStorage.getItem('monitoring-client');
 
       if (savedWebsites) {
         setWebsites(JSON.parse(savedWebsites));
@@ -72,6 +74,10 @@ export function useWebsiteMonitoring() {
       
       if (savedLocation) {
         setMonitorLocation(JSON.parse(savedLocation));
+      }
+
+      if (savedClient) {
+        setHttpClient(JSON.parse(savedClient));
       }
 
     } catch (error) {
@@ -112,6 +118,16 @@ export function useWebsiteMonitoring() {
       }
     }
   }, [monitorLocation, isLoading]);
+  
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem('monitoring-client', JSON.stringify(httpClient));
+      } catch (error) {
+        console.error("Failed to save http client to local storage", error);
+      }
+    }
+  }, [httpClient, isLoading]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -243,7 +259,7 @@ export function useWebsiteMonitoring() {
 
     try {
         const checkStatusFn = monitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
-        const result = await checkStatusFn(siteToCheck);
+        const result = await checkStatusFn(siteToCheck, httpClient);
         
         let ttfbResult;
         if (result.status === 'Up' && monitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
@@ -254,7 +270,7 @@ export function useWebsiteMonitoring() {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
     }
-  }, [monitorLocation, updateWebsiteState]);
+  }, [monitorLocation, httpClient, updateWebsiteState]);
 
 
   // Effect for initial load and for rescheduling all checks when pollingInterval changes
@@ -416,6 +432,8 @@ export function useWebsiteMonitoring() {
     setPollingInterval,
     monitorLocation,
     setMonitorLocation,
+    httpClient,
+    setHttpClient,
     addWebsite,
     editWebsite,
     deleteWebsite,

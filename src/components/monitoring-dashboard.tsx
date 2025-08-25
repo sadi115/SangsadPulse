@@ -14,7 +14,7 @@ import { EditWebsiteDialog } from '@/components/edit-website-dialog';
 import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutGrid, List, Bell, Search, Server, Laptop, Satellite } from 'lucide-react';
+import { LayoutGrid, List, Bell, Search, Server, Laptop, Satellite, Settings, Network } from 'lucide-react';
 import { WebsiteCardView, CardSkeleton } from '@/components/website-card-view';
 import { WebsiteListView, ListSkeleton } from '@/components/website-list-view';
 import Image from 'next/image';
@@ -24,6 +24,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useWebsiteMonitoring } from '@/hooks/use-website-monitoring';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Separator } from './ui/separator';
 
 export default function MonitoringDashboard() {
   const {
@@ -33,6 +34,8 @@ export default function MonitoringDashboard() {
     setPollingInterval,
     monitorLocation,
     setMonitorLocation,
+    httpClient,
+    setHttpClient,
     addWebsite,
     editWebsite,
     deleteWebsite,
@@ -224,28 +227,52 @@ export default function MonitoringDashboard() {
                           <CardDescription>Customize the monitoring settings.</CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-6">
-                              <div className="space-y-2">
-                                  <Label>Network Type</Label>
+                            <div className="space-y-4 rounded-lg border p-4">
+                                <h3 className="flex items-center gap-2 font-semibold"><Network className="h-5 w-5" />Network Configuration</h3>
+                                <div className="space-y-2">
+                                  <Label>Monitor From</Label>
                                   <RadioGroup
                                     onValueChange={(value) => setMonitorLocation(value as MonitorLocation)}
                                     value={monitorLocation}
-                                    className="flex space-x-2 sm:space-x-4 pt-1 flex-wrap"
+                                    className="grid grid-cols-2 gap-2 pt-1"
                                     >
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="cloud" id="loc-cloud" />
-                                        <Label htmlFor="loc-cloud" className="font-normal flex items-center gap-2"><Server className="h-4 w-4" /> Cloud Network</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="local" id="loc-local" />
-                                        <Label htmlFor="loc-local" className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Network</Label>
-                                    </div>
-                                     <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="agent" id="loc-agent" />
-                                        <Label htmlFor="loc-agent" className="font-normal flex items-center gap-2"><Satellite className="h-4 w-4" /> Remote Agent</Label>
-                                    </div>
+                                    <Label htmlFor="loc-cloud" className="font-normal flex items-center gap-2 border rounded-md p-2 hover:bg-accent cursor-pointer has-[:checked]:bg-accent has-[:checked]:border-primary">
+                                        <RadioGroupItem value="cloud" id="loc-cloud" className="sr-only" />
+                                        <Server className="h-4 w-4" /> Cloud Network
+                                    </Label>
+                                    <Label htmlFor="loc-local" className="font-normal flex items-center gap-2 border rounded-md p-2 hover:bg-accent cursor-pointer has-[:checked]:bg-accent has-[:checked]:border-primary">
+                                        <RadioGroupItem value="local" id="loc-local" className="sr-only"/>
+                                        <Laptop className="h-4 w-4" /> Local Network
+                                    </Label>
+                                     <Label htmlFor="loc-agent" className="font-normal flex items-center gap-2 border rounded-md p-2 hover:bg-accent cursor-pointer has-[:checked]:bg-accent has-[:checked]:border-primary">
+                                        <RadioGroupItem value="agent" id="loc-agent" className="sr-only"/>
+                                        <Satellite className="h-4 w-4" /> Remote Agent
+                                    </Label>
                                     </RadioGroup>
                               </div>
-                              <div className="space-y-2">
+                            </div>
+
+                             <div className="space-y-4 rounded-lg border p-4">
+                                <h3 className="flex items-center gap-2 font-semibold"><Settings className="h-5 w-5" />Global Settings</h3>
+                                <div className="space-y-2">
+                                    <Label>HTTP Client</Label>
+                                     <RadioGroup
+                                        onValueChange={(value) => setHttpClient(value as 'fetch' | 'axios')}
+                                        value={httpClient}
+                                        className="flex space-x-2 sm:space-x-4 pt-1 flex-wrap"
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="fetch" id="client-fetch" />
+                                            <Label htmlFor="client-fetch" className="font-normal">Fetch</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="axios" id="client-axios" />
+                                            <Label htmlFor="client-axios" className="font-normal">Axios</Label>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+                                <Separator />
+                                <div className="space-y-2">
                                   <Label htmlFor="polling-interval">Global Monitoring Interval (seconds)</Label>
                                   <div className="flex items-center gap-2">
                                       <Input
@@ -259,23 +286,25 @@ export default function MonitoringDashboard() {
                                       />
                                       <Button onClick={handleIntervalChange}>Save</Button>
                                   </div>
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <div className="space-y-0.5">
-                                  <Label htmlFor="notifications-switch" className="flex items-center gap-2">
-                                    <Bell className="h-4 w-4" />
-                                    Notifications
-                                  </Label>
-                                  <p className="text-xs text-muted-foreground">
-                                    Enable or disable service down notifications.
-                                  </p>
                                 </div>
-                                <Switch
-                                  id="notifications-switch"
-                                  checked={notificationsEnabled}
-                                  onCheckedChange={handleNotificationToggle}
-                                />
-                              </div>
+                                <Separator />
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                    <Label htmlFor="notifications-switch" className="flex items-center gap-2">
+                                        <Bell className="h-4 w-4" />
+                                        Notifications
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Enable or disable service down notifications.
+                                    </p>
+                                    </div>
+                                    <Switch
+                                    id="notifications-switch"
+                                    checked={notificationsEnabled}
+                                    onCheckedChange={handleNotificationToggle}
+                                    />
+                                </div>
+                             </div>
                           </CardContent>
                       </Card>
                   </AccordionContent>

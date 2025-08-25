@@ -2,12 +2,13 @@
 'use server';
 
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
-import type { Website } from '@/lib/types';
+import type { Website, HttpClient } from '@/lib/types';
 import net from 'net';
 import tls from 'tls';
 import dns from 'dns';
 import { promisify } from 'util';
 import https from 'https';
+import axios from 'axios';
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
 
@@ -149,89 +150,75 @@ async function checkSslCertificate(host: string): Promise<CheckStatusResult> {
 }
 
 
-async function checkHttp(website: Website): Promise<CheckStatusResult> {
+async function checkHttp(website: Website, httpClient: HttpClient): Promise<CheckStatusResult> {
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
     };
-    
-    const fetchOptions: RequestInit = { 
-        method: 'GET', 
-        headers, 
-        redirect: 'manual', 
-        cache: 'no-store', 
-        // @ts-ignore
-        agent: (url: URL) => (url.protocol === 'https:' ? httpsAgent : undefined)
-    };
 
-    const attemptFetch = async (url: string) => {
-        let currentUrl = new URL(url);
-        let response;
-        let redirectCount = 0;
-        const maxRedirects = 10;
-
-        while (redirectCount < maxRedirects) {
-            response = await fetch(currentUrl.toString(), fetchOptions);
-
-            if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
-                const redirectLocation = response.headers.get('location')!;
-                currentUrl = new URL(redirectLocation, currentUrl.toString());
-                redirectCount++;
-            } else {
-                break; // Exit loop if not a redirect
+    const attemptRequest = async (initialUrl: string) => {
+        let currentUrl = initialUrl;
+        if (!currentUrl.includes('://')) {
+            try {
+                // Try HTTPS first
+                const httpsUrl = `https://${currentUrl}`;
+                // Quick check if HTTPS works
+                if (httpClient === 'axios') {
+                    await axios.get(httpsUrl, { timeout: 5000, httpsAgent, maxRedirects: 0 });
+                } else {
+                    await fetch(httpsUrl, { method: 'HEAD', redirect: 'manual', cache: 'no-store' });
+                }
+                currentUrl = httpsUrl;
+            } catch (e) {
+                // Fallback to HTTP
+                currentUrl = `http://${currentUrl}`;
             }
         }
 
-        if (redirectCount >= maxRedirects) {
-            throw new Error('Exceeded maximum number of redirects.');
-        }
-
-        if (!response) {
-            throw new Error('No response received.');
-        }
-        
-        return response;
-    };
-
-
-    try {
         const startTime = performance.now();
-        let response;
-        const urlString = website.url;
+        let responseStatus: number;
+        let responseStatusText: string;
+        let responseData: string = '';
 
-        if (urlString.includes('://')) {
-            response = await attemptFetch(urlString);
-        } else {
-            try {
-                // Try HTTPS first
-                response = await attemptFetch(`https://${urlString}`);
-            } catch (e: any) {
-                 // Don't retry if it's a redirect loop or other non-connection error
-                if (e.message.includes('redirects')) throw e;
-                // Fallback to HTTP if HTTPS fails
-                response = await attemptFetch(`http://${urlString}`);
+        if (httpClient === 'axios') {
+            const response = await axios.get(currentUrl, {
+                headers,
+                timeout: 10000,
+                maxRedirects: 10,
+                httpsAgent,
+                validateStatus: () => true, // Accept any status code
+            });
+            responseStatus = response.status;
+            responseStatusText = response.statusText;
+            responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+        } else { // fetch
+            const response = await fetch(currentUrl, {
+                headers,
+                redirect: 'follow',
+                cache: 'no-store',
+                // @ts-ignore
+                agent: (url: URL) => (url.protocol === 'https:' ? httpsAgent : undefined)
+            });
+            responseStatus = response.status;
+            responseStatusText = response.statusText;
+            if (website.monitorType === 'HTTP(s) - Keyword' && website.keyword) {
+                 responseData = await response.text();
             }
         }
         
         const endTime = performance.now();
         const latency = Math.max(1, Math.round(endTime - startTime));
 
-        let responseText = `${response.status} ${response.statusText}`;
-        let status: 'Up' | 'Down' = response.ok ? 'Up' : 'Down';
+        let responseText = `${responseStatus} ${responseStatusText}`;
+        let status: 'Up' | 'Down' = responseStatus >= 200 && responseStatus < 400 ? 'Up' : 'Down';
 
         if (website.monitorType === 'HTTP(s) - Keyword' && website.keyword) {
-             const body = await response.text();
-             if (body.includes(website.keyword)) {
+             if (responseData.includes(website.keyword)) {
                  status = 'Up';
                  responseText = `Keyword '${website.keyword}' found.`;
              } else {
@@ -239,25 +226,24 @@ async function checkHttp(website: Website): Promise<CheckStatusResult> {
                  responseText = `Keyword '${website.keyword}' not found.`;
              }
         }
+        
+        return { status, httpResponse: responseText, latency };
+    };
 
-
+    try {
+        const { status, httpResponse, latency } = await attemptRequest(website.url);
         return {
-            status: status,
-            httpResponse: responseText,
+            status,
+            httpResponse,
             lastChecked: new Date().toISOString(),
             latency,
         };
     } catch (error: unknown) {
         let message = 'An unknown error occurred.';
-        if (error instanceof Error) {
-            // @ts-ignore
-            if ('cause' in error && error.cause) {
-                // @ts-ignore
-                const cause = error.cause as Record<string, string>;
-                message = `Request failed: ${cause.code || error.message}`;
-            } else {
-                message = `Request failed: ${error.message}`;
-            }
+        if (axios.isAxiosError(error)) {
+            message = `Request failed: ${error.code || error.message}`;
+        } else if (error instanceof Error) {
+             message = `Request failed: ${error.message}`;
         }
         return {
             status: 'Down',
@@ -399,7 +385,7 @@ async function checkDnsLookup(host: string): Promise<CheckStatusResult> {
 
 
 
-export async function checkStatus(website: Website): Promise<CheckStatusResult> {
+export async function checkStatus(website: Website, httpClient: HttpClient = 'fetch'): Promise<CheckStatusResult> {
   const { monitorType, url, port } = website;
   
   try {
@@ -409,12 +395,9 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
 
       let hostname = url;
       try {
-        // This will handle protocol-less URLs for hostname extraction.
-        // It assumes http, but it's only for getting the hostname. The actual check handles protocol.
         const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
         hostname = urlObject.hostname || url;
       } catch (e) {
-        // This is fine, it means it's likely just a hostname or IP for TCP/DNS/Ping checks.
         hostname = url;
       }
 
@@ -426,7 +409,6 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
             }
             return checkTcpPort(hostname, port);
         case 'Ping':
-            // Simulating ping with a TCP check to port 80 (or 443 for https) as ICMP is not straightforward in Node.js
             const pingPort = url.startsWith('https://') ? 443 : 80;
             const result = await checkTcpPort(hostname, pingPort);
             if(result.status === 'Up') {
@@ -442,12 +424,11 @@ export async function checkStatus(website: Website): Promise<CheckStatusResult> 
         case 'HTTP(s)':
         case 'HTTP(s) - Keyword':
         default:
-            return checkHttp(website);
+            return checkHttp(website, httpClient);
       }
   } catch (error) {
      let message = 'Invalid URL or Host.';
      if (error instanceof TypeError && error.message.includes('Invalid URL')) {
-        // This block might be redundant but serves as a fallback.
         switch(monitorType) {
             case 'TCP Port':
                 if (!port) {

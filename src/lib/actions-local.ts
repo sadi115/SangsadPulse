@@ -1,14 +1,15 @@
 
 'use client';
 
-import type { Website } from '@/lib/types';
+import type { Website, HttpClient } from '@/lib/types';
+import axios from 'axios';
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
 
 /**
  * Performs a check from the client's browser. Only supports HTTP(s) types.
  */
-export async function checkStatusLocal(website: Website): Promise<CheckStatusResult> {
+export async function checkStatusLocal(website: Website, httpClient: HttpClient): Promise<CheckStatusResult> {
     const { monitorType, url, keyword, port } = website;
 
     if (monitorType !== 'HTTP(s)' && monitorType !== 'HTTP(s) - Keyword') {
@@ -21,13 +22,9 @@ export async function checkStatusLocal(website: Website): Promise<CheckStatusRes
     }
     
     try {
-        const startTime = performance.now();
-        
         let finalUrl = url;
         const isIpAddress = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(url);
 
-        // If the URL does not contain a protocol, prepend one.
-        // Default to http for IP addresses, and https for hostnames.
         if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
             if (isIpAddress) {
                 finalUrl = `http://${finalUrl}`;
@@ -36,28 +33,47 @@ export async function checkStatusLocal(website: Website): Promise<CheckStatusRes
             }
         }
         
-        // Use the URL constructor to safely parse and manipulate the URL
         const urlObject = new URL(finalUrl);
         if (port && !urlObject.port) {
             urlObject.port = String(port);
         }
+        const requestUrl = urlObject.toString();
         
-        const response = await fetch(urlObject.toString(), {
-            method: 'GET',
-            mode: 'cors', // Required for cross-origin requests, may be blocked by servers without proper headers
-            cache: 'no-store',
-            redirect: 'follow', // Fetch API handles redirects automatically
-        });
+        const startTime = performance.now();
+        let responseStatus: number;
+        let responseStatusText: string;
+        let responseData: string = '';
+        
+        if (httpClient === 'axios') {
+            const response = await axios.get(requestUrl, {
+                timeout: 10000, // 10 seconds timeout
+                validateStatus: () => true, // Allow all statuses
+            });
+            responseStatus = response.status;
+            responseStatusText = response.statusText;
+            responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+        } else {
+            const response = await fetch(requestUrl, {
+                method: 'GET',
+                mode: 'cors', 
+                cache: 'no-store',
+                redirect: 'follow',
+            });
+            responseStatus = response.status;
+            responseStatusText = response.statusText;
+            if (monitorType === 'HTTP(s) - Keyword' && keyword) {
+                 responseData = await response.text();
+            }
+        }
 
         const endTime = performance.now();
         const latency = Math.max(1, Math.round(endTime - startTime));
 
-        let responseText = `${response.status} ${response.statusText}`;
-        let status: 'Up' | 'Down' = response.ok ? 'Up' : 'Down';
+        let responseText = `${responseStatus} ${responseStatusText}`;
+        let status: 'Up' | 'Down' = responseStatus >= 200 && responseStatus < 400 ? 'Up' : 'Down';
 
         if (monitorType === 'HTTP(s) - Keyword' && keyword) {
-            const body = await response.text();
-            if (body.includes(keyword)) {
+            if (responseData.includes(keyword)) {
                 status = 'Up';
                 responseText = `Keyword '${keyword}' found.`;
             } else {
@@ -74,7 +90,9 @@ export async function checkStatusLocal(website: Website): Promise<CheckStatusRes
         };
     } catch (error: unknown) {
         let message = 'Request failed. This could be due to a network error or a CORS policy blocking the request from the browser. Check the browser console for more details.';
-        if (error instanceof Error) {
+        if (axios.isAxiosError(error)) {
+             message = `Request failed: ${error.message}. Check browser console for CORS errors.`;
+        } else if (error instanceof Error) {
             message = `Request failed: ${error.message}. Check browser console for CORS errors.`;
         }
         return {

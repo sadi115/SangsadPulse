@@ -16,6 +16,8 @@ export type MonitorType =
 
 export type MonitorLocation = 'cloud' | 'local' | 'agent';
 
+export type HttpClient = 'fetch' | 'axios';
+
 export type StatusHistory = {
     time: string;
     status: 'Up' | 'Down';
