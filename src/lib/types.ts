@@ -10,7 +10,8 @@ export type MonitorType =
   | 'Ping'
   | 'HTTP(s) - Keyword'
   | 'Downtime'
-  | 'DNS Records';
+  | 'DNS Records'
+  | 'SSL Certificate';
 
 export type MonitorLocation = 'cloud' | 'local';
 
