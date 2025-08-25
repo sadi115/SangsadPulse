@@ -37,6 +37,11 @@ export function useWebsiteMonitoring() {
 
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const notificationsEnabledRef = useRef(notificationsEnabled);
+  const websitesRef = useRef(websites);
+
+  useEffect(() => {
+    websitesRef.current = websites;
+  }, [websites]);
   
   useEffect(() => {
     notificationsEnabledRef.current = notificationsEnabled;
@@ -227,39 +232,28 @@ export function useWebsiteMonitoring() {
   }, [scheduleCheck, toast]);
 
   const manualCheck = useCallback(async (id: string) => {
-    let siteToCheck: Website | undefined;
-    
-    // Use a function for setWebsites to get the most up-to-date state
-    setWebsites(currentWebsites => {
-        siteToCheck = currentWebsites.find(s => s.id === id);
-        
-        if (siteToCheck && !siteToCheck.isPaused && siteToCheck.monitorType !== 'Downtime') {
-            if (timeoutsRef.current.has(id)) {
-                clearTimeout(timeoutsRef.current.get(id));
-            }
-            return currentWebsites.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s);
-        }
-        
-        return currentWebsites;
-    });
+    const siteToCheck = websitesRef.current.find(s => s.id === id);
 
-    // Ensure siteToCheck is defined and not paused before proceeding
-    if (siteToCheck && !siteToCheck.isPaused && siteToCheck.monitorType !== 'Downtime') {
-        try {
-            const checkStatusFn = monitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
-            const result = await checkStatusFn(siteToCheck);
-            
-            let ttfbResult;
-            if (result.status === 'Up' && monitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-                ttfbResult = await getTtfb({ url: siteToCheck.url });
-            }
-            updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-            updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
-        }
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+        return;
     }
-}, [updateWebsiteState, monitorLocation]);
+
+    setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
+
+    try {
+        const checkStatusFn = monitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
+        const result = await checkStatusFn(siteToCheck);
+        
+        let ttfbResult;
+        if (result.status === 'Up' && monitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+            ttfbResult = await getTtfb({ url: siteToCheck.url });
+        }
+        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+    }
+  }, [monitorLocation, updateWebsiteState]);
 
 
   // Effect for initial load and for rescheduling all checks when pollingInterval changes
@@ -271,24 +265,20 @@ export function useWebsiteMonitoring() {
     timeoutsRef.current.clear();
     
     // Stagger initial checks or re-checks
-    websites.forEach(site => {
-       scheduleCheck(site);
+    websitesRef.current.forEach((site, index) => {
+      // Check if the service is newly added
+      if (site.status === 'Idle') {
+          setTimeout(() => manualCheck(site.id), 100 * (index + 1));
+      } else {
+          scheduleCheck(site);
+      }
     });
     
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, pollingInterval, websites, monitorLocation]);
-
-  // Effect to run checks for newly added websites
-  useEffect(() => {
-    websites.forEach(site => {
-      if (site.status === 'Idle') {
-        setTimeout(() => manualCheck(site.id), 100);
-      }
-    });
-  }, [websites, manualCheck]);
+  }, [isLoading, pollingInterval, monitorLocation]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
@@ -308,7 +298,10 @@ export function useWebsiteMonitoring() {
              toast({ title: 'Duplicate Service', description: 'This service is already being monitored.', variant: 'destructive' });
              return currentWebsites;
          }
-         return [...currentWebsites, newWebsite];
+         const newWebsites = [...currentWebsites, newWebsite];
+         // Trigger a check for the new site
+         setTimeout(() => manualCheck(newWebsite.id), 100);
+         return newWebsites;
      });
   };
   
@@ -433,5 +426,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
-
-    
