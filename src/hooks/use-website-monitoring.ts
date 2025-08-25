@@ -279,7 +279,7 @@ export function useWebsiteMonitoring() {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, pollingInterval, monitorLocation]);
+  }, [isLoading, pollingInterval, websites, monitorLocation]);
 
   // Effect to run checks for newly added websites
   useEffect(() => {
