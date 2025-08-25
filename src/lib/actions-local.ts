@@ -24,10 +24,16 @@ export async function checkStatusLocal(website: Website): Promise<CheckStatusRes
         const startTime = performance.now();
         
         let finalUrl = url;
+        const isIpAddress = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(url);
 
-        // If the URL does not contain a protocol, prepend https://
+        // If the URL does not contain a protocol, prepend one.
+        // Default to http for IP addresses, and https for hostnames.
         if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-            finalUrl = `https://${finalUrl}`;
+            if (isIpAddress) {
+                finalUrl = `http://${finalUrl}`;
+            } else {
+                finalUrl = `https://${finalUrl}`;
+            }
         }
         
         // Use the URL constructor to safely parse and manipulate the URL
