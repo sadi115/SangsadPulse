@@ -16,10 +16,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
+  isPaused?: boolean;
 };
 
-const StatusBadge = ({ status }: StatusDisplayProps) => {
+const StatusBadge = ({ status, isPaused }: StatusDisplayProps) => {
   const current = useMemo(() => {
+    if (isPaused) {
+        return { text: 'Paused', variant: 'outline' as const, className: '' };
+    }
+
     const statusInfo = {
       Up: { text: 'Up', variant: 'success' as const, className: '' },
       Down: { text: 'Down', variant: 'destructive' as const, className: '' },
@@ -31,7 +36,7 @@ const StatusBadge = ({ status }: StatusDisplayProps) => {
       return statusInfo['Idle'];
     }
     return statusInfo[status];
-  }, [status]);
+  }, [status, isPaused]);
 
   if (!current) {
     return null;
@@ -62,14 +67,14 @@ type WebsiteCardProps = {
 export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onClearHistory, onManualCheck, isFirst, isLast, monitorLocation }: WebsiteCardProps) {
   
   const statusColor = useMemo(() => {
+    if (website.isPaused) return 'bg-gray-500';
     switch (website.status) {
       case 'Up': return 'bg-green-500';
       case 'Down': return 'bg-red-500';
       case 'Checking': return 'bg-yellow-500 animate-pulse';
-      case 'Paused': return 'bg-gray-500';
       default: return 'bg-muted';
     }
-  }, [website.status]);
+  }, [website.status, website.isPaused]);
 
   return (
     <Card className={cn(
@@ -98,7 +103,7 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
                 </div>
 
                 <div className="hidden md:flex justify-center">
-                  <StatusBadge status={website.status} />
+                  <StatusBadge status={website.status} isPaused={website.isPaused} />
                 </div>
                 
                 <div className="flex items-center justify-end gap-1">
@@ -158,7 +163,7 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
         <div className="px-4 pb-2 md:hidden">
             <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center justify-center">
-                    <StatusBadge status={website.status} />
+                    <StatusBadge status={website.status} isPaused={website.isPaused} />
                 </div>
                  <div className="flex items-center justify-center font-medium text-muted-foreground">
                     {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}

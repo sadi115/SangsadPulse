@@ -67,7 +67,7 @@ export function SummaryOverview({ websites, isLoading }: SummaryOverviewProps) {
         { name: 'Paused', value: summaryData.Paused, fill: 'var(--color-paused)' },
     ].filter(d => d.value > 0);
 
-    const downSites = websites.filter(site => site.status === 'Down' && site.lastDownTime);
+    const downSites = websites.filter(site => site.status === 'Down' && site.lastDownTime && !site.isPaused);
 
     const lastDown = downSites.sort((a, b) => new Date(b.lastDownTime!).getTime() - new Date(a.lastDownTime!).getTime())[0];
     
