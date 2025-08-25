@@ -231,24 +231,25 @@ export default function MonitoringDashboard() {
                                 <h3 className="flex items-center gap-2 font-semibold"><Network className="h-5 w-5" />Network Configuration</h3>
                                 <div className="space-y-2">
                                   <Label>Monitor From</Label>
-                                  <RadioGroup
-                                    onValueChange={(value) => setMonitorLocation(value as MonitorLocation)}
+                                  <ToggleGroup
+                                    type="single"
+                                    variant="outline"
                                     value={monitorLocation}
-                                    className="grid grid-cols-2 gap-2 pt-1"
-                                    >
-                                    <Label htmlFor="loc-cloud" className="font-normal flex items-center gap-2 border rounded-md p-2 hover:bg-accent cursor-pointer has-[:checked]:bg-accent has-[:checked]:border-primary">
-                                        <RadioGroupItem value="cloud" id="loc-cloud" className="sr-only" />
-                                        <Server className="h-4 w-4" /> Cloud Network
-                                    </Label>
-                                    <Label htmlFor="loc-local" className="font-normal flex items-center gap-2 border rounded-md p-2 hover:bg-accent cursor-pointer has-[:checked]:bg-accent has-[:checked]:border-primary">
-                                        <RadioGroupItem value="local" id="loc-local" className="sr-only"/>
-                                        <Laptop className="h-4 w-4" /> Local Network
-                                    </Label>
-                                     <Label htmlFor="loc-agent" className="font-normal flex items-center gap-2 border rounded-md p-2 hover:bg-accent cursor-pointer has-[:checked]:bg-accent has-[:checked]:border-primary">
-                                        <RadioGroupItem value="agent" id="loc-agent" className="sr-only"/>
-                                        <Satellite className="h-4 w-4" /> Remote Agent
-                                    </Label>
-                                    </RadioGroup>
+                                    onValueChange={(value) => {
+                                      if (value) setMonitorLocation(value as MonitorLocation)
+                                    }}
+                                    className="grid grid-cols-3 w-full"
+                                  >
+                                    <ToggleGroupItem value="cloud" className="flex-1">
+                                      <Server /> Cloud Network
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem value="local" className="flex-1">
+                                      <Laptop /> Local Network
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem value="agent" className="flex-1">
+                                      <Satellite /> Remote Agent
+                                    </ToggleGroupItem>
+                                  </ToggleGroup>
                               </div>
                             </div>
 
