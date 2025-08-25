@@ -35,7 +35,8 @@ const StatusBadge = ({ status, isPaused, uptimePercentage }: StatusDisplayProps)
 
   return (
     <Badge variant={current.variant} className="w-24 justify-center text-sm font-semibold">
-      {(status === 'Up' || status === 'Down') && uptimePercentage !== null && uptimePercentage !== undefined 
+      {isPaused ? current.text :
+       (status === 'Up' || status === 'Down') && uptimePercentage !== null && uptimePercentage !== undefined 
         ? `${uptimePercentage?.toFixed(0)}%` 
         : current.text}
     </Badge>
