@@ -13,11 +13,15 @@ import { format } from 'date-fns';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
+  isPaused?: boolean;
   uptimePercentage?: number | null;
 };
 
-const StatusBadge = ({ status, uptimePercentage }: StatusDisplayProps) => {
+const StatusBadge = ({ status, isPaused, uptimePercentage }: StatusDisplayProps) => {
   const current = useMemo(() => {
+    if (isPaused) {
+      return { text: 'Paused', variant: 'outline' as const };
+    }
     const statusInfo = {
       Up: { text: 'Up', variant: 'success' as const },
       Down: { text: 'Down', variant: 'destructive' as const },
@@ -26,7 +30,7 @@ const StatusBadge = ({ status, uptimePercentage }: StatusDisplayProps) => {
       Paused: { text: 'Paused', variant: 'outline' as const },
     };
     return statusInfo[status];
-  }, [status]);
+  }, [status, isPaused]);
 
 
   return (
@@ -54,6 +58,7 @@ type WebsiteListItemProps = {
 export function WebsiteListItem({ website, onDelete, onEdit, onMove, onTogglePause, onShowHistory, onClearHistory, onManualCheck, isFirst, isLast }: WebsiteListItemProps) {
   
   const statusColor = useMemo(() => {
+    if (website.isPaused) return 'bg-gray-500';
     switch (website.status) {
       case 'Up': return 'bg-green-500';
       case 'Down': return 'bg-red-500';
@@ -61,7 +66,7 @@ export function WebsiteListItem({ website, onDelete, onEdit, onMove, onTogglePau
       case 'Paused': return 'bg-gray-500';
       default: return 'bg-muted';
     }
-  }, [website.status]);
+  }, [website.status, website.isPaused]);
   
   const lastCheckedTime = website.lastChecked 
     ? format(new Date(website.lastChecked), 'hh:mm:ss a')
@@ -76,7 +81,7 @@ export function WebsiteListItem({ website, onDelete, onEdit, onMove, onTogglePau
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
               <div className="flex-1 grid grid-cols-12 items-center gap-4">
                 <div className="col-span-8 md:col-span-4 flex items-center justify-start gap-3">
-                    <StatusBadge status={website.status} uptimePercentage={website.uptimeData?.total} />
+                    <StatusBadge status={website.status} isPaused={website.isPaused} uptimePercentage={website.uptimeData?.total} />
                     <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
                 </div>
                  <div className="hidden md:block md:col-span-4">
