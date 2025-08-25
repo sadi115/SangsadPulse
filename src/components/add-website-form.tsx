@@ -8,19 +8,19 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree, Satellite } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { MonitorType, WebsiteFormData, MonitorLocation } from '@/lib/types';
 
-const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLocation }[] = [
+const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLocation[] }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
-    { label: "TCP Port", value: "TCP Port", disabledFor: 'local' },
-    { label: "Ping", value: "Ping", disabledFor: 'local' },
+    { label: "TCP Port", value: "TCP Port", disabledFor: ['local', 'agent'] },
+    { label: "Ping", value: "Ping", disabledFor: ['local', 'agent'] },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
-    { label: "DNS Records", value: "DNS Records", disabledFor: 'local' },
-    { label: "DNS Lookup", value: "DNS Lookup", disabledFor: 'local' },
-    { label: "SSL Certificate", value: "SSL Certificate", disabledFor: 'local' },
-    { label: "Downtime", value: "Downtime", disabledFor: 'local' },
+    { label: "DNS Records", value: "DNS Records", disabledFor: ['local', 'agent'] },
+    { label: "DNS Lookup", value: "DNS Lookup", disabledFor: ['local', 'agent'] },
+    { label: "SSL Certificate", value: "SSL Certificate", disabledFor: ['local', 'agent'] },
+    { label: "Downtime", value: "Downtime", disabledFor: ['local', 'agent'] },
 ];
 
 const allMonitorTypes = monitorTypes.map(m => m.value);
@@ -78,7 +78,7 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
                             </FormControl>
                             <SelectContent>
                                 {monitorTypes.map(type => (
-                                    <SelectItem key={type.value} value={type.value} disabled={type.disabledFor === monitorLocation}>
+                                    <SelectItem key={type.value} value={type.value} disabled={type.disabledFor?.includes(monitorLocation)}>
                                         <div className="flex items-center gap-2">
                                             {type.value === 'HTTP(s)' && <Globe className="h-4 w-4" />}
                                             {type.value === 'HTTP(s) - Keyword' && <Search className="h-4 w-4" />}

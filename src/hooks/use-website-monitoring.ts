@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -125,12 +126,12 @@ export function useWebsiteMonitoring() {
   const scheduleCheck = useCallback((site: Website) => {
     // Clear any existing timer for this site
     if (timeoutsRef.current.has(site.id)) {
-      clearTimeout(timeoutsRef.current.get(site.id));
+      clearTimeout(timeoutsRef.current.get(site.id)!);
       timeoutsRef.current.delete(site.id);
     }
     
     // Do not schedule if paused or downtime monitor
-    if (site.isPaused || site.monitorType === 'Downtime') {
+    if (site.isPaused || site.monitorType === 'Downtime' || monitorLocation === 'agent') {
       return;
     }
 
@@ -142,7 +143,7 @@ export function useWebsiteMonitoring() {
     }, interval);
 
     timeoutsRef.current.set(site.id, timerId);
-  }, [pollingInterval]);
+  }, [pollingInterval, monitorLocation]);
 
 
   const updateWebsiteState = useCallback((id: string, result: Partial<Website>) => {
@@ -234,7 +235,7 @@ export function useWebsiteMonitoring() {
   const manualCheck = useCallback(async (id: string) => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
 
-    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime') {
+    if (!siteToCheck || siteToCheck.isPaused || siteToCheck.monitorType === 'Downtime' || monitorLocation === 'agent') {
         return;
     }
 
@@ -325,7 +326,7 @@ export function useWebsiteMonitoring() {
 
   const deleteWebsite = (id: string) => {
     if (timeoutsRef.current.has(id)) {
-        clearTimeout(timeoutsRef.current.get(id));
+        clearTimeout(timeoutsRef.current.get(id)!);
         timeoutsRef.current.delete(id);
     }
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
@@ -377,7 +378,7 @@ export function useWebsiteMonitoring() {
                 
                 if (isNowPaused) {
                     if (timeoutsRef.current.has(id)) {
-                        clearTimeout(timeoutsRef.current.get(id));
+                        clearTimeout(timeoutsRef.current.get(id)!);
                         timeoutsRef.current.delete(id);
                     }
                 }

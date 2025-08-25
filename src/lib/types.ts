@@ -14,7 +14,7 @@ export type MonitorType =
   | 'SSL Certificate'
   | 'DNS Lookup';
 
-export type MonitorLocation = 'cloud' | 'local';
+export type MonitorLocation = 'cloud' | 'local' | 'agent';
 
 export type StatusHistory = {
     time: string;

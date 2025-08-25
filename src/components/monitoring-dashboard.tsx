@@ -14,7 +14,7 @@ import { EditWebsiteDialog } from '@/components/edit-website-dialog';
 import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutGrid, List, Bell, Search, Server, Laptop } from 'lucide-react';
+import { LayoutGrid, List, Bell, Search, Server, Laptop, Satellite } from 'lucide-react';
 import { WebsiteCardView, CardSkeleton } from '@/components/website-card-view';
 import { WebsiteListView, ListSkeleton } from '@/components/website-list-view';
 import Image from 'next/image';
@@ -229,7 +229,7 @@ export default function MonitoringDashboard() {
                                   <RadioGroup
                                     onValueChange={(value) => setMonitorLocation(value as MonitorLocation)}
                                     value={monitorLocation}
-                                    className="flex space-x-4 pt-1"
+                                    className="flex space-x-2 sm:space-x-4 pt-1 flex-wrap"
                                     >
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="cloud" id="loc-cloud" />
@@ -238,6 +238,10 @@ export default function MonitoringDashboard() {
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="local" id="loc-local" />
                                         <Label htmlFor="loc-local" className="font-normal flex items-center gap-2"><Laptop className="h-4 w-4" /> Local Network</Label>
+                                    </div>
+                                     <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="agent" id="loc-agent" />
+                                        <Label htmlFor="loc-agent" className="font-normal flex items-center gap-2"><Satellite className="h-4 w-4" /> Remote Agent</Label>
                                     </div>
                                     </RadioGroup>
                               </div>
