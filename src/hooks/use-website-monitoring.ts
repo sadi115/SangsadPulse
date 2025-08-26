@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory, MonitorLocation, HttpClient } from '@/lib/types';
-import { checkStatus as checkStatusCloud, getTtfb } from '@/lib/actions';
+import { checkStatus, getTtfb } from '@/lib/actions';
 import { checkStatusLocal } from '@/lib/actions-local';
 
 const initialWebsites: Website[] = [
@@ -222,7 +222,7 @@ export function useWebsiteMonitoring() {
     });
   }, [toast]);
   
-  const manualCheck = useCallback(async (id: string, client: HttpClient) => {
+  const manualCheck = useCallback(async (id: string, client: HttpClient = 'fetch') => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
     const currentMonitorLocation = monitorLocation;
 
@@ -240,7 +240,7 @@ export function useWebsiteMonitoring() {
     setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
 
     try {
-        const checkStatusFn = currentMonitorLocation === 'local' ? checkStatusLocal : checkStatusCloud;
+        const checkStatusFn = currentMonitorLocation === 'local' ? checkStatusLocal : checkStatus;
         const result = await checkStatusFn(siteToCheck, client);
         
         let ttfbResult;
@@ -277,7 +277,7 @@ export function useWebsiteMonitoring() {
     }, interval);
 
     timeoutsRef.current.set(site.id, timerId);
-  }, [pollingInterval, monitorLocation, manualCheck, updateWebsiteState]);
+  }, [pollingInterval, monitorLocation, updateWebsiteState, manualCheck]);
 
 
   // Effect for initial load and for rescheduling all checks when pollingInterval changes
@@ -290,26 +290,32 @@ export function useWebsiteMonitoring() {
     
     // Stagger initial checks or re-checks
     websitesRef.current.forEach((site, index) => {
-      if (site.status === 'Idle') {
-          setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
-      }
-      // Re-schedule based on its own interval after the initial check
-      scheduleCheck(site, httpClient);
+        setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
     });
     
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-  }, [isLoading, pollingInterval, scheduleCheck, httpClient]);
+  }, [isLoading, pollingInterval, httpClient]);
 
-  // Effect to re-run checks when monitorLocation or httpClient changes
+  // Effect to re-run checks when monitorLocation changes
   useEffect(() => {
       if(isLoading) return;
 
-      websitesRef.current.forEach(site => {
-          setTimeout(() => manualCheck(site.id, httpClient), 100);
+      websitesRef.current.forEach((site, index) => {
+          setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
       });
   }, [monitorLocation, httpClient, isLoading]);
+
+  // This effect runs once after an initial check to schedule subsequent checks
+  useEffect(() => {
+    if (isLoading) return;
+
+    websitesRef.current.forEach((site) => {
+        scheduleCheck(site, httpClient);
+    });
+
+  }, [isLoading, scheduleCheck, httpClient]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
