@@ -12,7 +12,7 @@ import https from 'https';
 import axios from 'axios';
 import ky from 'ky';
 import got from 'got';
-import { request as undiciRequest } from 'undici';
+import { request as undiciRequest, Agent } from 'undici';
 import fetch, { type RequestInit } from 'node-fetch';
 
 
@@ -209,15 +209,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 throwHttpErrors: false,
                 cache: 'no-store',
                 retry: 0,
-                hooks: {
-                    beforeRequest: [
-                        (request) => {
-                            if (new URL(request.url).protocol === 'https:') {
-                                request.agent = httpsAgent;
-                            }
-                        },
-                    ],
-                }
+                agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
             });
             responseStatus = response.status;
             responseStatusText = response.statusText;
@@ -242,6 +234,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 maxRedirections: 10,
                 bodyTimeout: 10000,
                 headersTimeout: 10000,
+                dispatcher: new Agent({ connect: { rejectUnauthorized: false } }),
             });
             responseStatus = statusCode;
             responseStatusText = ''; 
@@ -264,8 +257,9 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 redirect: 'follow',
                 cache: 'no-store',
             };
-
-            if ('agent' in fetchOptions && new URL(currentUrl).protocol === 'https:') {
+            
+            // This is a workaround to allow ignoring SSL errors in Node's native fetch
+            if (new URL(currentUrl).protocol === 'https:') {
                  (fetchOptions as any).agent = httpsAgent;
             }
             
@@ -317,7 +311,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         return {
             status: 'Down',
             httpResponse: message,
-            lastChecked: new Date().toISOString(),
+            lastChecked: new new Date().toISOString(),
             latency: 0,
         };
     }
@@ -465,13 +459,11 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
 
       let hostname = url;
       try {
-        // This regex is a bit more robust for extracting hostname from various URL-like strings
-        const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/);
-        if (match) {
-            hostname = match[1];
+        if (net.isIP(url) === 0) {
+            const urlObject = new URL(url.startsWith('http') ? url : `https://${url}`);
+            hostname = urlObject.hostname;
         }
       } catch (e) {
-          // If regex fails, fallback to original url (likely an IP address or simple hostname)
           hostname = url;
       }
 
@@ -503,25 +495,32 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
   } catch (error) {
      let message = 'Invalid URL or Host.';
      if (error instanceof TypeError && error.message.includes('Invalid URL')) {
+        let hostname;
+        try {
+            hostname = new URL(url).hostname;
+        } catch {
+            hostname = url;
+        }
+
         switch(monitorType) {
             case 'TCP Port':
                 if (!port) {
                     return { status: 'Down', httpResponse: 'Port is not specified for TCP check', lastChecked: new Date().toISOString(), latency: 0 };
                 }
-                return checkTcpPort(url, port);
+                return checkTcpPort(hostname, port);
             case 'Ping':
                  const pingPort = url.startsWith('https://') ? 443 : 80;
-                 const result = await checkTcpPort(url, port || pingPort);
+                 const result = await checkTcpPort(hostname, port || pingPort);
                  if(result.status === 'Up') {
                     return { ...result, httpResponse: `Host is reachable` };
                 }
                 return { ...result, httpResponse: `Host is unreachable. Reason: ${result.httpResponse}` };
             case 'DNS Records':
-                return checkDns(url);
+                return checkDns(hostname);
              case 'DNS Lookup':
-                return checkDnsLookup(url);
+                return checkDnsLookup(hostname);
             case 'SSL Certificate':
-                return checkSslCertificate(url);
+                return checkSslCertificate(hostname);
             default:
                  return { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
         }
