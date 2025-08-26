@@ -196,14 +196,21 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             responseStatusText = response.statusText;
             responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
         } else { // fetch
-            const response = await fetch(currentUrl, {
+            const fetchOptions: RequestInit & { agent?: any } = {
                 method: httpMethod || 'GET',
                 headers,
                 redirect: 'follow',
                 cache: 'no-store',
-                // @ts-ignore
-                agent: (url: URL) => (url.protocol === 'https:' ? httpsAgent : undefined)
-            });
+            };
+
+            // Undici (node's fetch) doesn't have a simple rejectUnauthorized flag.
+            // We must pass a custom agent to disable it.
+            if (new URL(currentUrl).protocol === 'https:') {
+                fetchOptions.agent = httpsAgent;
+            }
+            
+            const response = await fetch(currentUrl, fetchOptions);
+
             responseStatus = response.status;
             responseStatusText = response.statusText;
             // Always get the response text for keyword checks
