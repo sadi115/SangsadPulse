@@ -288,7 +288,7 @@ export default function MonitoringDashboard() {
                                 <div className="space-y-2">
                                     <Label>HTTP Client</Label>
                                      <RadioGroup
-                                        onValueChange={(value) => setHttpClient(value as 'fetch' | 'axios')}
+                                        onValueChange={(value) => setHttpClient(value as 'fetch' | 'axios' | 'ky' | 'got' | 'undici')}
                                         value={httpClient}
                                         className="flex space-x-2 sm:space-x-4 pt-1 flex-wrap"
                                     >
@@ -299,6 +299,18 @@ export default function MonitoringDashboard() {
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="axios" id="client-axios" />
                                             <Label htmlFor="client-axios" className="font-normal">Axios</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="ky" id="client-ky" />
+                                            <Label htmlFor="client-ky" className="font-normal">Ky</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="got" id="client-got" />
+                                            <Label htmlFor="client-got" className="font-normal">Got</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="undici" id="client-undici" />
+                                            <Label htmlFor="client-undici" className="font-normal">Undici</Label>
                                         </div>
                                     </RadioGroup>
                                 </div>

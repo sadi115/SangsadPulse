@@ -10,6 +10,10 @@ import dns from 'dns';
 import { promisify } from 'util';
 import https from 'https';
 import axios from 'axios';
+import ky from 'ky';
+import got from 'got';
+import { request as undiciRequest } from 'undici';
+
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'> & { resolvedUrl?: string };
 
@@ -195,6 +199,47 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             responseStatus = response.status;
             responseStatusText = response.statusText;
             responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+        } else if (httpClient === 'ky') {
+             const response = await ky(currentUrl, {
+                method: httpMethod || 'GET',
+                headers,
+                timeout: 10000,
+                redirect: 'follow',
+                throwHttpErrors: false,
+                cache: 'no-store',
+                retry: 0,
+            });
+            responseStatus = response.status;
+            responseStatusText = response.statusText;
+            responseData = await response.text();
+        } else if (httpClient === 'got') {
+            const response = await got(currentUrl, {
+                method: httpMethod || 'GET',
+                headers,
+                timeout: { request: 10000 },
+                followRedirect: true,
+                throwHttpErrors: false,
+                https: { rejectUnauthorized: false },
+                retry: { limit: 0 },
+            });
+            responseStatus = response.statusCode;
+            responseStatusText = response.statusMessage || '';
+            responseData = response.body;
+        } else if (httpClient === 'undici') {
+            const { statusCode, body } = await undiciRequest(currentUrl, {
+                method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
+                headers,
+                maxRedirections: 10,
+                bodyTimeout: 10000,
+                headersTimeout: 10000,
+                // Undici doesn't have a direct rejectUnauthorized option here.
+                // It relies on the global agent or creating a custom dispatcher.
+                // For simplicity, we're assuming a permissive environment or will
+                // rely on the default behavior for this client.
+            });
+            responseStatus = statusCode;
+            responseStatusText = ''; // Undici does not provide status text directly
+            responseData = await body.text();
         } else { // fetch
             const fetchOptions: RequestInit & { agent?: any } = {
                 method: httpMethod || 'GET',
@@ -213,7 +258,6 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
 
             responseStatus = response.status;
             responseStatusText = response.statusText;
-            // Always get the response text for keyword checks
             responseData = await response.text();
         }
         
@@ -405,13 +449,15 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
       }
 
       let hostname = url;
-      if (!monitorType.startsWith('HTTP')) {
-          try {
-              const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
-              hostname = urlObject.hostname;
-          } catch (e) {
-              hostname = url;
-          }
+      try {
+        // This regex is a bit more robust for extracting hostname from various URL-like strings
+        const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/);
+        if (match) {
+            hostname = match[1];
+        }
+      } catch (e) {
+          // If regex fails, fallback to original url (likely an IP address or simple hostname)
+          hostname = url;
       }
 
 
