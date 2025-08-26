@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory, MonitorLocation, HttpClient } from '@/lib/types';
 import { checkStatus, getTtfb } from '@/lib/actions';
-import { checkStatusLocal } from '@/lib/actions-local';
 
 const initialWebsites: Website[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 0, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
@@ -240,11 +239,11 @@ export function useWebsiteMonitoring() {
     setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
 
     try {
-        const checkStatusFn = currentMonitorLocation === 'local' ? checkStatusLocal : checkStatus;
-        const result = await checkStatusFn(siteToCheck, client);
+        // All checks now run server-side
+        const result = await checkStatus(siteToCheck, client);
         
         let ttfbResult;
-        if (result.status === 'Up' && currentMonitorLocation === 'cloud' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
+        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
             ttfbResult = await getTtfb({ url: siteToCheck.url });
         }
         updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
@@ -255,7 +254,7 @@ export function useWebsiteMonitoring() {
   }, [monitorLocation, updateWebsiteState]);
 
 
-  const scheduleCheck = useCallback((site: Website, client: HttpClient) => {
+  const scheduleCheck = useCallback((site: Website) => {
     // Clear any existing timer for this site
     if (timeoutsRef.current.has(site.id)) {
       clearTimeout(timeoutsRef.current.get(site.id)!);
@@ -273,11 +272,11 @@ export function useWebsiteMonitoring() {
     const interval = (site.pollingInterval ?? pollingInterval) * 1000;
 
     const timerId = setTimeout(() => {
-      manualCheck(site.id, client);
+      manualCheck(site.id, httpClient);
     }, interval);
 
     timeoutsRef.current.set(site.id, timerId);
-  }, [pollingInterval, monitorLocation, updateWebsiteState, manualCheck]);
+  }, [pollingInterval, monitorLocation, updateWebsiteState, manualCheck, httpClient]);
 
 
   // Effect for initial load and for rescheduling all checks when pollingInterval changes
@@ -298,7 +297,7 @@ export function useWebsiteMonitoring() {
     };
   }, [isLoading, pollingInterval, httpClient]);
 
-  // Effect to re-run checks when monitorLocation changes
+  // Effect to re-run checks when monitorLocation or httpClient changes
   useEffect(() => {
       if(isLoading) return;
 
@@ -312,10 +311,10 @@ export function useWebsiteMonitoring() {
     if (isLoading) return;
 
     websitesRef.current.forEach((site) => {
-        scheduleCheck(site, httpClient);
+        scheduleCheck(site);
     });
 
-  }, [isLoading, scheduleCheck, httpClient]);
+  }, [isLoading, scheduleCheck]);
 
 
   const addWebsite = (data: WebsiteFormData) => {

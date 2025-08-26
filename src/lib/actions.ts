@@ -268,7 +268,7 @@ async function checkDns(host: string): Promise<CheckStatusResult> {
             if (hostnames && hostnames.length > 0) {
                  return {
                     status: 'Up',
-                    httpResponse: `Reverse DNS resolved successfully.`,
+                    httpResponse: `Reverse DNS resolved to: ${hostnames.join(', ')}`,
                     lastChecked: new Date().toISOString(),
                     latency: Math.max(1, Math.round(endTime - startTime)),
                 };
@@ -288,7 +288,7 @@ async function checkDns(host: string): Promise<CheckStatusResult> {
             if (records && records.length > 0) {
                 return {
                     status: 'Up',
-                    httpResponse: `DNS resolved successfully.`,
+                    httpResponse: `DNS resolved to: ${records.join(', ')}`,
                     lastChecked: new Date().toISOString(),
                     latency: Math.max(1, Math.round(endTime - startTime)),
                 };
@@ -400,11 +400,15 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
       }
 
       let hostname = url;
-      try {
-        const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
-        hostname = urlObject.hostname || url;
-      } catch (e) {
-        hostname = url;
+      // For non-HTTP checks, extract hostname from URL if necessary, but prioritize the raw string if it's not a valid URL format.
+      if (!monitorType.startsWith('HTTP')) {
+          try {
+              const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
+              hostname = urlObject.hostname;
+          } catch (e) {
+              // It's likely not a full URL (e.g., just an IP or hostname), so use the raw string.
+              hostname = url;
+          }
       }
 
 
@@ -415,8 +419,9 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
             }
             return checkTcpPort(hostname, port);
         case 'Ping':
+            // A basic TCP connect can serve as a ping. Default to port 80/443 for web servers.
             const pingPort = url.startsWith('https://') ? 443 : 80;
-            const result = await checkTcpPort(hostname, pingPort);
+            const result = await checkTcpPort(hostname, port || pingPort);
             if(result.status === 'Up') {
                 return { ...result, httpResponse: `Host is reachable` };
             }
@@ -435,6 +440,7 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
   } catch (error) {
      let message = 'Invalid URL or Host.';
      if (error instanceof TypeError && error.message.includes('Invalid URL')) {
+        // Fallback for raw hostnames/IPs that fail URL parsing for non-HTTP checks
         switch(monitorType) {
             case 'TCP Port':
                 if (!port) {
@@ -442,13 +448,18 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
                 }
                 return checkTcpPort(url, port);
             case 'Ping':
-                const result = await checkTcpPort(url, 80);
+                 const pingPort = url.startsWith('https://') ? 443 : 80;
+                 const result = await checkTcpPort(url, port || pingPort);
                  if(result.status === 'Up') {
                     return { ...result, httpResponse: `Host is reachable` };
                 }
                 return { ...result, httpResponse: `Host is unreachable. Reason: ${result.httpResponse}` };
             case 'DNS Records':
                 return checkDns(url);
+             case 'DNS Lookup':
+                return checkDnsLookup(url);
+            case 'SSL Certificate':
+                return checkSslCertificate(url);
             default:
                  return { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
         }
