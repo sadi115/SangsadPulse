@@ -11,7 +11,7 @@ import { promisify } from 'util';
 import https from 'https';
 import axios from 'axios';
 
-type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'>;
+type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'> & { resolvedUrl?: string };
 
 const dnsResolve = promisify(dns.resolve);
 const dnsResolveMx = promisify(dns.resolveMx);
@@ -233,23 +233,23 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
              }
         }
         
-        return { status, httpResponse: responseText, latency };
+        return { status, httpResponse: responseText, latency, resolvedUrl: currentUrl };
     };
 
     try {
-        const { status, httpResponse, latency } = await attemptRequest(url);
+        const { status, httpResponse, latency, resolvedUrl } = await attemptRequest(url);
         return {
             status,
             httpResponse,
             lastChecked: new Date().toISOString(),
             latency,
+            resolvedUrl,
         };
     } catch (error: any) {
         let message = 'An unknown error occurred.';
         if (axios.isAxiosError(error)) {
             message = `Request failed: ${error.code || error.message}`;
         } else if (error && typeof error === 'object' && 'cause' in error) {
-            // Handle node-fetch errors which often have a 'cause' property
             const cause = error.cause as any;
             message = `Request failed: ${cause.code || cause.message || 'fetch failed'}`;
         } else if (error instanceof Error) {
@@ -347,9 +347,7 @@ async function checkDnsLookup(host: string): Promise<CheckStatusResult> {
                     results[type] = records;
                 }
             } catch (error: any) {
-                // Ignore errors for specific record types (e.g., NODATA)
                 if (error.code !== 'ENODATA' && error.code !== 'ENOTFOUND') {
-                   // console.warn(`DNS lookup for ${type} failed: ${error.message}`);
                 }
             }
         }
@@ -407,13 +405,11 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
       }
 
       let hostname = url;
-      // For non-HTTP checks, extract hostname from URL if necessary, but prioritize the raw string if it's not a valid URL format.
       if (!monitorType.startsWith('HTTP')) {
           try {
               const urlObject = new URL(url.includes('://') ? url : `http://${url}`);
               hostname = urlObject.hostname;
           } catch (e) {
-              // It's likely not a full URL (e.g., just an IP or hostname), so use the raw string.
               hostname = url;
           }
       }
@@ -426,7 +422,6 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
             }
             return checkTcpPort(hostname, port);
         case 'Ping':
-            // A basic TCP connect can serve as a ping. Default to port 80/443 for web servers.
             const pingPort = url.startsWith('https://') ? 443 : 80;
             const result = await checkTcpPort(hostname, port || pingPort);
             if(result.status === 'Up') {
@@ -447,7 +442,6 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
   } catch (error) {
      let message = 'Invalid URL or Host.';
      if (error instanceof TypeError && error.message.includes('Invalid URL')) {
-        // Fallback for raw hostnames/IPs that fail URL parsing for non-HTTP checks
         switch(monitorType) {
             case 'TCP Port':
                 if (!port) {

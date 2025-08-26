@@ -223,49 +223,46 @@ export function useWebsiteMonitoring() {
   
   const manualCheck = useCallback(async (id: string, client: HttpClient = 'fetch') => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
-    const currentMonitorLocation = monitorLocation;
+    if (!siteToCheck || siteToCheck.isPaused) {
+        if (siteToCheck?.isPaused) {
+            updateWebsiteState(id, { status: 'Paused', httpResponse: 'Monitoring is paused.' });
+        }
+        return;
+    }
 
-    if (!siteToCheck || siteToCheck.isPaused || currentMonitorLocation === 'agent') {
-      if (currentMonitorLocation === 'agent') {
+    if (monitorLocation === 'agent') {
         if (timeoutsRef.current.has(id)) {
             clearTimeout(timeoutsRef.current.get(id)!);
             timeoutsRef.current.delete(id);
         }
         updateWebsiteState(id, { status: 'Idle', httpResponse: 'Waiting for remote agent.' });
-      }
-      return;
+        return;
     }
 
     setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
 
     try {
-        // All checks now run server-side
         const result = await checkStatus(siteToCheck, client);
         
         let ttfbResult;
-        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword')) {
-            ttfbResult = await getTtfb({ url: siteToCheck.url });
+        if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword') && result.resolvedUrl) {
+            ttfbResult = await getTtfb({ url: result.resolvedUrl });
         }
         updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
     }
-  }, [monitorLocation, updateWebsiteState]);
+  }, [monitorLocation, updateWebsiteState, httpClient]);
 
 
   const scheduleCheck = useCallback((site: Website) => {
-    // Clear any existing timer for this site
     if (timeoutsRef.current.has(site.id)) {
       clearTimeout(timeoutsRef.current.get(site.id)!);
       timeoutsRef.current.delete(site.id);
     }
     
-    // Do not schedule if paused or if location is agent
-    if (site.isPaused || monitorLocation === 'agent') {
-      if (monitorLocation === 'agent') {
-         updateWebsiteState(site.id, { status: 'Idle', httpResponse: 'Waiting for remote agent.' });
-      }
+    if (site.isPaused) {
       return;
     }
 
@@ -276,18 +273,15 @@ export function useWebsiteMonitoring() {
     }, interval);
 
     timeoutsRef.current.set(site.id, timerId);
-  }, [pollingInterval, monitorLocation, updateWebsiteState, manualCheck, httpClient]);
+  }, [pollingInterval, manualCheck, httpClient]);
 
 
-  // Effect for initial load and for rescheduling all checks when pollingInterval changes
   useEffect(() => {
     if (isLoading) return;
     
-    // Clear all previous timeouts
     timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     timeoutsRef.current.clear();
     
-    // Stagger initial checks or re-checks
     websitesRef.current.forEach((site, index) => {
         setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
     });
@@ -295,18 +289,8 @@ export function useWebsiteMonitoring() {
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-  }, [isLoading, pollingInterval, httpClient]);
+  }, [isLoading, pollingInterval, httpClient, monitorLocation]);
 
-  // Effect to re-run checks when monitorLocation or httpClient changes
-  useEffect(() => {
-      if(isLoading) return;
-
-      websitesRef.current.forEach((site, index) => {
-          setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
-      });
-  }, [monitorLocation, httpClient, isLoading]);
-
-  // This effect runs once after an initial check to schedule subsequent checks
   useEffect(() => {
     if (isLoading) return;
 
@@ -314,7 +298,7 @@ export function useWebsiteMonitoring() {
         scheduleCheck(site);
     });
 
-  }, [isLoading, scheduleCheck]);
+  }, [isLoading, websites, scheduleCheck]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
@@ -335,7 +319,6 @@ export function useWebsiteMonitoring() {
              return currentWebsites;
          }
          const newWebsites = [...currentWebsites, newWebsite];
-         // Trigger a check for the new site
          setTimeout(() => manualCheck(newWebsite.id, httpClient), 100);
          return newWebsites;
      });
@@ -353,7 +336,6 @@ export function useWebsiteMonitoring() {
         
         const newWebsites = [...currentWebsites];
         newWebsites[siteIndex] = updatedSite;
-        // Trigger a re-check immediately after editing
         setTimeout(() => manualCheck(id, httpClient), 100);
         return newWebsites;
     });
@@ -424,7 +406,6 @@ export function useWebsiteMonitoring() {
         return newWebsites;
     });
 
-    // If we un-paused it, schedule a check
     if (siteToUpdate && !siteToUpdate.isPaused) {
         setTimeout(() => manualCheck(siteToUpdate!.id, httpClient), 100);
     }
