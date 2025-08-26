@@ -13,6 +13,7 @@ import axios from 'axios';
 import ky from 'ky';
 import got from 'got';
 import { request as undiciRequest } from 'undici';
+import fetch, { type RequestInit } from 'node-fetch';
 
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'> & { resolvedUrl?: string };
@@ -194,7 +195,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 timeout: 10000,
                 maxRedirects: 10,
                 httpsAgent,
-                validateStatus: () => true, // Accept any status code
+                validateStatus: () => true,
             });
             responseStatus = response.status;
             responseStatusText = response.statusText;
@@ -208,6 +209,15 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 throwHttpErrors: false,
                 cache: 'no-store',
                 retry: 0,
+                hooks: {
+                    beforeRequest: [
+                        (request) => {
+                            if (new URL(request.url).protocol === 'https:') {
+                                request.agent = httpsAgent;
+                            }
+                        },
+                    ],
+                }
             });
             responseStatus = response.status;
             responseStatusText = response.statusText;
@@ -232,29 +242,34 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 maxRedirections: 10,
                 bodyTimeout: 10000,
                 headersTimeout: 10000,
-                // Undici doesn't have a direct rejectUnauthorized option here.
-                // It relies on the global agent or creating a custom dispatcher.
-                // For simplicity, we're assuming a permissive environment or will
-                // rely on the default behavior for this client.
             });
             responseStatus = statusCode;
-            responseStatusText = ''; // Undici does not provide status text directly
+            responseStatusText = ''; 
             responseData = await body.text();
-        } else { // fetch
-            const fetchOptions: RequestInit & { agent?: any } = {
+        } else if (httpClient === 'node-fetch') {
+            const fetchOptions: RequestInit = {
+                method: httpMethod || 'GET',
+                headers,
+                redirect: 'follow',
+                agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined
+            };
+            const response = await fetch(currentUrl, fetchOptions);
+            responseStatus = response.status;
+            responseStatusText = response.statusText;
+            responseData = await response.text();
+        } else { // native fetch
+            const fetchOptions: globalThis.RequestInit = {
                 method: httpMethod || 'GET',
                 headers,
                 redirect: 'follow',
                 cache: 'no-store',
             };
 
-            // Undici (node's fetch) doesn't have a simple rejectUnauthorized flag.
-            // We must pass a custom agent to disable it.
-            if (new URL(currentUrl).protocol === 'https:') {
-                fetchOptions.agent = httpsAgent;
+            if ('agent' in fetchOptions && new URL(currentUrl).protocol === 'https:') {
+                 (fetchOptions as any).agent = httpsAgent;
             }
             
-            const response = await fetch(currentUrl, fetchOptions);
+            const response = await globalThis.fetch(currentUrl, fetchOptions);
 
             responseStatus = response.status;
             responseStatusText = response.statusText;

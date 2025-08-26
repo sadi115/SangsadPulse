@@ -22,7 +22,7 @@ export type MonitorType =
 
 export type MonitorLocation = 'cloud' | 'local' | 'agent';
 
-export type HttpClient = 'fetch' | 'axios' | 'ky' | 'got' | 'undici';
+export type HttpClient = 'fetch' | 'axios' | 'ky' | 'got' | 'undici' | 'node-fetch';
 
 export type StatusHistory = {
     time: string;

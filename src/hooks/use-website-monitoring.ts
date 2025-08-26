@@ -221,7 +221,7 @@ export function useWebsiteMonitoring() {
     });
   }, [toast]);
   
-  const manualCheck = useCallback(async (id: string, client: HttpClient = 'fetch') => {
+  const manualCheck = useCallback(async (id: string, client: HttpClient) => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
     if (!siteToCheck || siteToCheck.isPaused) {
         if (siteToCheck?.isPaused) {
@@ -253,7 +253,7 @@ export function useWebsiteMonitoring() {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
     }
-  }, [monitorLocation, updateWebsiteState, httpClient]);
+  }, [monitorLocation, updateWebsiteState]);
 
 
   const scheduleCheck = useCallback((site: Website) => {
@@ -289,7 +289,7 @@ export function useWebsiteMonitoring() {
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-  }, [isLoading, pollingInterval, httpClient, monitorLocation]);
+  }, [isLoading, pollingInterval, httpClient, monitorLocation, manualCheck]);
 
   useEffect(() => {
     if (isLoading) return;

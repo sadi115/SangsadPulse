@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Website, WebsiteFormData, MonitorLocation } from '@/lib/types';
+import type { Website, WebsiteFormData, MonitorLocation, HttpClient } from '@/lib/types';
 import { AddWebsiteForm } from '@/components/add-website-form';
 import { SummaryOverview } from '@/components/summary-overview';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -288,13 +288,17 @@ export default function MonitoringDashboard() {
                                 <div className="space-y-2">
                                     <Label>HTTP Client</Label>
                                      <RadioGroup
-                                        onValueChange={(value) => setHttpClient(value as 'fetch' | 'axios' | 'ky' | 'got' | 'undici')}
+                                        onValueChange={(value) => setHttpClient(value as HttpClient)}
                                         value={httpClient}
                                         className="flex space-x-2 sm:space-x-4 pt-1 flex-wrap"
                                     >
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="fetch" id="client-fetch" />
                                             <Label htmlFor="client-fetch" className="font-normal">Fetch</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="node-fetch" id="client-node-fetch" />
+                                            <Label htmlFor="client-node-fetch" className="font-normal">Node-Fetch</Label>
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="axios" id="client-axios" />
