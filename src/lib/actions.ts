@@ -311,7 +311,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         return {
             status: 'Down',
             httpResponse: message,
-            lastChecked: new new Date().toISOString(),
+            lastChecked: new Date().toISOString(),
             latency: 0,
         };
     }
