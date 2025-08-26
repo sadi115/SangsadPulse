@@ -91,9 +91,9 @@ export async function checkStatusLocal(website: Website, httpClient: HttpClient)
     } catch (error: unknown) {
         let message = 'Request failed. This could be due to a network error or a CORS policy blocking the request from the browser. Check the browser console for more details.';
         
-        if (error instanceof TypeError) { // Catch CORS and other network errors
+        if (error instanceof TypeError) { // Catches fetch() CORS/network errors
              message = `Request failed: ${error.message}. Check browser console for CORS errors.`;
-        } else if (axios.isAxiosError(error)) {
+        } else if (axios.isAxiosError(error)) { // Catches axios CORS/network errors
              message = `Request failed: ${error.message}. Check browser console for CORS errors.`;
         }
 

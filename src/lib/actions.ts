@@ -239,10 +239,14 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             lastChecked: new Date().toISOString(),
             latency,
         };
-    } catch (error: unknown) {
+    } catch (error: any) {
         let message = 'An unknown error occurred.';
         if (axios.isAxiosError(error)) {
             message = `Request failed: ${error.code || error.message}`;
+        } else if (error && typeof error === 'object' && 'cause' in error) {
+            // Handle node-fetch errors which often have a 'cause' property
+            const cause = error.cause as any;
+            message = `Request failed: ${cause.code || cause.message || 'fetch failed'}`;
         } else if (error instanceof Error) {
              message = `Request failed: ${error.message}`;
         }
