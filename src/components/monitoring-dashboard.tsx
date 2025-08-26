@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWebsiteMonitoring } from '@/hooks/use-website-monitoring';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 
 export default function MonitoringDashboard() {
   const {
@@ -229,28 +230,57 @@ export default function MonitoringDashboard() {
                           <CardContent className="space-y-6">
                             <div className="space-y-4 rounded-lg border p-4">
                                 <h3 className="flex items-center gap-2 font-semibold"><Network className="h-5 w-5" />Network Configuration</h3>
-                                <div className="space-y-2">
-                                  <Label>Monitor From</Label>
-                                  <ToggleGroup
-                                    type="single"
-                                    variant="outline"
+                                <RadioGroup
                                     value={monitorLocation}
-                                    onValueChange={(value) => {
-                                      if (value) setMonitorLocation(value as MonitorLocation)
-                                    }}
-                                    className="flex-col sm:flex-row w-full h-auto sm:h-10"
-                                  >
-                                    <ToggleGroupItem value="cloud" className="flex-1 w-full">
-                                      <Server /> Cloud Network
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem value="local" className="flex-1 w-full">
-                                      <Laptop /> Local Network
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem value="agent" className="flex-1 w-full">
-                                      <Satellite /> Remote Agent
-                                    </ToggleGroupItem>
-                                  </ToggleGroup>
-                              </div>
+                                    onValueChange={(value) => setMonitorLocation(value as MonitorLocation)}
+                                    className="grid grid-cols-1 gap-4"
+                                >
+                                    <div>
+                                        <Label htmlFor="loc-cloud" className={cn(
+                                            "flex flex-col items-start rounded-lg border p-4 cursor-pointer transition-all",
+                                            monitorLocation === 'cloud' && "border-primary ring-2 ring-primary"
+                                        )}>
+                                            <div className="flex items-center justify-between w-full">
+                                                <div className="flex items-center gap-3">
+                                                    <Server className="h-5 w-5" />
+                                                    <span className="font-semibold">Cloud Network</span>
+                                                </div>
+                                                <RadioGroupItem value="cloud" id="loc-cloud" />
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from the public internet (server-side).</p>
+                                        </Label>
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="loc-local" className={cn(
+                                            "flex flex-col items-start rounded-lg border p-4 cursor-pointer transition-all",
+                                            monitorLocation === 'local' && "border-primary ring-2 ring-primary"
+                                        )}>
+                                            <div className="flex items-center justify-between w-full">
+                                                <div className="flex items-center gap-3">
+                                                    <Laptop className="h-5 w-5" />
+                                                    <span className="font-semibold">Local Network</span>
+                                                </div>
+                                                <RadioGroupItem value="local" id="loc-local" />
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from your local browser (client-side).</p>
+                                        </Label>
+                                    </div>
+                                    <div>
+                                         <Label htmlFor="loc-agent" className={cn(
+                                            "flex flex-col items-start rounded-lg border p-4 cursor-pointer transition-all",
+                                            monitorLocation === 'agent' && "border-primary ring-2 ring-primary"
+                                        )}>
+                                            <div className="flex items-center justify-between w-full">
+                                                <div className="flex items-center gap-3">
+                                                    <Satellite className="h-5 w-5" />
+                                                    <span className="font-semibold">Remote Agent</span>
+                                                </div>
+                                                <RadioGroupItem value="agent" id="loc-agent" />
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from a dedicated, remote agent.</p>
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
                             </div>
 
                              <div className="space-y-4 rounded-lg border p-4">
