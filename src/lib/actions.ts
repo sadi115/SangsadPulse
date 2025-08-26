@@ -259,23 +259,24 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             responseStatusText = response.statusText;
             responseData = await response.text();
         } else { // native fetch
-            const fetchOptions: globalThis.RequestInit = {
-                method: httpMethod || 'GET',
-                headers,
-                redirect: 'follow',
-                cache: 'no-store',
-            };
-            
-            // This is a workaround to allow ignoring SSL errors in Node's native fetch
-            if (new URL(currentUrl).protocol === 'https:') {
-                 (fetchOptions as any).agent = httpsAgent;
+            const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+            try {
+                if (new URL(currentUrl).protocol === 'https:') {
+                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+                }
+                const fetchOptions: globalThis.RequestInit = {
+                    method: httpMethod || 'GET',
+                    headers,
+                    redirect: 'follow',
+                    cache: 'no-store',
+                };
+                const response = await globalThis.fetch(currentUrl, fetchOptions);
+                responseStatus = response.status;
+                responseStatusText = response.statusText;
+                responseData = await response.text();
+            } finally {
+                process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalRejectUnauthorized;
             }
-            
-            const response = await globalThis.fetch(currentUrl, fetchOptions);
-
-            responseStatus = response.status;
-            responseStatusText = response.statusText;
-            responseData = await response.text();
         }
         
         const endTime = performance.now();
