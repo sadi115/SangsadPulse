@@ -206,9 +206,8 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             });
             responseStatus = response.status;
             responseStatusText = response.statusText;
-            if (monitorType === 'HTTP(s) - Keyword' && keyword) {
-                 responseData = await response.text();
-            }
+            // Always get the response text for keyword checks
+            responseData = await response.text();
         }
         
         const endTime = performance.now();

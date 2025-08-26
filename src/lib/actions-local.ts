@@ -63,9 +63,8 @@ export async function checkStatusLocal(website: Website, httpClient: HttpClient)
             });
             responseStatus = response.status;
             responseStatusText = response.statusText;
-            if (monitorType === 'HTTP(s) - Keyword' && keyword) {
-                 responseData = await response.text();
-            }
+            // Always try to get the text for keyword checks
+            responseData = await response.text();
         }
 
         const endTime = performance.now();

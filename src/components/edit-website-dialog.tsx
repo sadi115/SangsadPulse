@@ -218,7 +218,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                         <FormControl>
                             <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input placeholder="e.g. 'verification_code'" {...field} value={field.value ?? ''} className="pl-10" />
+                            <Input placeholder="e.g., 'status':'ok' or '<!-- monitoring:ok -->'" {...field} value={field.value ?? ''} className="pl-10" />
                             </div>
                         </FormControl>
                         <FormMessage />
