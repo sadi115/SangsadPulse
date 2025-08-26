@@ -222,7 +222,7 @@ export function useWebsiteMonitoring() {
     });
   }, [toast]);
   
-  const manualCheck = useCallback(async (id: string, client: HttpClient = 'fetch') => {
+  const manualCheck = useCallback(async (id: string, client: HttpClient) => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
     const currentMonitorLocation = monitorLocation;
 
@@ -255,7 +255,7 @@ export function useWebsiteMonitoring() {
   }, [monitorLocation, updateWebsiteState]);
 
 
-  const scheduleCheck = useCallback((site: Website) => {
+  const scheduleCheck = useCallback((site: Website, client: HttpClient) => {
     // Clear any existing timer for this site
     if (timeoutsRef.current.has(site.id)) {
       clearTimeout(timeoutsRef.current.get(site.id)!);
@@ -264,17 +264,20 @@ export function useWebsiteMonitoring() {
     
     // Do not schedule if paused or if location is agent
     if (site.isPaused || monitorLocation === 'agent') {
+      if (monitorLocation === 'agent') {
+         updateWebsiteState(site.id, { status: 'Idle', httpResponse: 'Waiting for remote agent.' });
+      }
       return;
     }
 
     const interval = (site.pollingInterval ?? pollingInterval) * 1000;
 
     const timerId = setTimeout(() => {
-      manualCheck(site.id, httpClient);
+      manualCheck(site.id, client);
     }, interval);
 
     timeoutsRef.current.set(site.id, timerId);
-  }, [pollingInterval, monitorLocation, httpClient, manualCheck]);
+  }, [pollingInterval, monitorLocation, manualCheck, updateWebsiteState]);
 
 
   // Effect for initial load and for rescheduling all checks when pollingInterval changes
@@ -291,13 +294,13 @@ export function useWebsiteMonitoring() {
           setTimeout(() => manualCheck(site.id, httpClient), 100 * (index + 1));
       }
       // Re-schedule based on its own interval after the initial check
-      scheduleCheck(site);
+      scheduleCheck(site, httpClient);
     });
     
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-  }, [isLoading, pollingInterval, scheduleCheck, httpClient, manualCheck]);
+  }, [isLoading, pollingInterval, scheduleCheck, httpClient]);
 
   // Effect to re-run checks when monitorLocation or httpClient changes
   useEffect(() => {
@@ -306,7 +309,7 @@ export function useWebsiteMonitoring() {
       websitesRef.current.forEach(site => {
           setTimeout(() => manualCheck(site.id, httpClient), 100);
       });
-  }, [monitorLocation, httpClient, isLoading, manualCheck]);
+  }, [monitorLocation, httpClient, isLoading]);
 
 
   const addWebsite = (data: WebsiteFormData) => {
@@ -418,7 +421,7 @@ export function useWebsiteMonitoring() {
 
     // If we un-paused it, schedule a check
     if (siteToUpdate && !siteToUpdate.isPaused) {
-        setTimeout(() => manualCheck(id, httpClient), 100);
+        setTimeout(() => manualCheck(siteToUpdate!.id, httpClient), 100);
     }
   };
 
