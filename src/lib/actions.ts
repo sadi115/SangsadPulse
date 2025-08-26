@@ -170,9 +170,9 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
 
     const attemptRequest = async (initialUrl: string) => {
         let currentUrl = initialUrl;
-        if (!currentUrl.includes('://')) {
+        if (!currentUrl.startsWith('http://') && !currentUrl.startsWith('https://')) {
             try {
-                // Try HTTPS first
+                // Try HTTPS first, more common
                 const httpsUrl = `https://${currentUrl}`;
                 await axios.head(httpsUrl, { timeout: 5000, httpsAgent, maxRedirects: 0 });
                 currentUrl = httpsUrl;
@@ -216,7 +216,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             responseData = await response.text();
         } else if (httpClient === 'got') {
             const response = await got(currentUrl, {
-                method: httpMethod || 'GET',
+                method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
                 headers,
                 timeout: { request: 10000 },
                 followRedirect: true,
@@ -459,11 +459,12 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
 
       let hostname = url;
       try {
-        if (net.isIP(url) === 0) {
+        if (net.isIP(url) === 0 && (url.startsWith('http') || url.includes('.'))) {
             const urlObject = new URL(url.startsWith('http') ? url : `https://${url}`);
             hostname = urlObject.hostname;
         }
       } catch (e) {
+          // If URL parsing fails, hostname remains the original url, which might be an IP or a simple hostname.
           hostname = url;
       }
 
