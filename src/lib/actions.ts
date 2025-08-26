@@ -29,7 +29,7 @@ async function checkTcpPort(host: string, port: number): Promise<CheckStatusResu
     const startTime = performance.now();
     const socket = new net.Socket();
 
-    socket.setTimeout(5000); // 5 second timeout
+    socket.setTimeout(10000); // 10 second timeout
 
     socket.on('connect', () => {
       const endTime = performance.now();
@@ -129,7 +129,7 @@ async function checkSslCertificate(host: string): Promise<CheckStatusResult> {
                 });
             });
 
-            socket.setTimeout(5000, () => {
+            socket.setTimeout(10000, () => {
                 socket.destroy();
                 resolve({
                     status: 'Down',
@@ -152,6 +152,7 @@ async function checkSslCertificate(host: string): Promise<CheckStatusResult> {
 
 
 async function checkHttp(website: Website, httpClient: HttpClient): Promise<CheckStatusResult> {
+    const { url, monitorType, keyword, httpMethod } = website;
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -168,12 +169,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             try {
                 // Try HTTPS first
                 const httpsUrl = `https://${currentUrl}`;
-                // Quick check if HTTPS works
-                if (httpClient === 'axios') {
-                    await axios.get(httpsUrl, { timeout: 5000, httpsAgent, maxRedirects: 0 });
-                } else {
-                    await fetch(httpsUrl, { method: 'HEAD', redirect: 'manual', cache: 'no-store' });
-                }
+                await axios.head(httpsUrl, { timeout: 5000, httpsAgent, maxRedirects: 0 });
                 currentUrl = httpsUrl;
             } catch (e) {
                 // Fallback to HTTP
@@ -187,7 +183,9 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         let responseData: string = '';
 
         if (httpClient === 'axios') {
-            const response = await axios.get(currentUrl, {
+            const response = await axios({
+                method: httpMethod || 'GET',
+                url: currentUrl,
                 headers,
                 timeout: 10000,
                 maxRedirects: 10,
@@ -199,6 +197,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
         } else { // fetch
             const response = await fetch(currentUrl, {
+                method: httpMethod || 'GET',
                 headers,
                 redirect: 'follow',
                 cache: 'no-store',
@@ -207,7 +206,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             });
             responseStatus = response.status;
             responseStatusText = response.statusText;
-            if (website.monitorType === 'HTTP(s) - Keyword' && website.keyword) {
+            if (monitorType === 'HTTP(s) - Keyword' && keyword) {
                  responseData = await response.text();
             }
         }
@@ -218,13 +217,13 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         let responseText = `${responseStatus} ${responseStatusText}`;
         let status: 'Up' | 'Down' = responseStatus >= 200 && responseStatus < 400 ? 'Up' : 'Down';
 
-        if (website.monitorType === 'HTTP(s) - Keyword' && website.keyword) {
-             if (responseData.includes(website.keyword)) {
+        if (monitorType === 'HTTP(s) - Keyword' && keyword) {
+             if (responseData.includes(keyword)) {
                  status = 'Up';
-                 responseText = `Keyword '${website.keyword}' found.`;
+                 responseText = `Keyword '${keyword}' found.`;
              } else {
                  status = 'Down';
-                 responseText = `Keyword '${website.keyword}' not found.`;
+                 responseText = `Keyword '${keyword}' not found.`;
              }
         }
         
@@ -232,7 +231,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
     };
 
     try {
-        const { status, httpResponse, latency } = await attemptRequest(website.url);
+        const { status, httpResponse, latency } = await attemptRequest(url);
         return {
             status,
             httpResponse,

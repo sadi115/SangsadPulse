@@ -8,9 +8,9 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree, Satellite, Server, Rss, ArrowRightLeft, Network } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree, Satellite, Server, Rss, ArrowRightLeft, Network, IterationCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { MonitorType, WebsiteFormData, MonitorLocation } from '@/lib/types';
+import type { MonitorType, WebsiteFormData, MonitorLocation, HttpMethod } from '@/lib/types';
 
 const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLocation[] }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
@@ -28,6 +28,7 @@ const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLo
 ];
 
 const allMonitorTypes = monitorTypes.map(m => m.value);
+const httpMethods: HttpMethod[] = ['GET', 'POST', 'HEAD'];
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
@@ -36,6 +37,7 @@ const formSchema = z.object({
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
   pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
+  httpMethod: z.enum(httpMethods as [string, ...string[]]).optional(),
 });
 
 type AddWebsiteFormProps = {
@@ -54,10 +56,12 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
       port: undefined,
       keyword: '',
       pollingInterval: undefined,
+      httpMethod: 'GET',
     },
   });
 
   const monitorType = form.watch('monitorType');
+  const isHttpMonitor = monitorType === 'HTTP(s)' || monitorType === 'HTTP(s) - Keyword';
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     onAddWebsite(values);
@@ -140,6 +144,36 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
                 </FormItem>
               )}
             />
+
+            {isHttpMonitor && (
+              <FormField
+                control={form.control}
+                name="httpMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>HTTP Method</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <div className="flex items-center gap-2">
+                             <IterationCcw className="h-4 w-4 text-muted-foreground" />
+                             <SelectValue placeholder="Select HTTP method" />
+                          </div>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {httpMethods.map(method => (
+                          <SelectItem key={method} value={method}>
+                            {method}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {monitorType === 'TCP Port' && (
                  <FormField

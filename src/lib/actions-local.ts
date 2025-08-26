@@ -10,7 +10,7 @@ type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked'
  * Performs a check from the client's browser. Only supports HTTP(s) types.
  */
 export async function checkStatusLocal(website: Website, httpClient: HttpClient): Promise<CheckStatusResult> {
-    const { monitorType, url, keyword, port } = website;
+    const { monitorType, url, keyword, port, httpMethod } = website;
 
     if (monitorType !== 'HTTP(s)' && monitorType !== 'HTTP(s) - Keyword') {
         return {
@@ -45,7 +45,9 @@ export async function checkStatusLocal(website: Website, httpClient: HttpClient)
         let responseData: string = '';
         
         if (httpClient === 'axios') {
-            const response = await axios.get(requestUrl, {
+            const response = await axios({
+                method: httpMethod || 'GET',
+                url: requestUrl,
                 timeout: 10000, // 10 seconds timeout
                 validateStatus: () => true, // Allow all statuses
             });
@@ -54,7 +56,7 @@ export async function checkStatusLocal(website: Website, httpClient: HttpClient)
             responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
         } else {
             const response = await fetch(requestUrl, {
-                method: 'GET',
+                method: httpMethod || 'GET',
                 mode: 'cors', 
                 cache: 'no-store',
                 redirect: 'follow',

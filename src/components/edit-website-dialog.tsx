@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree, ArrowRightLeft, Rss, Server, Network } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree, ArrowRightLeft, Rss, Server, Network, IterationCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { MonitorType, Website, WebsiteFormData, MonitorLocation } from '@/lib/types';
+import type { MonitorType, Website, WebsiteFormData, MonitorLocation, HttpMethod } from '@/lib/types';
 import { useEffect } from 'react';
 
 const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLocation[] }[] = [
@@ -28,6 +28,7 @@ const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLo
 ];
 
 const allMonitorTypes = monitorTypes.map(m => m.value);
+const httpMethods: HttpMethod[] = ['GET', 'POST', 'HEAD'];
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Friendly name is required.' }),
@@ -36,6 +37,7 @@ const formSchema = z.object({
   port: z.coerce.number().optional(),
   keyword: z.string().optional(),
   pollingInterval: z.coerce.number().positive({ message: 'Interval must be a positive number.' }).optional(),
+  httpMethod: z.enum(httpMethods as [string, ...string[]]).optional(),
 });
 
 type EditWebsiteDialogProps = {
@@ -53,6 +55,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
   });
 
   const monitorType = form.watch('monitorType');
+  const isHttpMonitor = monitorType === 'HTTP(s)' || monitorType === 'HTTP(s) - Keyword';
 
   useEffect(() => {
     if (website) {
@@ -63,6 +66,7 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
         port: website.port,
         keyword: website.keyword,
         pollingInterval: website.pollingInterval,
+        httpMethod: website.httpMethod || 'GET',
       });
     }
   }, [website, form, isOpen]);
@@ -156,6 +160,35 @@ export function EditWebsiteDialog({ isOpen, onOpenChange, website, onEditWebsite
                 </FormItem>
               )}
             />
+            {isHttpMonitor && (
+              <FormField
+                control={form.control}
+                name="httpMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>HTTP Method</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                           <div className="flex items-center gap-2">
+                             <IterationCcw className="h-4 w-4 text-muted-foreground" />
+                             <SelectValue placeholder="Select HTTP method" />
+                          </div>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {httpMethods.map(method => (
+                          <SelectItem key={method} value={method}>
+                            {method}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
              {monitorType === 'TCP Port' && (
                  <FormField
                     control={form.control}

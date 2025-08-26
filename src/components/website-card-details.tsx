@@ -3,7 +3,7 @@
 
 import type { Website } from '@/lib/types';
 import { LatencyChart } from './latency-chart';
-import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search, TrendingUp, Zap, ListTree } from 'lucide-react';
+import { Clock, AlertCircle, BarChart2, Wand2, LinkIcon, Hash, Search, TrendingUp, Zap, ListTree, IterationCcw } from 'lucide-react';
 import { format } from 'date-fns';
 
 type WebsiteCardDetailsProps = {
@@ -22,6 +22,7 @@ const UptimeStat = ({ label, value }: { label: string, value: number | null }) =
 export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
     const lastCheckedTime = website.lastChecked ? format(new Date(website.lastChecked), 'pp') : '';
     const lastDownTime = website.lastDownTime ? format(new Date(website.lastDownTime), 'pp') : '';
+    const isHttpMonitor = website.monitorType === 'HTTP(s)' || website.monitorType === 'HTTP(s) - Keyword';
 
     return (
         <div className="bg-secondary/50 px-4 py-4 border-t">
@@ -35,6 +36,12 @@ export function WebsiteCardDetails({ website }: WebsiteCardDetailsProps) {
                                 {website.url}
                             </a>
                         </div>
+                        {isHttpMonitor && (
+                            <div className="flex items-center gap-2">
+                                <IterationCcw className="h-4 w-4" />
+                                <span>Method: {website.httpMethod || 'GET'}</span>
+                            </div>
+                        )}
                         {website.monitorType === 'TCP Port' && website.port && (
                             <div className="flex items-center gap-2">
                                 <Hash className="h-4 w-4" />

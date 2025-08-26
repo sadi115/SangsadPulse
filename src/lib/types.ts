@@ -4,6 +4,8 @@ import type { FieldValue, Timestamp } from "firebase/firestore";
 
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
+export type HttpMethod = 'GET' | 'POST' | 'HEAD';
+
 export type MonitorType =
   | 'HTTP(s)'
   | 'TCP Port'
@@ -60,6 +62,7 @@ export interface Website {
   port?: number;
   keyword?: string;
   pollingInterval?: number; // Custom interval in seconds
+  httpMethod?: HttpMethod;
 }
 
 export type WebsiteFormData = Omit<Website, 'id' | 'status' | 'latencyHistory' | 'statusHistory' | 'uptimeData' | 'displayOrder'>
