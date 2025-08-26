@@ -90,11 +90,13 @@ export async function checkStatusLocal(website: Website, httpClient: HttpClient)
         };
     } catch (error: unknown) {
         let message = 'Request failed. This could be due to a network error or a CORS policy blocking the request from the browser. Check the browser console for more details.';
-        if (axios.isAxiosError(error)) {
+        
+        if (error instanceof TypeError) { // Catch CORS and other network errors
              message = `Request failed: ${error.message}. Check browser console for CORS errors.`;
-        } else if (error instanceof Error) {
-            message = `Request failed: ${error.message}. Check browser console for CORS errors.`;
+        } else if (axios.isAxiosError(error)) {
+             message = `Request failed: ${error.message}. Check browser console for CORS errors.`;
         }
+
         return {
             status: 'Down',
             httpResponse: message,
