@@ -201,19 +201,27 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
             responseStatusText = response.statusText;
             responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
         } else if (httpClient === 'ky') {
-             const response = await ky(currentUrl, {
-                method: httpMethod || 'GET',
-                headers,
-                timeout: 10000,
-                redirect: 'follow',
-                throwHttpErrors: false,
-                cache: 'no-store',
-                retry: 0,
-                agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
-            });
-            responseStatus = response.status;
-            responseStatusText = response.statusText;
-            responseData = await response.text();
+            const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+            try {
+                if (new URL(currentUrl).protocol === 'https:') {
+                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+                }
+                 const response = await ky(currentUrl, {
+                    method: httpMethod || 'GET',
+                    headers,
+                    timeout: 10000,
+                    redirect: 'follow',
+                    throwHttpErrors: false,
+                    cache: 'no-store',
+                    retry: 0,
+                });
+                responseStatus = response.status;
+                responseStatusText = response.statusText;
+                responseData = await response.text();
+            } finally {
+                 process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalRejectUnauthorized;
+            }
+
         } else if (httpClient === 'got') {
             const response = await got(currentUrl, {
                 method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
@@ -234,7 +242,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 maxRedirections: 10,
                 bodyTimeout: 10000,
                 headersTimeout: 10000,
-                dispatcher: new Agent({ connect: { rejectUnauthorized: false } }),
+                dispatcher: new Agent({ connect: { rejectUnauthorized: false, keepAlive: false } }),
             });
             responseStatus = statusCode;
             responseStatusText = ''; 
@@ -539,3 +547,5 @@ export async function getTtfb(input: { url: string }): Promise<{ ttfb: number }>
         return { ttfb: -1 };
     }
 }
+
+    
