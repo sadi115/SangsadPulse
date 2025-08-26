@@ -238,15 +238,15 @@ export default function MonitoringDashboard() {
                                     onValueChange={(value) => {
                                       if (value) setMonitorLocation(value as MonitorLocation)
                                     }}
-                                    className="grid grid-cols-3 w-full"
+                                    className="flex-col sm:flex-row w-full h-auto sm:h-10"
                                   >
-                                    <ToggleGroupItem value="cloud" className="flex-1">
+                                    <ToggleGroupItem value="cloud" className="flex-1 w-full">
                                       <Server /> Cloud Network
                                     </ToggleGroupItem>
-                                    <ToggleGroupItem value="local" className="flex-1">
+                                    <ToggleGroupItem value="local" className="flex-1 w-full">
                                       <Laptop /> Local Network
                                     </ToggleGroupItem>
-                                    <ToggleGroupItem value="agent" className="flex-1">
+                                    <ToggleGroupItem value="agent" className="flex-1 w-full">
                                       <Satellite /> Remote Agent
                                     </ToggleGroupItem>
                                   </ToggleGroup>
