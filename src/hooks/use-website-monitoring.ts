@@ -31,7 +31,7 @@ export function useWebsiteMonitoring() {
   const [isLoading, setIsLoading] = useState(true);
   const [pollingInterval, setPollingInterval] = useState(30);
   const [monitorLocation, setMonitorLocation] = useState<MonitorLocation>('server');
-  const [httpClient, setHttpClient] = useState<HttpClient>('fetch');
+  const [httpClient, setHttpClient] = useState<HttpClient>('axios');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
 
@@ -415,3 +415,5 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
