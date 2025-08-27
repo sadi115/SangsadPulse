@@ -1,9 +1,8 @@
 
-
 'use server';
 
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
-import type { Website, HttpClient } from '@/lib/types';
+import type { Website, HttpClient, MonitorLocation, StatusHistory } from '@/lib/types';
 import net from 'net';
 import tls from 'tls';
 import dns from 'dns';
@@ -14,6 +13,8 @@ import ky from 'ky';
 import got from 'got';
 import { request as undiciRequest, Agent } from 'undici';
 import fetch, { type RequestInit } from 'node-fetch';
+import { query } from './db';
+import { format } from 'date-fns';
 
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'> & { resolvedUrl?: string };
@@ -203,9 +204,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         } else if (httpClient === 'ky') {
             const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
             try {
-                if (new URL(currentUrl).protocol === 'https:') {
-                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-                }
+                process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
                  const response = await ky(currentUrl, {
                     method: httpMethod || 'GET',
                     headers,
@@ -252,7 +251,8 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 method: httpMethod || 'GET',
                 headers,
                 redirect: 'follow',
-                agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined
+                agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
+                timeout: 10000,
             };
             const response = await fetch(currentUrl, fetchOptions);
             responseStatus = response.status;
@@ -261,9 +261,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         } else { // native fetch
             const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
             try {
-                if (new URL(currentUrl).protocol === 'https:') {
-                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-                }
+                process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
                 const fetchOptions: globalThis.RequestInit = {
                     method: httpMethod || 'GET',
                     headers,
@@ -454,53 +452,58 @@ async function checkDnsLookup(host: string): Promise<CheckStatusResult> {
 }
 
 
-
-export async function checkStatus(website: Website, httpClient: HttpClient = 'fetch'): Promise<CheckStatusResult> {
+export async function checkStatus(website: Website, httpClient: HttpClient = 'fetch', location: MonitorLocation): Promise<CheckStatusResult> {
   const { monitorType, url, port } = website;
-  
+  let result: CheckStatusResult;
+
   try {
       if (monitorType === 'Downtime') {
-        return { status: 'Down', httpResponse: 'In scheduled downtime.', lastChecked: new Date().toISOString(), latency: 0 };
-      }
-      if (monitorType === 'WebSocket' || monitorType === 'Push' || monitorType === 'HTTP/2' || monitorType === 'HTTPS - Proxy') {
-        return { status: 'Idle', httpResponse: 'This monitor type is not yet implemented.', lastChecked: new Date().toISOString(), latency: 0 };
-      }
-
-      let hostname = url;
-      try {
-        if (net.isIP(url) === 0 && (url.startsWith('http') || url.includes('.'))) {
-            const urlObject = new URL(url.startsWith('http') ? url : `https://${url}`);
-            hostname = urlObject.hostname;
+        result = { status: 'Down', httpResponse: 'In scheduled downtime.', lastChecked: new Date().toISOString(), latency: 0 };
+      } else if (monitorType === 'WebSocket' || monitorType === 'Push' || monitorType === 'HTTP/2' || monitorType === 'HTTPS - Proxy') {
+        result = { status: 'Idle', httpResponse: 'This monitor type is not yet implemented.', lastChecked: new Date().toISOString(), latency: 0 };
+      } else {
+        let hostname = url;
+        try {
+          if (net.isIP(url) === 0 && (url.startsWith('http') || url.includes('.'))) {
+              const urlObject = new URL(url.startsWith('http') ? url : `https://${url}`);
+              hostname = urlObject.hostname;
+          }
+        } catch (e) {
+            hostname = url;
         }
-      } catch (e) {
-          // If URL parsing fails, hostname remains the original url, which might be an IP or a simple hostname.
-          hostname = url;
-      }
 
-
-      switch(monitorType) {
-        case 'TCP Port':
-            if (!port) {
-                return { status: 'Down', httpResponse: 'Port is not specified for TCP check', lastChecked: new Date().toISOString(), latency: 0 };
-            }
-            return checkTcpPort(hostname, port);
-        case 'Ping':
-            const pingPort = url.startsWith('https://') ? 443 : 80;
-            const result = await checkTcpPort(hostname, port || pingPort);
-            if(result.status === 'Up') {
-                return { ...result, httpResponse: `Host is reachable` };
-            }
-            return { ...result, httpResponse: `Host is unreachable. Reason: ${result.httpResponse}` };
-        case 'DNS Records':
-            return checkDns(hostname);
-        case 'DNS Lookup':
-            return checkDnsLookup(hostname);
-        case 'SSL Certificate':
-             return checkSslCertificate(hostname);
-        case 'HTTP(s)':
-        case 'HTTP(s) - Keyword':
-        default:
-            return checkHttp(website, httpClient);
+        switch(monitorType) {
+          case 'TCP Port':
+              if (!port) {
+                  result = { status: 'Down', httpResponse: 'Port is not specified for TCP check', lastChecked: new Date().toISOString(), latency: 0 };
+              } else {
+                result = await checkTcpPort(hostname, port);
+              }
+              break;
+          case 'Ping':
+              const pingPort = url.startsWith('https://') ? 443 : 80;
+              const pingResult = await checkTcpPort(hostname, port || pingPort);
+              if(pingResult.status === 'Up') {
+                  result = { ...pingResult, httpResponse: `Host is reachable` };
+              } else {
+                  result = { ...pingResult, httpResponse: `Host is unreachable. Reason: ${pingResult.httpResponse}` };
+              }
+              break;
+          case 'DNS Records':
+              result = await checkDns(hostname);
+              break;
+          case 'DNS Lookup':
+              result = await checkDnsLookup(hostname);
+              break;
+          case 'SSL Certificate':
+               result = await checkSslCertificate(hostname);
+               break;
+          case 'HTTP(s)':
+          case 'HTTP(s) - Keyword':
+          default:
+              result = await checkHttp(website, httpClient);
+              break;
+        }
       }
   } catch (error) {
      let message = 'Invalid URL or Host.';
@@ -515,28 +518,57 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
         switch(monitorType) {
             case 'TCP Port':
                 if (!port) {
-                    return { status: 'Down', httpResponse: 'Port is not specified for TCP check', lastChecked: new Date().toISOString(), latency: 0 };
+                    result = { status: 'Down', httpResponse: 'Port is not specified for TCP check', lastChecked: new Date().toISOString(), latency: 0 };
+                } else {
+                    result = await checkTcpPort(hostname, port);
                 }
-                return checkTcpPort(hostname, port);
+                break;
             case 'Ping':
                  const pingPort = url.startsWith('https://') ? 443 : 80;
-                 const result = await checkTcpPort(hostname, port || pingPort);
-                 if(result.status === 'Up') {
-                    return { ...result, httpResponse: `Host is reachable` };
-                }
-                return { ...result, httpResponse: `Host is unreachable. Reason: ${result.httpResponse}` };
+                 const pingResult = await checkTcpPort(hostname, port || pingPort);
+                 if(pingResult.status === 'Up') {
+                    result = { ...pingResult, httpResponse: `Host is reachable` };
+                 } else {
+                    result = { ...pingResult, httpResponse: `Host is unreachable. Reason: ${pingResult.httpResponse}` };
+                 }
+                 break;
             case 'DNS Records':
-                return checkDns(hostname);
-             case 'DNS Lookup':
-                return checkDnsLookup(hostname);
+                result = await checkDns(hostname);
+                break;
+            case 'DNS Lookup':
+                result = await checkDnsLookup(hostname);
+                break;
             case 'SSL Certificate':
-                return checkSslCertificate(hostname);
+                result = await checkSslCertificate(hostname);
+                break;
             default:
-                 return { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
+                 result = { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
+                 break;
         }
+     } else {
+        result = { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
      }
-     return { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };
   }
+
+  // Save the result to the database
+  if (result.status === 'Up' || result.status === 'Down') {
+      try {
+        const sql = 'INSERT INTO monitoring_history (website_id, checked_at, status, latency, http_response, location) VALUES (?, ?, ?, ?, ?, ?)';
+        const params = [
+            website.id,
+            new Date(result.lastChecked!),
+            result.status,
+            result.latency,
+            result.httpResponse,
+            location
+        ];
+        await query(sql, params);
+      } catch (dbError) {
+        console.error(`Failed to save history to DB for ${website.name}:`, dbError);
+      }
+  }
+
+  return result;
 }
 
 export async function getTtfb(input: { url: string }): Promise<{ ttfb: number }> {
@@ -549,4 +581,40 @@ export async function getTtfb(input: { url: string }): Promise<{ ttfb: number }>
     }
 }
 
+const MAX_LATENCY_HISTORY_UI = 50;
+
+export async function getHistoryForWebsite(websiteId: string): Promise<{statusHistory: StatusHistory[], latencyHistory: { time: string, latency: number }[]}> {
+  try {
+    const sql = 'SELECT * FROM monitoring_history WHERE website_id = ? ORDER BY checked_at DESC';
+    const rows = await query(sql, [websiteId]) as any[];
+
+    const statusHistory = rows.map(row => ({
+      time: format(new Date(row.checked_at), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+      status: row.status as 'Up' | 'Down',
+      latency: row.latency,
+      reason: row.http_response
+    }));
     
+    const latencyHistory = statusHistory
+      .map(h => ({ time: h.time, latency: h.latency }))
+      .slice(0, MAX_LATENCY_HISTORY_UI)
+      .reverse();
+
+    return { statusHistory, latencyHistory };
+
+  } catch (error) {
+    console.error(`Failed to fetch history from DB for website ${websiteId}:`, error);
+    return { statusHistory: [], latencyHistory: [] };
+  }
+}
+
+export async function clearHistoryForWebsite(websiteId: string): Promise<{success: boolean}> {
+    try {
+        const sql = 'DELETE FROM monitoring_history WHERE website_id = ?';
+        await query(sql, [websiteId]);
+        return { success: true };
+    } catch(error) {
+        console.error(`Failed to clear history from DB for website ${websiteId}:`, error);
+        return { success: false };
+    }
+}

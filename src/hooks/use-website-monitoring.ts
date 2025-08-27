@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Website, WebsiteFormData, StatusHistory, MonitorLocation, HttpClient } from '@/lib/types';
-import { checkStatus, getTtfb } from '@/lib/actions';
+import { checkStatus, getTtfb, getHistoryForWebsite, clearHistoryForWebsite } from '@/lib/actions';
 
 const initialWebsites: Website[] = [
   { id: '1', name: 'Parliament Website', url: 'https://www.parliament.gov.bd', status: 'Idle', monitorType: 'HTTP(s)', isPaused: false, displayOrder: 0, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
@@ -24,8 +23,7 @@ const initialWebsites: Website[] = [
   { id: '14', name: 'Cloudflare DNS', url: '1.1.1.1', status: 'Idle', monitorType: 'DNS Records', isPaused: false, displayOrder: 13, uptimeData: { '1h': null, '24h': null, '30d': null, 'total': null } },
 ];
 
-const MAX_LATENCY_HISTORY = 50;
-const MAX_STATUS_HISTORY = 100;
+const MAX_LATENCY_HISTORY_UI = 50;
 
 export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>([]);
@@ -38,7 +36,6 @@ export function useWebsiteMonitoring() {
 
   const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   
-  // Use refs to store the latest state for callbacks to avoid stale closures
   const websitesRef = useRef(websites);
   useEffect(() => { websitesRef.current = websites; }, [websites]);
   
@@ -53,77 +50,6 @@ export function useWebsiteMonitoring() {
 
   const notificationsEnabledRef = useRef(notificationsEnabled);
   useEffect(() => { notificationsEnabledRef.current = notificationsEnabled; }, [notificationsEnabled]);
-
-
-  // Load from local storage on initial mount
-  useEffect(() => {
-    try {
-      const savedWebsites = localStorage.getItem('monitoring-websites');
-      const savedInterval = localStorage.getItem('monitoring-interval');
-      const savedNotifications = localStorage.getItem('monitoring-notifications');
-      const savedLocation = localStorage.getItem('monitoring-location');
-      const savedClient = localStorage.getItem('monitoring-client');
-
-      if (savedWebsites) {
-        setWebsites(JSON.parse(savedWebsites));
-      } else {
-        setWebsites(initialWebsites);
-      }
-
-      if (savedInterval) {
-        setPollingInterval(JSON.parse(savedInterval));
-      }
-
-      if (savedNotifications) {
-        setNotificationsEnabled(JSON.parse(savedNotifications));
-      }
-      
-      if (savedLocation) {
-        setMonitorLocation(JSON.parse(savedLocation));
-      }
-
-      if (savedClient) {
-        setHttpClient(JSON.parse(savedClient));
-      }
-
-    } catch (error) {
-      console.error("Failed to load settings from local storage", error);
-      // If loading fails, use defaults
-      setWebsites(initialWebsites);
-    }
-    setIsLoading(false);
-  }, []);
-
-  // Save to local storage whenever state changes
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('monitoring-websites', JSON.stringify(websites));
-    }
-  }, [websites, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('monitoring-interval', JSON.stringify(pollingInterval));
-    }
-  }, [pollingInterval, isLoading]);
-  
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('monitoring-location', JSON.stringify(monitorLocation));
-    }
-  }, [monitorLocation, isLoading]);
-  
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('monitoring-client', JSON.stringify(httpClient));
-    }
-  }, [httpClient, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('monitoring-notifications', JSON.stringify(notificationsEnabled));
-    }
-  }, [notificationsEnabled, isLoading]);
 
   const scheduleNextCheck = useCallback((site: Website) => {
       if (timeoutsRef.current.has(site.id)) {
@@ -143,52 +69,35 @@ export function useWebsiteMonitoring() {
       }, interval);
   
       timeoutsRef.current.set(site.id, timerId);
-  }, []); // Dependencies are managed via refs now
+  }, []);
 
-  const updateWebsiteState = useCallback((id: string, result: Partial<Website>) => {
+  const calculateUptime = useCallback((history: StatusHistory[]) => {
+      if (!history || history.length === 0) return { '1h': null, '24h': null, '30d': null, 'total': null };
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      const calculatePercentage = (data: StatusHistory[]) => {
+          if (data.length === 0) return null;
+          const upCount = data.filter(h => h.status === 'Up').length;
+          return (upCount / data.length) * 100;
+      };
+
+      return {
+          '1h': calculatePercentage(history.filter(h => new Date(h.time) >= oneHourAgo)),
+          '24h': calculatePercentage(history.filter(h => new Date(h.time) >= twentyFourHoursAgo)),
+          '30d': calculatePercentage(history.filter(h => new Date(h.time) >= thirtyDaysAgo)),
+          'total': calculatePercentage(history),
+      };
+  }, []);
+
+  const updateWebsiteState = useCallback((id: string, result: Partial<Website> & { statusHistory: StatusHistory[], latencyHistory: { time: string; latency: number }[] }) => {
     setWebsites(current => {
       const siteToUpdate = current.find(s => s.id === id);
       if (!siteToUpdate) return current;
-      
-      const newLatencyHistory = result.latency !== undefined 
-          ? [...(siteToUpdate.latencyHistory || []), { time: new Date().toISOString(), latency: result.latency }].slice(-MAX_LATENCY_HISTORY)
-          : siteToUpdate.latencyHistory;
-      
-      let newStatusHistory = [...(siteToUpdate.statusHistory || [])];
-      const lastStatus = newStatusHistory.length > 0 ? newStatusHistory[newStatusHistory.length - 1].status : null;
-      
-      if (result.status && result.status !== 'Checking' && result.status !== 'Idle' && result.status !== lastStatus) {
-          newStatusHistory.push({
-              time: new Date().toISOString(),
-              status: result.status === 'Up' ? 'Up' : 'Down',
-              latency: result.latency ?? 0,
-              reason: result.httpResponse ?? '',
-          });
-          newStatusHistory = newStatusHistory.slice(-MAX_STATUS_HISTORY);
-      }
 
-      const calculateUptime = (history: StatusHistory[]) => {
-          if (!history || history.length === 0) return { '1h': null, '24h': null, '30d': null, 'total': null };
-          const now = new Date();
-          const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
-          const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          
-          const calculatePercentage = (data: StatusHistory[]) => {
-              if (data.length === 0) return null;
-              const upCount = data.filter(h => h.status === 'Up').length;
-              return (upCount / data.length) * 100;
-          };
-  
-          return {
-              '1h': calculatePercentage(history.filter(h => new Date(h.time) >= oneHourAgo)),
-              '24h': calculatePercentage(history.filter(h => new Date(h.time) >= twentyFourHoursAgo)),
-              '30d': calculatePercentage(history.filter(h => new Date(h.time) >= thirtyDaysAgo)),
-              'total': calculatePercentage(history),
-          };
-      };
-
-      const upHistory = (newLatencyHistory || []).filter(h => h.latency > 0);
+      const upHistory = (result.latencyHistory || []).filter(h => h.latency > 0);
       const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
       const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
       const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
@@ -215,27 +124,27 @@ export function useWebsiteMonitoring() {
       const updatedSite: Website = {
           ...siteToUpdate,
           ...result,
-          latencyHistory: newLatencyHistory,
-          statusHistory: newStatusHistory,
+          latencyHistory: result.latencyHistory,
+          statusHistory: result.statusHistory,
           averageLatency,
           lowestLatency,
           highestLatency,
-          uptimeData: calculateUptime(newStatusHistory),
+          uptimeData: calculateUptime(result.statusHistory),
           lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
       };
       
-      // Schedule the next check after the state update
       scheduleNextCheck(updatedSite);
 
       return current.map(s => s.id === id ? updatedSite : s);
     });
-  }, [toast, scheduleNextCheck]);
+  }, [toast, scheduleNextCheck, calculateUptime]);
   
   const manualCheck = useCallback(async (id: string) => {
     const siteToCheck = websitesRef.current.find(s => s.id === id);
     if (!siteToCheck || siteToCheck.isPaused) {
         if (siteToCheck?.isPaused) {
-            updateWebsiteState(id, { status: 'Paused', httpResponse: 'Monitoring is paused.' });
+            const history = await getHistoryForWebsite(id);
+            updateWebsiteState(id, { status: 'Paused', httpResponse: 'Monitoring is paused.', ...history });
         }
         return;
     }
@@ -245,35 +154,114 @@ export function useWebsiteMonitoring() {
             clearTimeout(timeoutsRef.current.get(id)!);
             timeoutsRef.current.delete(id);
         }
-        updateWebsiteState(id, { status: 'Idle', httpResponse: 'Waiting for remote agent.' });
+        const history = await getHistoryForWebsite(id);
+        updateWebsiteState(id, { status: 'Idle', httpResponse: 'Waiting for remote agent.', ...history });
         return;
     }
 
     setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
 
     try {
-        const result = await checkStatus(siteToCheck, httpClientRef.current);
+        const result = await checkStatus(siteToCheck, httpClientRef.current, monitorLocationRef.current);
         
         let ttfbResult;
         if (result.status === 'Up' && (siteToCheck.monitorType === 'HTTP(s)' || siteToCheck.monitorType === 'HTTP(s) - Keyword') && result.resolvedUrl) {
             ttfbResult = await getTtfb({ url: result.resolvedUrl });
         }
-        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb });
+
+        const history = await getHistoryForWebsite(id);
+
+        updateWebsiteState(id, { ...result, ttfb: ttfbResult?.ttfb, ...history });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}` });
+        const history = await getHistoryForWebsite(id);
+        updateWebsiteState(id, { status: 'Down', httpResponse: `Check failed: ${errorMessage}`, ...history });
     }
   }, [updateWebsiteState]);
 
+  // Load from local storage and DB on initial mount
+  useEffect(() => {
+    async function loadInitialData() {
+      setIsLoading(true);
+      try {
+        const savedWebsitesConfig = localStorage.getItem('monitoring-websites-config');
+        const savedInterval = localStorage.getItem('monitoring-interval');
+        const savedNotifications = localStorage.getItem('monitoring-notifications');
+        const savedLocation = localStorage.getItem('monitoring-location');
+        const savedClient = localStorage.getItem('monitoring-client');
+        
+        let sites: Website[];
+        if (savedWebsitesConfig) {
+          sites = JSON.parse(savedWebsitesConfig);
+        } else {
+          sites = initialWebsites;
+          localStorage.setItem('monitoring-websites-config', JSON.stringify(sites.map(({latencyHistory, statusHistory, ...rest}) => rest)));
+        }
+
+        const sitesWithHistory = await Promise.all(sites.map(async (site) => {
+          const history = await getHistoryForWebsite(site.id);
+          const upHistory = (history.latencyHistory || []).filter(h => h.latency > 0);
+          const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
+          const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
+          const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
+          
+          return {
+            ...site,
+            ...history,
+            uptimeData: calculateUptime(history.statusHistory),
+            averageLatency,
+            lowestLatency,
+            highestLatency
+          };
+        }));
+        
+        setWebsites(sitesWithHistory);
+
+        if (savedInterval) setPollingInterval(JSON.parse(savedInterval));
+        if (savedNotifications) setNotificationsEnabled(JSON.parse(savedNotifications));
+        if (savedLocation) setMonitorLocation(JSON.parse(savedLocation));
+        if (savedClient) setHttpClient(JSON.parse(savedClient));
+
+      } catch (error) {
+        console.error("Failed to load settings", error);
+        setWebsites(initialWebsites);
+      }
+      setIsLoading(false);
+    }
+
+    loadInitialData();
+  }, [calculateUptime]);
+
+  // Save config to local storage whenever it changes
+  useEffect(() => {
+    if (!isLoading) {
+      const configToSave = websites.map(({ statusHistory, latencyHistory, uptimeData, ...rest }) => rest);
+      localStorage.setItem('monitoring-websites-config', JSON.stringify(configToSave));
+    }
+  }, [websites, isLoading]);
+  
+  useEffect(() => {
+    if (!isLoading) localStorage.setItem('monitoring-interval', JSON.stringify(pollingInterval));
+  }, [pollingInterval, isLoading]);
+  
+  useEffect(() => {
+    if (!isLoading) localStorage.setItem('monitoring-location', JSON.stringify(monitorLocation));
+  }, [monitorLocation, isLoading]);
+  
+  useEffect(() => {
+    if (!isLoading) localStorage.setItem('monitoring-client', JSON.stringify(httpClient));
+  }, [httpClient, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) localStorage.setItem('monitoring-notifications', JSON.stringify(notificationsEnabled));
+  }, [notificationsEnabled, isLoading]);
 
   useEffect(() => {
     if (isLoading) return;
     
-    // Clear all existing timeouts when global settings change
     timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     timeoutsRef.current.clear();
     
-    // Kick off initial staggered checks for all monitors
     websites.forEach((site, index) => {
         if (!site.isPaused) {
             const staggerDelay = 100 * (index + 1);
@@ -282,13 +270,10 @@ export function useWebsiteMonitoring() {
         }
     });
     
-    // Cleanup function to clear all timeouts on component unmount
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-    // This effect runs when settings that affect ALL checks are changed.
   }, [isLoading, pollingInterval, httpClient, monitorLocation, manualCheck]);
-
 
   const addWebsite = (data: WebsiteFormData) => {
      const newWebsite: Website = {
@@ -330,15 +315,17 @@ export function useWebsiteMonitoring() {
     });
   };
 
-  const deleteWebsite = (id: string) => {
+  const deleteWebsite = async (id: string) => {
     if (timeoutsRef.current.has(id)) {
         clearTimeout(timeoutsRef.current.get(id)!);
         timeoutsRef.current.delete(id);
     }
+    await clearHistoryForWebsite(id);
     setWebsites(currentWebsites => currentWebsites.filter(s => s.id !== id));
   };
   
-  const clearHistory = (id: string) => {
+  const clearHistory = async (id: string) => {
+    await clearHistoryForWebsite(id);
     setWebsites(current => current.map(s => {
       if (s.id === id) {
         return { 
@@ -387,7 +374,6 @@ export function useWebsiteMonitoring() {
                         timeoutsRef.current.delete(id);
                     }
                 } else {
-                    // Resume checking immediately
                     setTimeout(() => manualCheck(updatedSite.id), 100);
                 }
                 return updatedSite;
@@ -431,4 +417,3 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
- 
