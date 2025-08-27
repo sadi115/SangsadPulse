@@ -12,7 +12,7 @@ import axios from 'axios';
 import ky from 'ky';
 import got from 'got';
 import { request as undiciRequest, Agent } from 'undici';
-import fetch, { type RequestInit } from 'node-fetch';
+import nodeFetch, { type RequestInit as NodeRequestInit } from 'node-fetch';
 import { query } from './db';
 import { format } from 'date-fns';
 
@@ -172,14 +172,18 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
     const attemptRequest = async (initialUrl: string) => {
         let currentUrl = initialUrl;
         if (!currentUrl.startsWith('http://') && !currentUrl.startsWith('https://')) {
-            try {
+             try {
                 // Try HTTPS first, more common
                 const httpsUrl = `https://${currentUrl}`;
                 await axios.head(httpsUrl, { timeout: 5000, httpsAgent, maxRedirects: 0 });
                 currentUrl = httpsUrl;
-            } catch (e) {
-                // Fallback to HTTP
-                currentUrl = `http://${currentUrl}`;
+            } catch (e: any) {
+                // If HTTPS fails (e.g., ECONNREFUSED), fall back to HTTP
+                if (e.code === 'ECONNREFUSED' || e.response === undefined) {
+                    currentUrl = `http://${currentUrl}`;
+                } else { // Otherwise, it's a real issue with HTTPS, so we'll let the main request handle it
+                    currentUrl = `https://${currentUrl}`;
+                }
             }
         }
 
@@ -187,92 +191,79 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         let responseStatus: number;
         let responseStatusText: string;
         let responseData: string = '';
+        const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
 
-        if (httpClient === 'axios') {
-            const response = await axios({
-                method: httpMethod || 'GET',
-                url: currentUrl,
-                headers,
-                timeout: 10000,
-                maxRedirects: 10,
-                httpsAgent,
-                validateStatus: () => true,
-            });
-            responseStatus = response.status;
-            responseStatusText = response.statusText;
-            responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-        } else if (httpClient === 'ky') {
-            const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-            try {
-                process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-                 const response = await ky(currentUrl, {
+        try {
+            if (httpClient === 'axios') {
+                const response = await axios({
+                    method: httpMethod || 'GET',
+                    url: currentUrl,
+                    headers,
+                    timeout: 10000,
+                    maxRedirects: 10,
+                    httpsAgent,
+                    validateStatus: () => true,
+                });
+                responseStatus = response.status;
+                responseStatusText = response.statusText;
+                responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+            } else if (httpClient === 'ky' || httpClient === 'fetch') {
+                 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+                 const fetchFn = httpClient === 'ky' ? ky : globalThis.fetch;
+                 const response = await fetchFn(currentUrl, {
                     method: httpMethod || 'GET',
                     headers,
                     timeout: 10000,
                     redirect: 'follow',
+                    // @ts-ignore Ky-specific property
                     throwHttpErrors: false,
                     cache: 'no-store',
+                    // @ts-ignore Ky-specific property
                     retry: 0,
                 });
                 responseStatus = response.status;
                 responseStatusText = response.statusText;
                 responseData = await response.text();
-            } finally {
-                 process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalRejectUnauthorized;
-            }
-
-        } else if (httpClient === 'got') {
-            const response = await got(currentUrl, {
-                method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
-                headers,
-                timeout: { request: 10000 },
-                followRedirect: true,
-                throwHttpErrors: false,
-                https: { rejectUnauthorized: false },
-                retry: { limit: 0 },
-            });
-            responseStatus = response.statusCode;
-            responseStatusText = response.statusMessage || '';
-            responseData = response.body;
-        } else if (httpClient === 'undici') {
-            const { statusCode, body } = await undiciRequest(currentUrl, {
-                method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
-                headers,
-                maxRedirections: 10,
-                bodyTimeout: 10000,
-                headersTimeout: 10000,
-                dispatcher: new Agent({ connect: { rejectUnauthorized: false, keepAlive: false } }),
-            });
-            responseStatus = statusCode;
-            responseStatusText = ''; 
-            responseData = await body.text();
-        } else if (httpClient === 'node-fetch') {
-            const fetchOptions: RequestInit = {
-                method: httpMethod || 'GET',
-                headers,
-                redirect: 'follow',
-                agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
-                timeout: 10000,
-            };
-            const response = await fetch(currentUrl, fetchOptions);
-            responseStatus = response.status;
-            responseStatusText = response.statusText;
-            responseData = await response.text();
-        } else { // native fetch
-            const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-            try {
-                process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-                const fetchOptions: globalThis.RequestInit = {
+            } else if (httpClient === 'got') {
+                const response = await got(currentUrl, {
+                    method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
+                    headers,
+                    timeout: { request: 10000 },
+                    followRedirect: true,
+                    throwHttpErrors: false,
+                    https: { rejectUnauthorized: false },
+                    retry: { limit: 0 },
+                });
+                responseStatus = response.statusCode;
+                responseStatusText = response.statusMessage || '';
+                responseData = response.body;
+            } else if (httpClient === 'undici') {
+                const { statusCode, body } = await undiciRequest(currentUrl, {
+                    method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
+                    headers,
+                    maxRedirections: 10,
+                    bodyTimeout: 10000,
+                    headersTimeout: 10000,
+                    dispatcher: new Agent({ connect: { rejectUnauthorized: false, keepAlive: false } }),
+                });
+                responseStatus = statusCode;
+                responseStatusText = ''; 
+                responseData = await body.text();
+            } else { // node-fetch
+                const fetchOptions: NodeRequestInit = {
                     method: httpMethod || 'GET',
                     headers,
                     redirect: 'follow',
-                    cache: 'no-store',
+                    agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
+                    timeout: 10000,
                 };
-                const response = await globalThis.fetch(currentUrl, fetchOptions);
+                const response = await nodeFetch(currentUrl, fetchOptions);
                 responseStatus = response.status;
                 responseStatusText = response.statusText;
                 responseData = await response.text();
-            } finally {
+            }
+        } finally {
+            if (httpClient === 'ky' || httpClient === 'fetch') {
                 process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalRejectUnauthorized;
             }
         }
