@@ -182,9 +182,6 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
                 </div>
             </div>
         </div>
-        <div className="px-4 pb-4">
-             <UptimeBar history={website.latencyHistory} max-items={50} />
-        </div>
         <CollapsibleContent>
             <WebsiteCardDetails website={website} />
         </CollapsibleContent>
