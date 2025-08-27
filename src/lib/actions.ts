@@ -172,19 +172,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
     const attemptRequest = async (initialUrl: string) => {
         let currentUrl = initialUrl;
         if (!currentUrl.startsWith('http://') && !currentUrl.startsWith('https://')) {
-             try {
-                // Try HTTPS first, more common
-                const httpsUrl = `https://${currentUrl}`;
-                await axios.head(httpsUrl, { timeout: 5000, httpsAgent, maxRedirects: 0 });
-                currentUrl = httpsUrl;
-            } catch (e: any) {
-                // If HTTPS fails (e.g., ECONNREFUSED), fall back to HTTP
-                if (e.code === 'ECONNREFUSED' || e.response === undefined) {
-                    currentUrl = `http://${currentUrl}`;
-                } else { // Otherwise, it's a real issue with HTTPS, so we'll let the main request handle it
-                    currentUrl = `https://${currentUrl}`;
-                }
-            }
+            currentUrl = `https://${currentUrl}`;
         }
 
         const startTime = performance.now();
@@ -213,6 +201,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                  const response = await fetchFn(currentUrl, {
                     method: httpMethod || 'GET',
                     headers,
+                    // @ts-ignore
                     timeout: 10000,
                     redirect: 'follow',
                     // @ts-ignore Ky-specific property
@@ -220,6 +209,9 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                     cache: 'no-store',
                     // @ts-ignore Ky-specific property
                     retry: 0,
+                    // For fetch, pass agent. For Ky, this is handled by NODE_TLS_REJECT_UNAUTHORIZED
+                    // @ts-ignore
+                    agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
                 });
                 responseStatus = response.status;
                 responseStatusText = response.statusText;
@@ -254,7 +246,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                     method: httpMethod || 'GET',
                     headers,
                     redirect: 'follow',
-                    agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
+                    agent: httpsAgent,
                     timeout: 10000,
                 };
                 const response = await nodeFetch(currentUrl, fetchOptions);
