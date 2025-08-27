@@ -449,8 +449,6 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
   try {
       if (monitorType === 'Downtime') {
         result = { status: 'Down', httpResponse: 'In scheduled downtime.', lastChecked: new Date().toISOString(), latency: 0 };
-      } else if (monitorType === 'WebSocket' || monitorType === 'Push' || monitorType === 'HTTP/2' || monitorType === 'HTTPS - Proxy') {
-        result = { status: 'Idle', httpResponse: 'This monitor type is not yet implemented.', lastChecked: new Date().toISOString(), latency: 0 };
       } else {
         let hostname = url;
         try {
@@ -468,15 +466,6 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
                   result = { status: 'Down', httpResponse: 'Port is not specified for TCP check', lastChecked: new Date().toISOString(), latency: 0 };
               } else {
                 result = await checkTcpPort(hostname, port);
-              }
-              break;
-          case 'Ping':
-              const pingPort = url.startsWith('https://') ? 443 : 80;
-              const pingResult = await checkTcpPort(hostname, port || pingPort);
-              if(pingResult.status === 'Up') {
-                  result = { ...pingResult, httpResponse: `Host is reachable` };
-              } else {
-                  result = { ...pingResult, httpResponse: `Host is unreachable. Reason: ${pingResult.httpResponse}` };
               }
               break;
           case 'DNS Records':
@@ -513,15 +502,6 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
                     result = await checkTcpPort(hostname, port);
                 }
                 break;
-            case 'Ping':
-                 const pingPort = url.startsWith('https://') ? 443 : 80;
-                 const pingResult = await checkTcpPort(hostname, port || pingPort);
-                 if(pingResult.status === 'Up') {
-                    result = { ...pingResult, httpResponse: `Host is reachable` };
-                 } else {
-                    result = { ...pingResult, httpResponse: `Host is unreachable. Reason: ${pingResult.httpResponse}` };
-                 }
-                 break;
             case 'DNS Records':
                 result = await checkDns(hostname);
                 break;

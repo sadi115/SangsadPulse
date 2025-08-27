@@ -9,16 +9,11 @@ export type HttpMethod = 'GET' | 'POST' | 'HEAD';
 export type MonitorType =
   | 'HTTP(s)'
   | 'TCP Port'
-  | 'Ping'
   | 'HTTP(s) - Keyword'
   | 'Downtime'
   | 'DNS Records'
   | 'SSL Certificate'
-  | 'DNS Lookup'
-  | 'WebSocket'
-  | 'Push'
-  | 'HTTP/2'
-  | 'HTTPS - Proxy';
+  | 'DNS Lookup';
 
 export type MonitorLocation = 'cloud' | 'local' | 'agent';
 
