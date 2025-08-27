@@ -10,7 +10,7 @@ import { promisify } from 'util';
 import https from 'https';
 import axios from 'axios';
 import ky from 'ky';
-import got from 'got';
+import got, { type BeforeRedirectHook } from 'got';
 import { request as undiciRequest, Agent } from 'undici';
 import nodeFetch, { type RequestInit as NodeRequestInit } from 'node-fetch';
 import { query } from './db';
@@ -209,14 +209,18 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                     cache: 'no-store',
                     // @ts-ignore Ky-specific property
                     retry: 0,
-                    // For fetch, pass agent. For Ky, this is handled by NODE_TLS_REJECT_UNAUTHORIZED
-                    // @ts-ignore
-                    agent: new URL(currentUrl).protocol === 'https:' ? httpsAgent : undefined,
-                });
+                 });
                 responseStatus = response.status;
                 responseStatusText = response.statusText;
                 responseData = await response.text();
             } else if (httpClient === 'got') {
+                const beforeRedirect: BeforeRedirectHook = (options, response) => {
+                    // got by default follows redirects but may fail on protocol change.
+                    // This hook ensures we always use https.
+                    if (options.url.protocol === 'http:') {
+                        options.url.protocol = 'https:';
+                    }
+                };
                 const response = await got(currentUrl, {
                     method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
                     headers,
@@ -225,6 +229,9 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                     throwHttpErrors: false,
                     https: { rejectUnauthorized: false },
                     retry: { limit: 0 },
+                    hooks: {
+                        beforeRedirect: [beforeRedirect],
+                    },
                 });
                 responseStatus = response.statusCode;
                 responseStatusText = response.statusMessage || '';
