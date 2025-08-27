@@ -8,18 +8,17 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ShieldCheck, ListTree, IterationCcw } from 'lucide-react';
+import { Globe, Tag, Hash, Search, Timer, Book, PauseCircle, ListTree, IterationCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { MonitorType, WebsiteFormData, MonitorLocation, HttpMethod } from '@/lib/types';
 
 const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLocation[] }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
-    { label: "TCP Port", value: "TCP Port", disabledFor: ['local', 'agent'] },
-    { label: "SSL Certificate", value: "SSL Certificate", disabledFor: ['local', 'agent'] },
-    { label: "DNS Records", value: "DNS Records", disabledFor: ['local', 'agent'] },
-    { label: "DNS Lookup", value: "DNS Lookup", disabledFor: ['local', 'agent'] },
-    { label: "Downtime", value: "Downtime", disabledFor: ['local', 'agent'] },
+    { label: "TCP Port", value: "TCP Port", disabledFor: ['local'] },
+    { label: "DNS Records", value: "DNS Records", disabledFor: ['local'] },
+    { label: "DNS Lookup", value: "DNS Lookup", disabledFor: ['local'] },
+    { label: "Downtime", value: "Downtime", disabledFor: ['local'] },
 ];
 
 const allMonitorTypes = monitorTypes.map(m => m.value);
@@ -88,7 +87,6 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
                                             {type.value === 'TCP Port' && <Hash className="h-4 w-4" />}
                                             {type.value === 'DNS Records' && <Book className="h-4 w-4" />}
                                             {type.value === 'DNS Lookup' && <ListTree className="h-4 w-4" />}
-                                            {type.value === 'SSL Certificate' && <ShieldCheck className="h-4 w-4" />}
                                             {type.value === 'Downtime' && <PauseCircle className="h-4 w-4" />}
                                             {type.label}
                                         </div>
@@ -123,7 +121,7 @@ export function AddWebsiteForm({ onAddWebsite, globalPollingInterval, monitorLoc
               name="url"
               render={({ field }) => (
                 <FormItem>
-                   <FormLabel>{monitorType === 'TCP Port' || monitorType === 'DNS Records' || monitorType === 'SSL Certificate' || monitorType === 'DNS Lookup' ? 'Hostname or IP' : 'URL'}</FormLabel>
+                   <FormLabel>{monitorType === 'TCP Port' || monitorType === 'DNS Records' || monitorType === 'DNS Lookup' ? 'Hostname or IP' : 'URL'}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />

@@ -1,10 +1,10 @@
 
+
 'use server';
 
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
 import type { Website, HttpClient, MonitorLocation, StatusHistory } from '@/lib/types';
 import net from 'net';
-import tls from 'tls';
 import dns from 'dns';
 import { promisify } from 'util';
 import https from 'https';
@@ -72,91 +72,6 @@ async function checkTcpPort(host: string, port: number): Promise<CheckStatusResu
   });
 }
 
-async function checkSslCertificate(host: string): Promise<CheckStatusResult> {
-    return new Promise((resolve) => {
-        const options = {
-            host: host,
-            port: 443,
-            rejectUnauthorized: false, // We handle verification manually
-        };
-        const startTime = performance.now();
-
-        try {
-            const socket = tls.connect(options, () => {
-                const cert = socket.getPeerCertificate();
-                const endTime = performance.now();
-                socket.destroy();
-
-                if (!cert || Object.keys(cert).length === 0) {
-                    resolve({
-                        status: 'Down',
-                        httpResponse: 'No SSL certificate found.',
-                        lastChecked: new Date().toISOString(),
-                        latency: 0,
-                    });
-                    return;
-                }
-                
-                const validTo = new Date(cert.valid_to);
-                const daysRemaining = Math.ceil((validTo.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-
-                if (daysRemaining <= 0) {
-                    resolve({
-                        status: 'Down',
-                        httpResponse: `Certificate for ${host} expired ${Math.abs(daysRemaining)} days ago.`,
-                        lastChecked: new Date().toISOString(),
-                        latency: Math.max(1, Math.round(endTime - startTime)),
-                    });
-                } else if (daysRemaining <= 7) {
-                     resolve({
-                        status: 'Down', // Treat certs expiring soon as "Down" for alerting purposes
-                        httpResponse: `Certificate expires in ${daysRemaining} days.`,
-                        lastChecked: new Date().toISOString(),
-                        latency: Math.max(1, Math.round(endTime - startTime)),
-                    });
-                }
-                else {
-                    resolve({
-                        status: 'Up',
-                        httpResponse: `Certificate is valid. Expires in ${daysRemaining} days.`,
-                        lastChecked: new Date().toISOString(),
-                        latency: Math.max(1, Math.round(endTime - startTime)),
-                    });
-                }
-            });
-
-            socket.on('error', (err) => {
-                socket.destroy();
-                resolve({
-                    status: 'Down',
-                    httpResponse: `SSL connection error: ${err.message}`,
-                    lastChecked: new Date().toISOString(),
-                    latency: 0,
-                });
-            });
-
-            socket.setTimeout(10000, () => {
-                socket.destroy();
-                resolve({
-                    status: 'Down',
-                    httpResponse: 'SSL connection timed out.',
-                    lastChecked: new Date().toISOString(),
-                    latency: 0,
-                });
-            });
-
-        } catch (error: any) {
-             resolve({
-                status: 'Down',
-                httpResponse: `Failed to check SSL: ${error.message}`,
-                lastChecked: new Date().toISOString(),
-                latency: 0,
-            });
-        }
-    });
-}
-
-
 async function checkHttp(website: Website, httpClient: HttpClient): Promise<CheckStatusResult> {
     const { url, monitorType, keyword, httpMethod } = website;
     const headers = {
@@ -217,8 +132,6 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 responseData = await response.text();
             } else if (httpClient === 'got') {
                 const beforeRedirect: BeforeRedirectHook = (options, response) => {
-                    // got by default follows redirects but may fail on protocol change.
-                    // This hook ensures we always use https.
                     if (options.url.protocol === 'http:') {
                         options.url.protocol = 'https:';
                     }
@@ -476,9 +389,6 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
           case 'DNS Lookup':
               result = await checkDnsLookup(hostname);
               break;
-          case 'SSL Certificate':
-               result = await checkSslCertificate(hostname);
-               break;
           case 'HTTP(s)':
           case 'HTTP(s) - Keyword':
           default:
@@ -509,9 +419,6 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
                 break;
             case 'DNS Lookup':
                 result = await checkDnsLookup(hostname);
-                break;
-            case 'SSL Certificate':
-                result = await checkSslCertificate(hostname);
                 break;
             default:
                  result = { status: 'Down', httpResponse: message, lastChecked: new Date().toISOString(), latency: 0 };

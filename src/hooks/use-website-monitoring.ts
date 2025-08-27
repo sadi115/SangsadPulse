@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -149,16 +150,6 @@ export function useWebsiteMonitoring() {
         return;
     }
 
-    if (monitorLocationRef.current === 'agent') {
-        if (timeoutsRef.current.has(id)) {
-            clearTimeout(timeoutsRef.current.get(id)!);
-            timeoutsRef.current.delete(id);
-        }
-        const history = await getHistoryForWebsite(id);
-        updateWebsiteState(id, { status: 'Idle', httpResponse: 'Waiting for remote agent.', ...history });
-        return;
-    }
-
     setWebsites(current => current.map(s => s.id === id ? { ...s, status: 'Checking' as const } : s));
 
     try {
@@ -256,24 +247,31 @@ export function useWebsiteMonitoring() {
     if (!isLoading) localStorage.setItem('monitoring-notifications', JSON.stringify(notificationsEnabled));
   }, [notificationsEnabled, isLoading]);
 
+  // Initial check scheduling effect
   useEffect(() => {
     if (isLoading) return;
     
+    // Clear any existing timers before setting new ones
     timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     timeoutsRef.current.clear();
     
     websites.forEach((site, index) => {
         if (!site.isPaused) {
+            // Stagger initial checks to avoid bursting requests
             const staggerDelay = 100 * (index + 1);
             const timerId = setTimeout(() => manualCheck(site.id), staggerDelay);
             timeoutsRef.current.set(site.id, timerId);
         }
     });
     
+    // Cleanup function to clear all timers when the component unmounts or dependencies change
     return () => {
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     };
-  }, [isLoading, pollingInterval, httpClient, monitorLocation, manualCheck]);
+  // This effect should run only when the initial data is loaded.
+  // PollingInterval changes are handled by the re-scheduling logic inside scheduleNextCheck.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
 
   const addWebsite = (data: WebsiteFormData) => {
      const newWebsite: Website = {

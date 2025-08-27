@@ -14,7 +14,7 @@ import { EditWebsiteDialog } from '@/components/edit-website-dialog';
 import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutGrid, List, Bell, Search, Server, Laptop, Satellite, Settings, Network } from 'lucide-react';
+import { LayoutGrid, List, Bell, Search, Server, Laptop, Settings, Network } from 'lucide-react';
 import { WebsiteCardView, CardSkeleton } from '@/components/website-card-view';
 import { WebsiteListView, ListSkeleton } from '@/components/website-list-view';
 import Image from 'next/image';
@@ -263,21 +263,6 @@ export default function MonitoringDashboard() {
                                                 <RadioGroupItem value="local" id="loc-local" />
                                             </div>
                                             <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from your local browser (client-side).</p>
-                                        </Label>
-                                    </div>
-                                    <div>
-                                         <Label htmlFor="loc-agent" className={cn(
-                                            "flex flex-col items-start rounded-lg border p-4 cursor-pointer transition-all",
-                                            monitorLocation === 'agent' && "border-primary ring-2 ring-primary"
-                                        )}>
-                                            <div className="flex items-center justify-between w-full">
-                                                <div className="flex items-center gap-3">
-                                                    <Satellite className="h-5 w-5" />
-                                                    <span className="font-semibold">Remote Agent</span>
-                                                </div>
-                                                <RadioGroupItem value="agent" id="loc-agent" />
-                                            </div>
-                                            <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from a dedicated, remote agent.</p>
                                         </Label>
                                     </div>
                                 </RadioGroup>

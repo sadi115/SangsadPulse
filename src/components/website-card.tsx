@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import type { Website, WebsiteStatus, MonitorLocation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw, Laptop, Server, Eraser, Satellite } from 'lucide-react';
+import { MoreVertical, Trash2, Wand2, Pencil, ArrowUp, ArrowDown, PauseCircle, PlayCircle, History, ChevronDown, RefreshCw, Laptop, Server, Eraser } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { WebsiteCardDetails } from './website-card-details';
 import { Card } from './ui/card';
@@ -80,8 +80,6 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
     switch (monitorLocation) {
         case 'local':
             return 'Monitored from Local Network';
-        case 'agent':
-            return 'Monitored by Remote Agent';
         case 'cloud':
         default:
             return 'Monitored from Cloud Network';
@@ -104,7 +102,6 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
                                 <TooltipTrigger>
                                      {monitorLocation === 'local' && <Laptop className="h-4 w-4 text-muted-foreground" />}
                                      {monitorLocation === 'cloud' && <Server className="h-4 w-4 text-muted-foreground" />}
-                                     {monitorLocation === 'agent' && <Satellite className="h-4 w-4 text-muted-foreground" />}
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>{getTooltipContent()}</p>

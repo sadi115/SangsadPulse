@@ -12,10 +12,9 @@ export type MonitorType =
   | 'HTTP(s) - Keyword'
   | 'Downtime'
   | 'DNS Records'
-  | 'SSL Certificate'
   | 'DNS Lookup';
 
-export type MonitorLocation = 'cloud' | 'local' | 'agent';
+export type MonitorLocation = 'cloud' | 'local';
 
 export type HttpClient = 'fetch' | 'axios' | 'ky' | 'got' | 'undici' | 'node-fetch';
 
