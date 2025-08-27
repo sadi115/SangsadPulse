@@ -202,6 +202,8 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                     method: httpMethod || 'GET',
                     headers,
                     // @ts-ignore
+                    agent: httpsAgent,
+                    // @ts-ignore
                     timeout: 10000,
                     redirect: 'follow',
                     // @ts-ignore Ky-specific property
