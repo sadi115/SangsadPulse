@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { measureTtfb } from '@/ai/flows/measure-ttfb';
@@ -10,9 +9,10 @@ import { promisify } from 'util';
 import https from 'https';
 import axios from 'axios';
 import ky from 'ky';
-import got, { type BeforeRedirectHook } from 'got';
+import got from 'got';
 import { request as undiciRequest, Agent } from 'undici';
-import nodeFetch, { type RequestInit as NodeRequestInit } from 'node-fetch';
+import nodeFetch from 'node-fetch';
+import type { RequestInit as NodeRequestInit } from 'node-fetch';
 import { query } from './db';
 import { format } from 'date-fns';
 
@@ -89,11 +89,13 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
         if (!currentUrl.startsWith('http://') && !currentUrl.startsWith('https://')) {
             currentUrl = `https://${currentUrl}`;
         }
-
-        const startTime = performance.now();
+        
         let responseStatus: number;
         let responseStatusText: string;
         let responseData: string = '';
+        let finalUrlAfterRedirect = currentUrl;
+        
+        const startTime = performance.now();
         const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
 
         try {
@@ -110,33 +112,30 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 responseStatus = response.status;
                 responseStatusText = response.statusText;
                 responseData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-            } else if (httpClient === 'ky' || httpClient === 'fetch') {
-                 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+                if (response.request.res.responseUrl) {
+                    finalUrlAfterRedirect = response.request.res.responseUrl;
+                }
+            } else if (httpClient === 'fetch' || httpClient === 'ky') {
+                process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
                  const fetchFn = httpClient === 'ky' ? ky : globalThis.fetch;
                  const response = await fetchFn(currentUrl, {
                     method: httpMethod || 'GET',
                     headers,
-                    // @ts-ignore
-                    agent: httpsAgent,
-                    // @ts-ignore
-                    timeout: 10000,
                     redirect: 'follow',
                     // @ts-ignore Ky-specific property
                     throwHttpErrors: false,
                     cache: 'no-store',
-                    // @ts-ignore Ky-specific property
-                    retry: 0,
                  });
                 responseStatus = response.status;
                 responseStatusText = response.statusText;
                 responseData = await response.text();
+                finalUrlAfterRedirect = response.url;
             } else if (httpClient === 'got') {
-                const beforeRedirect: BeforeRedirectHook = (options, response) => {
-                    if (options.url.protocol === 'http:') {
-                        options.url.protocol = 'https:';
-                    }
-                };
-                const response = await got(currentUrl, {
+                let gotUrl = currentUrl;
+                if (gotUrl.startsWith('http://')) {
+                    gotUrl = gotUrl.replace('http://', 'https://');
+                }
+                const response = await got(gotUrl, {
                     method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
                     headers,
                     timeout: { request: 10000 },
@@ -144,15 +143,13 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                     throwHttpErrors: false,
                     https: { rejectUnauthorized: false },
                     retry: { limit: 0 },
-                    hooks: {
-                        beforeRedirect: [beforeRedirect],
-                    },
                 });
                 responseStatus = response.statusCode;
                 responseStatusText = response.statusMessage || '';
                 responseData = response.body;
+                finalUrlAfterRedirect = response.url;
             } else if (httpClient === 'undici') {
-                const { statusCode, body } = await undiciRequest(currentUrl, {
+                const { statusCode, body, headers: responseHeaders } = await undiciRequest(currentUrl, {
                     method: (httpMethod || 'GET') as 'GET' | 'POST' | 'HEAD',
                     headers,
                     maxRedirections: 10,
@@ -163,6 +160,9 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 responseStatus = statusCode;
                 responseStatusText = ''; 
                 responseData = await body.text();
+                if (responseHeaders.location) {
+                    finalUrlAfterRedirect = responseHeaders.location;
+                }
             } else { // node-fetch
                 const fetchOptions: NodeRequestInit = {
                     method: httpMethod || 'GET',
@@ -175,6 +175,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
                 responseStatus = response.status;
                 responseStatusText = response.statusText;
                 responseData = await response.text();
+                finalUrlAfterRedirect = response.url;
             }
         } finally {
             if (httpClient === 'ky' || httpClient === 'fetch') {
@@ -198,7 +199,7 @@ async function checkHttp(website: Website, httpClient: HttpClient): Promise<Chec
              }
         }
         
-        return { status, httpResponse: responseText, latency, resolvedUrl: currentUrl };
+        return { status, httpResponse: responseText, latency, resolvedUrl: finalUrlAfterRedirect };
     };
 
     try {
