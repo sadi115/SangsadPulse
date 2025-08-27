@@ -93,12 +93,12 @@ export function useWebsiteMonitoring() {
       };
   }, []);
 
-  const updateWebsiteState = useCallback((id: string, result: Partial<Website> & { statusHistory: StatusHistory[], latencyHistory: { time: string; latency: number }[] }) => {
+  const updateWebsiteState = useCallback((id: string, result: Partial<Website> & { statusHistory?: StatusHistory[], latencyHistory?: { time: string; latency: number }[] }) => {
     setWebsites(current => {
       const siteToUpdate = current.find(s => s.id === id);
       if (!siteToUpdate) return current;
 
-      const upHistory = (result.latencyHistory || []).filter(h => h.latency > 0);
+      const upHistory = (result.latencyHistory || siteToUpdate.latencyHistory || []).filter(h => h.latency > 0);
       const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
       const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
       const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
@@ -122,15 +122,17 @@ export function useWebsiteMonitoring() {
         }, 0);
       }
 
+      const allStatusHistory = result.statusHistory || siteToUpdate.statusHistory;
+
       const updatedSite: Website = {
           ...siteToUpdate,
           ...result,
-          latencyHistory: result.latencyHistory,
-          statusHistory: result.statusHistory,
+          latencyHistory: result.latencyHistory || siteToUpdate.latencyHistory,
+          statusHistory: allStatusHistory,
           averageLatency,
           lowestLatency,
           highestLatency,
-          uptimeData: calculateUptime(result.statusHistory),
+          uptimeData: calculateUptime(allStatusHistory || []),
           lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
       };
       

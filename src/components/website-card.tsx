@@ -13,6 +13,7 @@ import { Card } from './ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { UptimeBar } from './uptime-bar';
 
 type StatusDisplayProps = {
   status: WebsiteStatus;
@@ -180,6 +181,9 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
                     {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
                 </div>
             </div>
+        </div>
+        <div className="px-4 pb-4">
+             <UptimeBar history={website.latencyHistory} max-items={50} />
         </div>
         <CollapsibleContent>
             <WebsiteCardDetails website={website} />
