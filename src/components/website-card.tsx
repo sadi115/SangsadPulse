@@ -78,11 +78,11 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
   
   const getTooltipContent = () => {
     switch (monitorLocation) {
-        case 'local':
-            return 'Monitored from Local Network';
-        case 'cloud':
+        case 'user':
+            return 'Monitored from User Network';
+        case 'server':
         default:
-            return 'Monitored from Cloud Network';
+            return 'Monitored from Server Network';
     }
   }
 
@@ -100,8 +100,8 @@ export function WebsiteCard({ website, onDelete, onEdit, onMove, onTogglePause, 
                          <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger>
-                                     {monitorLocation === 'local' && <Laptop className="h-4 w-4 text-muted-foreground" />}
-                                     {monitorLocation === 'cloud' && <Server className="h-4 w-4 text-muted-foreground" />}
+                                     {monitorLocation === 'user' && <Laptop className="h-4 w-4 text-muted-foreground" />}
+                                     {monitorLocation === 'server' && <Server className="h-4 w-4 text-muted-foreground" />}
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>{getTooltipContent()}</p>

@@ -15,10 +15,10 @@ import type { MonitorType, WebsiteFormData, MonitorLocation, HttpMethod } from '
 const monitorTypes: { label: string, value: MonitorType, disabledFor?: MonitorLocation[] }[] = [
     { label: "HTTP(s)", value: "HTTP(s)" },
     { label: "HTTP(s) - Keyword", value: "HTTP(s) - Keyword" },
-    { label: "TCP Port", value: "TCP Port", disabledFor: ['local'] },
-    { label: "DNS Records", value: "DNS Records", disabledFor: ['local'] },
-    { label: "DNS Lookup", value: "DNS Lookup", disabledFor: ['local'] },
-    { label: "Downtime", value: "Downtime", disabledFor: ['local'] },
+    { label: "TCP Port", value: "TCP Port", disabledFor: ['user'] },
+    { label: "DNS Records", value: "DNS Records", disabledFor: ['user'] },
+    { label: "DNS Lookup", value: "DNS Lookup", disabledFor: ['user'] },
+    { label: "Downtime", value: "Downtime", disabledFor: ['user'] },
 ];
 
 const allMonitorTypes = monitorTypes.map(m => m.value);

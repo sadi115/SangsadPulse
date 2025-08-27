@@ -14,7 +14,7 @@ export type MonitorType =
   | 'DNS Records'
   | 'DNS Lookup';
 
-export type MonitorLocation = 'cloud' | 'local';
+export type MonitorLocation = 'server' | 'user';
 
 export type HttpClient = 'fetch' | 'axios' | 'ky' | 'got' | 'undici' | 'node-fetch';
 

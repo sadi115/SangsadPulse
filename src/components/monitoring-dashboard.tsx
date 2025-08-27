@@ -236,31 +236,31 @@ export default function MonitoringDashboard() {
                                     className="grid grid-cols-1 gap-4"
                                 >
                                     <div>
-                                        <Label htmlFor="loc-cloud" className={cn(
+                                        <Label htmlFor="loc-server" className={cn(
                                             "flex flex-col items-start rounded-lg border p-4 cursor-pointer transition-all",
-                                            monitorLocation === 'cloud' && "border-primary ring-2 ring-primary"
+                                            monitorLocation === 'server' && "border-primary ring-2 ring-primary"
                                         )}>
                                             <div className="flex items-center justify-between w-full">
                                                 <div className="flex items-center gap-3">
                                                     <Server className="h-5 w-5" />
-                                                    <span className="font-semibold">Cloud Network</span>
+                                                    <span className="font-semibold">Server Network</span>
                                                 </div>
-                                                <RadioGroupItem value="cloud" id="loc-cloud" />
+                                                <RadioGroupItem value="server" id="loc-server" />
                                             </div>
-                                            <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from the public internet (server-side).</p>
+                                            <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from the application server.</p>
                                         </Label>
                                     </div>
                                     <div>
-                                        <Label htmlFor="loc-local" className={cn(
+                                        <Label htmlFor="loc-user" className={cn(
                                             "flex flex-col items-start rounded-lg border p-4 cursor-pointer transition-all",
-                                            monitorLocation === 'local' && "border-primary ring-2 ring-primary"
+                                            monitorLocation === 'user' && "border-primary ring-2 ring-primary"
                                         )}>
                                             <div className="flex items-center justify-between w-full">
                                                 <div className="flex items-center gap-3">
                                                     <Laptop className="h-5 w-5" />
-                                                    <span className="font-semibold">Local Network</span>
+                                                    <span className="font-semibold">User Network</span>
                                                 </div>
-                                                <RadioGroupItem value="local" id="loc-local" />
+                                                <RadioGroupItem value="user" id="loc-user" />
                                             </div>
                                             <p className="text-sm text-muted-foreground mt-2 ml-8">Monitor from your local browser (client-side).</p>
                                         </Label>

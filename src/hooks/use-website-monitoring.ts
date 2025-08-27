@@ -30,7 +30,7 @@ export function useWebsiteMonitoring() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pollingInterval, setPollingInterval] = useState(30);
-  const [monitorLocation, setMonitorLocation] = useState<MonitorLocation>('cloud');
+  const [monitorLocation, setMonitorLocation] = useState<MonitorLocation>('server');
   const [httpClient, setHttpClient] = useState<HttpClient>('fetch');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
