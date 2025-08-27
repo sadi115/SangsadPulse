@@ -93,17 +93,20 @@ export function useWebsiteMonitoring() {
       };
   }, []);
 
-  const updateWebsiteState = useCallback((id: string, result: Partial<Website> & { statusHistory?: StatusHistory[], latencyHistory?: { time: string; latency: number }[] }) => {
+  const updateWebsiteState = useCallback((id: string, update: Partial<Website>) => {
     setWebsites(current => {
       const siteToUpdate = current.find(s => s.id === id);
       if (!siteToUpdate) return current;
 
-      const upHistory = (result.latencyHistory || siteToUpdate.latencyHistory || []).filter(h => h.latency > 0);
+      const newLatencyHistory = update.latencyHistory || siteToUpdate.latencyHistory || [];
+      const newStatusHistory = update.statusHistory || siteToUpdate.statusHistory || [];
+
+      const upHistory = newLatencyHistory.filter(h => h.latency > 0);
       const averageLatency = upHistory.length > 0 ? Math.round(upHistory.reduce((acc, curr) => acc + curr.latency, 0) / upHistory.length) : undefined;
       const lowestLatency = upHistory.length > 0 ? Math.min(...upHistory.map(h => h.latency)) : undefined;
       const highestLatency = upHistory.length > 0 ? Math.max(...upHistory.map(h => h.latency)) : undefined;
       
-      if (result.status === 'Down' && siteToUpdate.status !== 'Down' && notificationsEnabledRef.current) {
+      if (update.status === 'Down' && siteToUpdate.status !== 'Down' && notificationsEnabledRef.current) {
          setTimeout(() => {
             toast({
               title: 'Service Down',
@@ -113,7 +116,7 @@ export function useWebsiteMonitoring() {
          }, 0);
       }
 
-      if (result.status === 'Up' && siteToUpdate.status === 'Down' && notificationsEnabledRef.current) {
+      if (update.status === 'Up' && siteToUpdate.status === 'Down' && notificationsEnabledRef.current) {
         setTimeout(() => {
           toast({
             title: 'Service Up',
@@ -122,18 +125,16 @@ export function useWebsiteMonitoring() {
         }, 0);
       }
 
-      const allStatusHistory = result.statusHistory || siteToUpdate.statusHistory;
-
       const updatedSite: Website = {
           ...siteToUpdate,
-          ...result,
-          latencyHistory: result.latencyHistory || siteToUpdate.latencyHistory,
-          statusHistory: allStatusHistory,
+          ...update,
+          latencyHistory: newLatencyHistory,
+          statusHistory: newStatusHistory,
           averageLatency,
           lowestLatency,
           highestLatency,
-          uptimeData: calculateUptime(allStatusHistory || []),
-          lastDownTime: result.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
+          uptimeData: calculateUptime(newStatusHistory),
+          lastDownTime: update.status === 'Down' && siteToUpdate.status !== 'Down' ? new Date().toISOString() : siteToUpdate.lastDownTime,
       };
       
       scheduleNextCheck(updatedSite);
@@ -417,5 +418,7 @@ export function useWebsiteMonitoring() {
     handleNotificationToggle
   };
 }
+
+    
 
     
