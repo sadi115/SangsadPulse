@@ -80,21 +80,21 @@ export function WebsiteListItem({ website, onDelete, onEdit, onMove, onTogglePau
       )}>
           <div className="flex items-center p-4 gap-4">
               <div className={`w-2 h-8 rounded-full ${statusColor} transition-colors`}></div>
-              <div className="flex-1 grid grid-cols-12 items-center gap-4">
-                <div className="col-span-8 md:col-span-4 flex items-center justify-start gap-3">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-12 items-center gap-4">
+                <div className="md:col-span-4 flex items-center justify-start gap-3">
                     <StatusBadge status={website.status} isPaused={website.isPaused} uptimePercentage={website.uptimeData?.total} />
                     <span className="font-semibold truncate text-foreground" title={website.name}>{website.name}</span>
                 </div>
                  <div className="hidden md:block md:col-span-4">
                     <UptimeBar history={website.latencyHistory} max-items={50} />
                 </div>
-                 <div className="hidden md:block col-span-2 text-sm text-muted-foreground font-medium text-center">
+                 <div className="hidden md:block md:col-span-2 text-sm text-muted-foreground font-medium text-center">
                     {website.latency !== undefined ? `${website.latency} ms` : 'N/A'}
                  </div>
-                <div className="hidden md:block col-span-1 text-sm text-muted-foreground truncate text-left" title={website.lastChecked ? new Date(website.lastChecked).toLocaleString() : ''}>
+                <div className="hidden md:block md:col-span-1 text-sm text-muted-foreground truncate text-left" title={website.lastChecked ? new Date(website.lastChecked).toLocaleString() : ''}>
                     {lastCheckedTime}
                 </div>
-                <div className="flex items-center justify-end gap-1 col-span-4 md:col-span-1">
+                <div className="flex items-center justify-end gap-1 ml-auto md:col-span-1">
                     <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
