@@ -469,7 +469,7 @@ export async function getHistoryForWebsite(websiteId: string): Promise<{statusHi
     const rows = await query(sql, [websiteId]) as any[];
 
     const statusHistory = rows.map(row => ({
-      time: row.checked_at, // The TEXT from SQLite should be a valid ISO string
+      time: new Date(row.checked_at).toISOString(),
       status: row.status as 'Up' | 'Down',
       latency: row.latency,
       reason: row.http_response
