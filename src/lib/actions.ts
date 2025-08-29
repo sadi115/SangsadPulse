@@ -14,7 +14,7 @@ import { request as undiciRequest, Agent } from 'undici';
 import nodeFetch from 'node-fetch';
 import type { RequestInit as NodeRequestInit } from 'node-fetch';
 import { query } from './db';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 
 
 type CheckStatusResult = Pick<Website, 'status' | 'httpResponse' | 'lastChecked' | 'latency'> & { resolvedUrl?: string };
@@ -473,12 +473,16 @@ export async function getHistoryForWebsite(websiteId: string): Promise<{statusHi
         return { statusHistory: [], latencyHistory: [] };
     }
 
-    const statusHistory = rows.map(row => ({
-      time: new Date(row.checked_at).toISOString(),
-      status: row.status as 'Up' | 'Down',
-      latency: row.latency,
-      reason: row.http_response
-    }));
+    const statusHistory = rows.map(row => {
+      // The 'checked_at' from sqlite is a string. Convert it to a Date object then back to a valid ISO string.
+      const date = new Date(row.checked_at);
+      return {
+        time: isValid(date) ? date.toISOString() : new Date().toISOString(),
+        status: row.status as 'Up' | 'Down',
+        latency: row.latency,
+        reason: row.http_response
+      }
+    });
     
     const latencyHistory = statusHistory
       .map(h => ({ time: h.time, latency: h.latency }))
