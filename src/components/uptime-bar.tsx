@@ -43,6 +43,7 @@ export function UptimeBar({ history = [], ['max-items']: maxItems = 50 }: Uptime
                         default:
                             barColor = 'bg-muted';
                     }
+                    const isValidDate = bar.time && !isNaN(new Date(bar.time).getTime());
                     return (
                         <Tooltip key={index} delayDuration={100}>
                             <TooltipTrigger asChild>
@@ -53,7 +54,7 @@ export function UptimeBar({ history = [], ['max-items']: maxItems = 50 }: Uptime
                                     <div className="text-sm">
                                         <p className="font-bold capitalize">{bar.status}</p>
                                         <p>Latency: {bar.latency}ms</p>
-                                        <p className="text-muted-foreground">{bar.time ? format(new Date(bar.time), 'PPpp') : ''}</p>
+                                        <p className="text-muted-foreground">{isValidDate ? format(new Date(bar.time!), 'PPpp') : ''}</p>
                                     </div>
                                 ) : (
                                     <p>No data</p>
