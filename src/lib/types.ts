@@ -1,7 +1,5 @@
 
 
-import type { FieldValue, Timestamp } from "firebase/firestore";
-
 export type WebsiteStatus = 'Up' | 'Down' | 'Checking' | 'Idle' | 'Paused';
 
 export type HttpMethod = 'GET' | 'POST' | 'HEAD';
