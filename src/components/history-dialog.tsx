@@ -2,7 +2,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Website } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { Badge } from './ui/badge';
 import { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
@@ -77,19 +77,26 @@ export function HistoryDialog({ isOpen, onOpenChange, website }: HistoryDialogPr
                         </TableHeader>
                         <TableBody>
                             {displayedHistory.length > 0 ? (
-                                displayedHistory.map((item, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell><StatusBadge status={item.latency > 0 ? 'Up' : 'Down'} /></TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span title={format(new Date(item.time), 'PPpp')}>
-                                                    {format(new Date(item.time), 'hh:mm:ss a, dd-MMM-yyyy')}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">{item.latency > 0 ? `${item.latency} ms` : 'N/A'}</TableCell>
-                                    </TableRow>
-                                ))
+                                displayedHistory.map((item, index) => {
+                                    const itemDate = new Date(item.time);
+                                    return (
+                                        <TableRow key={index}>
+                                            <TableCell><StatusBadge status={item.latency > 0 ? 'Up' : 'Down'} /></TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    {isValid(itemDate) ? (
+                                                        <span title={format(itemDate, 'PPpp')}>
+                                                            {format(itemDate, 'hh:mm:ss a, dd-MMM-yyyy')}
+                                                        </span>
+                                                    ) : (
+                                                        <span>Invalid date</span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">{item.latency > 0 ? `${item.latency} ms` : 'N/A'}</TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={3} className="text-center h-24">

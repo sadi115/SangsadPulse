@@ -436,7 +436,7 @@ export async function checkStatus(website: Website, httpClient: HttpClient = 'fe
         const sql = 'INSERT INTO monitoring_history (website_id, checked_at, status, latency, http_response, location) VALUES (?, ?, ?, ?, ?, ?)';
         const params = [
             website.id,
-            new Date(result.lastChecked!),
+            result.lastChecked, // Already in ISO format
             result.status,
             result.latency,
             result.httpResponse,
@@ -469,7 +469,7 @@ export async function getHistoryForWebsite(websiteId: string): Promise<{statusHi
     const rows = await query(sql, [websiteId]) as any[];
 
     const statusHistory = rows.map(row => ({
-      time: new Date(row.checked_at).toISOString(),
+      time: row.checked_at, // The TEXT from SQLite should be a valid ISO string
       status: row.status as 'Up' | 'Down',
       latency: row.latency,
       reason: row.http_response
