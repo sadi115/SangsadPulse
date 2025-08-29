@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { EditWebsiteDialog } from '@/components/edit-website-dialog';
-import { ReportGenerator } from '@/components/report-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LayoutGrid, List, Bell, Search, Server, Laptop, Settings, Network } from 'lucide-react';
@@ -26,6 +24,13 @@ import { useWebsiteMonitoring } from '@/hooks/use-website-monitoring';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+const ReportGenerator = dynamic(() => import('@/components/report-generator').then(mod => mod.ReportGenerator), {
+  ssr: false,
+  loading: () => <p>Loading report generator...</p>
+});
+
 
 export default function MonitoringDashboard() {
   const {
@@ -388,4 +393,5 @@ export default function MonitoringDashboard() {
       </div>
     </>
   );
-}
+
+    
