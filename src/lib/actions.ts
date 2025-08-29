@@ -465,8 +465,13 @@ const MAX_LATENCY_HISTORY_UI = 50;
 
 export async function getHistoryForWebsite(websiteId: string): Promise<{statusHistory: StatusHistory[], latencyHistory: { time: string, latency: number }[]}> {
   try {
-    const sql = 'SELECT * FROM monitoring_history WHERE website_id = ? ORDER BY checked_at DESC';
+    const sql = 'SELECT checked_at, status, latency, http_response FROM monitoring_history WHERE website_id = ? ORDER BY checked_at DESC';
     const rows = await query(sql, [websiteId]) as any[];
+
+    if (!Array.isArray(rows)) {
+        console.error(`Expected an array from DB query for ${websiteId}, but got:`, rows);
+        return { statusHistory: [], latencyHistory: [] };
+    }
 
     const statusHistory = rows.map(row => ({
       time: new Date(row.checked_at).toISOString(),
