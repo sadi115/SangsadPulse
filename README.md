@@ -37,7 +37,7 @@ npm install
 This project uses Genkit for AI-powered diagnostics (like the TTFB check). To enable these features, you need a Gemini API key.
 
 1.  Create a new file named `.env.local` in the root of the project.
-2.  Go to [Google AI Studio](httpss://aistudio.google.com/app/apikey) to generate an API key.
+2.  Go to [Google AI Studio](https://aistudio.google.com/app/apikey) to generate an API key.
 3.  Add the key to your `.env.local` file like this:
 
 ```
