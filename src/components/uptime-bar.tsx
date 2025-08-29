@@ -53,7 +53,7 @@ export function UptimeBar({ history = [], ['max-items']: maxItems = 50 }: Uptime
                                 {bar.time ? (
                                     <div className="text-sm">
                                         <p className="font-bold capitalize">{bar.status}</p>
-                                        <p>Latency: {bar.latency > 0 ? `${bar.latency}ms` : 'N/A'}</p>
+                                        <p>Latency: {bar.latency > 0 ? `${bar.latency} ms` : 'N/A'}</p>
                                         <p className="text-muted-foreground">
                                             Checked at: {format(new Date(bar.time), 'pp, dd MMM yy')}
                                         </p>
