@@ -9,7 +9,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:prod": "pm2 start npm --name 'sangsaddpulse-app' -- start",
+    "stop:prod": "pm2 stop sangsaddpulse-app",
+    "restart:prod": "pm2 restart sangsaddpulse-app"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -53,6 +56,7 @@
     "next-themes": "^0.3.0",
     "node-fetch": "^3.3.2",
     "patch-package": "^8.0.0",
+    "pm2": "^5.4.2",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
