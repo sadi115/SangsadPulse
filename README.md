@@ -163,4 +163,3 @@ The Next.js app runs on `http://localhost:3000` by default in production. Your r
     *   **Inbound Rule**: Enter `localhost:3000` and click OK. IIS will create the rule for you.
 
 This setup ensures your application is robust, secure, and ready for production use.
-```
